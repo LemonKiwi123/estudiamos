@@ -394,7 +394,18 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .bld-msg{padding:10px 14px;border-radius:12px;font-size:15px}
 .bld-msg.no{background:var(--bad-bg)}.bld-msg.ok{background:var(--ok-bg);font-size:17px}.bld-msg.ex{background:var(--surface2)}
 .bld-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
-@media (max-width:640px){ .bld-chip{font-size:16px;padding:7px 11px} .bld-actions .btn{flex:1 1 auto} }
+@media (max-width:640px){ .bld-chip{font-size:16px;padding:7px 11px} .bld-actions .btn{flex:1 1 auto}
+  /* phones: the sentence you build stays on ONE line: the boxes shrink to fit (bldShowEnd), no scrolling */
+  .bld-line{flex-wrap:nowrap;overflow:hidden;gap:4px;padding:8px 6px;justify-content:flex-start}
+  .bld-line.wrap{flex-wrap:wrap}
+  .bld-line.tight .bld-chip .t{display:none}
+  .bld-line.tight{gap:3px}
+  .bld-line>.muted{white-space:nowrap}
+  .bld-line .bld-chip{flex:none;font-size:var(--bf,15px);padding:.3em .45em;border-radius:9px;border-width:2px;line-height:1.15}
+  .bld-line.tight .bld-chip{padding:.35em .4em;border-radius:7px}
+  .bld-line .bld-chip .t{font-size:max(7px,calc(var(--bf,15px) * .57));padding:0 .45em;margin-bottom:1px}
+  .bld-line .bld-gap,.bld-line .bld-mark{flex:none}
+}
 .quiz-clock{font-weight:700;font-variant-numeric:tabular-nums;padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap}
 .quiz-clock.low{background:var(--bad-bg);color:var(--again);border-color:color-mix(in srgb,var(--again) 40%,var(--border))}
 .gal-item{cursor:pointer;transition:transform .15s}
@@ -2403,6 +2414,7 @@ function render() {
   }
   if (view.name === 'quiz' && curQ()?.mode === 'type' && !curQ().result) setTimeout(() => $('#typeAns')?.focus(), 0);
   if (view.name === 'runner' && typeof initRunnerCanvas === 'function') initRunnerCanvas();
+  if (view.name === 'builder' && typeof bldShowEnd === 'function') bldShowEnd();
   if (view.name === 'trails' && typeof trInit === 'function') trInit();
   if (view.name === 'saga' && typeof sgInit === 'function') sgInit();
   if (view.name === 'dictionary' && typeof renderDictList === 'function') renderDictList();

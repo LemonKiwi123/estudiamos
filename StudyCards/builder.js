@@ -889,3 +889,18 @@ function bldOrderDialog() {
   document.querySelector('#dlg [data-dlg=cancel]')?.remove();
 }
 Object.assign(actions, { bldOrder: () => bldOrderDialog() });
+
+/* Phones: the sentence stays on one line, with no scrolling. The word boxes shrink until it fits; when space is tight the
+   little type labels are hidden (each box keeps its color). A sentence too long even then wraps onto a second line. */
+function bldShowEnd() {
+  const line = document.querySelector('.bld-line'); if (!line) return;
+  line.classList.remove('tight', 'wrap'); line.style.removeProperty('--bf');
+  if (!matchMedia('(max-width:640px)').matches) return;
+  const fits = () => line.scrollWidth <= line.clientWidth + 1;
+  for (const px of [15, 14, 13, 12, 11, 10]) {
+    line.style.setProperty('--bf', px + 'px'); line.classList.toggle('tight', px <= 12);
+    if (fits()) return;
+  }
+  // still too long: use a second line rather than scrolling, at a size that's comfortable to read
+  line.style.setProperty('--bf', '13px'); line.classList.add('tight', 'wrap');
+}
