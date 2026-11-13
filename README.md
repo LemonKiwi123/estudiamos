@@ -8,6 +8,33 @@ Free, no ads, and your cards stay on your own devices.
 [⭐ Reviews](https://github.com/LemonKiwi123/estudiamos/discussions/categories/reviews) ·
 [☕ Buy me a coffee](https://buymeacoffee.com/lemonkiwi)
 
+<p align="center"><img src="docs/screenshots/elephant-run.gif" alt="Elephant run: pick the right meaning and the elephant jumps over the books" width="560"></p>
+
+---
+
+## A quick look
+
+| | |
+|---|---|
+| ![Home screen with your decks, daily goal and streak](docs/screenshots/home.jpg) | ![Studying a card: the answer and how well you knew it](docs/screenshots/study.jpg) |
+| **Your decks, daily goal and streak** | **Study: flip the card, then say how well you knew it** |
+| ![Sentence Builder: words tagged by part of speech, with a hot-and-cold meter](docs/screenshots/sentence-builder.jpg) | ![Quiz results listing every answer](docs/screenshots/quiz-results.jpg) |
+| **Sentence Builder: real Spanish grammar, color-coded words** | **Quizzes: see every answer at the end, like a real test** |
+
+### Two looks: playful or professional
+
+Each profile picks its own look. The **playful** look has the elephant and friends, colorful scenery and celebrations; the **professional** look is calm and plain, for adults or the classroom.
+
+| | |
+|---|---|
+| ![Professional look: home screen](docs/screenshots/pro-home.jpg) | ![Professional look: studying a verb chart card](docs/screenshots/pro-study.jpg) |
+| **Professional look: home** | **Professional look: a verb chart card with highlights** |
+
+### On your phone
+
+<p align="center"><img src="docs/screenshots/phone.jpg" alt="Sentence Builder on a phone, sentence correct" width="300"></p>
+<p align="center">Everything works on iPhone, iPad and Android too, and stays in sync with your PC.</p>
+
 ---
 
 ## What it does
