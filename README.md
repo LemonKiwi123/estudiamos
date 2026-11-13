@@ -6,7 +6,7 @@ Free, no ads, and your cards stay on your own devices.
 [⬇️ Download](https://github.com/LemonKiwi123/estudiamos/releases/latest) ·
 [💬 Feedback](https://github.com/LemonKiwi123/estudiamos/issues) ·
 [⭐ Reviews](https://github.com/LemonKiwi123/estudiamos/discussions/categories/reviews) ·
-☕ Buy me a coffee *(coming soon)*
+[☕ Buy me a coffee](https://buymeacoffee.com/lemonkiwi)
 
 ---
 

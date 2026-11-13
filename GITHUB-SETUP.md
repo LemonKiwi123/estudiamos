@@ -35,5 +35,5 @@ From then on, copies of Estudiamos 1.2.0 and newer check GitHub for updates once
 (Copies of 1.0.0 and 1.1.0 don't know the GitHub address yet: give them the new zip once, through **Settings → Updates → Update from file**.)
 
 ## 6. Buy me a coffee
-When your page exists (buymeacoffee.com/yourname), open `StudyCards\community.js`, put your name in
-`coffee: ''` (for example `coffee: 'lemonkiwi'`), and make a new release.
+Done: the app and README link to https://buymeacoffee.com/lemonkiwi. To change it, edit `coffee:` in
+`StudyCards\community.js` and make a new release.

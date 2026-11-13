@@ -6,7 +6,7 @@
    Nothing is sent by the app itself: these buttons only open a page in the browser, and the person decides whether to post. */
 const APP_LINKS = {
   github: 'LemonKiwi123/estudiamos',   // GitHub "user/project"
-  coffee: '',                          // your Buy Me a Coffee name, e.g. 'lemonkiwi' for buymeacoffee.com/lemonkiwi ('' = not set up yet)
+  coffee: 'lemonkiwi',                 // your Buy Me a Coffee name, e.g. 'lemonkiwi' for buymeacoffee.com/lemonkiwi ('' = not set up yet)
 };
 const ghUrl = (path = '') => APP_LINKS.github ? `https://github.com/${APP_LINKS.github}${path}` : '';
 // Only general facts that help fix problems: never names, cards, or addresses
