@@ -53,7 +53,7 @@ function listenItems(d) {
   return out;
 }
 function gameAvail(d) {
-  const n = cardsOf(d.id).length, sent = sentenceItems(d).length, lis = listenItems(d).length, rp = runnerPool(d.id).length, best = (S.runnerBest || {})[d.id];
+  const n = cardsOf(d.id).length, sent = sentenceItems(d).length, lis = listenItems(d).length, rp = runnerPool(d.id).length, rw = runWordPool(d.id).length, best = (S.runnerBest || {})[d.id];
   return {
     trails: { ok: rp >= 4, info: rp >= 4 ? '🗺️ Adventure · saves your progress' : 'Needs at least 4 cards with text on both sides' },
     saga: { ok: rp >= 4, info: rp >= 4 ? '⚔️ Turn-based RPG · saves your progress' : 'Needs at least 4 cards with text on both sides' },
@@ -63,7 +63,7 @@ function gameAvail(d) {
     millionaire: { ok: rp >= 6, info: rp >= 6 ? 'Win real peanuts for the shop!' : 'Needs at least 6 cards with text on both sides' },
     showdown: { ok: rp >= 5, info: rp >= 5 ? '👥 2 players on this PC' : 'Needs at least 5 cards with text on both sides' },
     tower: { ok: rp >= 3, info: rp >= 3 ? '👥 2 players on this PC' : 'Needs at least 3 cards with text on both sides' },
-    runner: { ok: rp >= 3, info: rp >= 3 ? (best ? `Your best: ${best} jumps` : 'Endless: how far can you go?') : 'Needs at least 3 cards with text on both sides' },
+    runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} single-word cards)`) : 'Needs at least 3 cards with a single word on each side' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
     builder: { ok: true, info: ['es', 'en'].includes(langBase(d.frontLang || '')) || ['es', 'en'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice · uses your deck’s words it knows' : '📝 Spanish or English grammar practice' },
     sentence: { ok: sent >= 1 && n >= 2, info: sent ? `${sent} sentence${sent > 1 ? 's' : ''} ready` : 'Add example sentences to your cards first' },

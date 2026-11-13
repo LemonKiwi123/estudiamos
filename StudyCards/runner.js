@@ -4,15 +4,27 @@
    to jump over it. A wrong answer or running out of time means a bump and one lost heart. Speed increases. */
 const RW = 800, RH = 270, GROUND = 222, ELE_X = 70, ELE = 92, JUMP_T = 0.82, JUMP_H = 118;
 let run = null;
-const runnerPool = deckId => cardsOf(deckId).filter(c => c.front.trim() && c.back.trim());
+const runnerPool = deckId => cardsOf(deckId).filter(c => c.front.trim() && c.back.trim());   // (used by several games)
+/* Elephant run only uses cards with a single word on each side: one line, one word. A leading article or "to"
+   ("el gato", "to eat") and a pronunciation hint in brackets ("perder [pehr-dehr]") are fine.
+   Cards with the same word on both sides are left out (the answer would be the question). */
+const runOneWord = t => {
+  const s = String(t || '').trim();
+  if (!s || s.includes('\n')) return '';
+  const core = s.replace(/\s*[\[(][^\])]*[\])]/g, '').replace(/[¡!¿?.,;:]+/g, '').trim()
+    .replace(/^(el|la|los|las|un|una|unos|unas|lo|the|a|an|to)\s+/i, '');
+  return /^[\p{L}\p{N}'’-]+$/u.test(core) ? core.toLowerCase() : '';
+};
+const runWordPool = deckId => cardsOf(deckId).filter(c => { const f = runOneWord(c.front), b = runOneWord(c.back); return f && b && f !== b; });
 const svgImg = svg => { const i = new Image(); i.src = 'data:image/svg+xml,' + encodeURIComponent(svg); return i; };
 let RUN_IMGS = null;
-function runImgs() {
-  return RUN_IMGS ||= { happy: svgImg(mascot(ELE, 'happy')), party: svgImg(mascot(ELE, 'party')), hurt: svgImg(mascot(ELE, 'sleepy')) };
+function runImgs() {   // the elephant is the star of this game, so it's drawn in every look (also the professional one)
+  return RUN_IMGS ||= { happy: svgImg(mascot(ELE, 'happy', { always: true })), party: svgImg(mascot(ELE, 'party', { always: true })), hurt: svgImg(mascot(ELE, 'sleepy', { always: true })) };
 }
+const imgReady = img => img && img.complete && img.naturalWidth > 0;   // a picture that failed to load can't be drawn (it throws)
 function startRunner(deckId) {
-  const pool = runnerPool(deckId);
-  if (pool.length < 3) { toast('Elephant run needs at least 3 cards with text on both sides'); return; }
+  const pool = runWordPool(deckId);
+  if (pool.length < 3) { toast('Elephant run needs at least 3 cards with a single word on each side'); return; }
   runImgs();
   run = { deckId, pool, queue: [], obstacles: [], speed: 175, dist: 0, hearts: 3, score: 0, results: [], over: false, paused: false,
     jump: null, bump: 0, start: Date.now(), gap: 1.1, last: 0, loop: 0, cheer: 0,
@@ -99,7 +111,7 @@ function initRunnerCanvas() {
   const cv = $('#runCanvas'); if (!cv || !run) return;
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   cv.width = RW * dpr; cv.height = RH * dpr;
-  run.ctx = cv.getContext('2d'); run.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  run.ctx = cv.getContext('2d'); run.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); run.dpr = dpr;
   cv.onclick = e => {   // click the elephant to make it trumpet
     const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) * RW / r.width, y = (e.clientY - r.top) * RH / r.height;
     if (x > ELE_X && x < ELE_X + ELE && y > GROUND - ELE - JUMP_H && y < GROUND + 6) trumpet();
@@ -107,15 +119,39 @@ function initRunnerCanvas() {
   run.shown = null; updateRunUI();
   if (run.over) { run.over = false; endRunner(); }
   if (!run.loop) { run.last = performance.now(); run.loop = requestAnimationFrame(runFrame); }
+  runStartBackup();
+}
+/* The game runs on real time, not on how often the browser draws.
+   Browsers slow animation down a lot (battery saver, Edge "efficiency mode", a window that isn't in front: sometimes only
+   2 frames a second). The game used to slow down with it and seemed stuck on "Get ready…". Now each frame catches up on the
+   real time that passed, in small steps, and a backup clock keeps it going if the browser stops drawing frames often. */
+let runBackupTimer = 0;
+function runTick(now) {
+  if (!run || view.name !== 'runner') return false;
+  let el = (now - run.last) / 1000; run.last = now;
+  if (!(el >= 0)) el = 0;
+  if (el > 0.5) el = 0.05;   // back after a long break (another app, the PC asleep): carry on instead of jumping ahead
+  const paused = run.paused || $('#dlg').open || document.hidden;
+  if (!paused && !run.over) while (el > 0 && !run.over) { const step = Math.min(0.05, el); runUpdate(step); el -= step; }
+  try { runDraw(); }
+  catch (e) {   // a drawing problem must never stop the game
+    if (!run.drawErr) { run.drawErr = true; console.error('Elephant run: drawing problem', e); }
+    try { run.ctx?.restore(); } catch {}
+  }
+  const p = $('#runPause'); if (p) p.hidden = !run.paused;
+  run.lastTick = performance.now();
+  return true;
 }
 function runFrame(ts) {
-  if (!run || view.name !== 'runner') { if (run) run.loop = 0; return; }
-  const dt = Math.min(0.05, (ts - run.last) / 1000); run.last = ts;
-  const paused = run.paused || $('#dlg').open || document.hidden;
-  if (!paused && !run.over) runUpdate(dt);
-  runDraw();
-  const p = $('#runPause'); if (p) p.hidden = !run.paused;
+  if (!runTick(ts)) { if (run) run.loop = 0; return; }
   run.loop = requestAnimationFrame(runFrame);
+}
+function runStartBackup() {
+  clearInterval(runBackupTimer);
+  runBackupTimer = setInterval(() => {
+    if (!run || view.name !== 'runner') { clearInterval(runBackupTimer); runBackupTimer = 0; return; }
+    if (performance.now() - (run.lastTick || 0) > 120) runTick(performance.now());   // the browser is holding back frames
+  }, 50);
 }
 function runUpdate(dt) {
   run.dist += run.speed * dt;
@@ -309,6 +345,8 @@ function drawBanner(ctx) {
 }
 function runDraw() {
   const ctx = run.ctx; if (!ctx) return;
+  // start every frame from a clean slate, so one bad frame can never leave the picture shifted or dimmed
+  ctx.setTransform(run.dpr || 1, 0, 0, run.dpr || 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none';
   const night = drawWorld(ctx), dark = night > 0.5;
   // obstacles: stacks of books with a word label
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -339,7 +377,8 @@ function runDraw() {
   else if (!run.over && run.hearts > 0) y -= Math.abs(Math.sin(run.dist / 38)) * 5;
   if (run.bump > 0) { x += Math.sin(run.bump * 60) * 4; rot = -0.12; }
   ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.beginPath(); ctx.ellipse(ELE_X + ELE / 2, GROUND + 3, 30 * (run.jump ? 0.7 : 1), 5, 0, 0, Math.PI * 2); ctx.fill();
-  if (img.complete) { ctx.save(); ctx.translate(x + ELE / 2, y + ELE / 2); ctx.rotate(rot); ctx.filter = night > 0.05 ? `brightness(${(1 - night * 0.28).toFixed(2)})` : 'none'; ctx.drawImage(img, -ELE / 2, -ELE / 2, ELE, ELE); ctx.restore(); }
+  if (!imgReady(img)) { ctx.font = `${ELE - 6}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('🐘', x + ELE / 2, y + ELE / 2); }
+  else { ctx.save(); ctx.translate(x + ELE / 2, y + ELE / 2); ctx.rotate(rot); ctx.filter = night > 0.05 ? `brightness(${(1 - night * 0.28).toFixed(2)})` : 'none'; ctx.drawImage(img, -ELE / 2, -ELE / 2, ELE, ELE); ctx.restore(); }
   drawBanner(ctx);
   // HUD
   for (let i = 0; i < 3; i++) drawHeart(ctx, 26 + i * 28, 24, 11, i < run.hearts, dark);

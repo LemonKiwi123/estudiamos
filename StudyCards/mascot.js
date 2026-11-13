@@ -1,8 +1,9 @@
 'use strict';
 /* ================= Estudiamos's mascot: a cute elephant (original artwork, inline SVG) =================
    mascot(size, mood): mood = 'happy' | 'party' | 'sleepy' */
-function mascot(size = 64, mood = 'happy') {
-  if (typeof lookPro === 'function' && lookPro()) return '';
+function mascot(size = 64, mood = 'happy', opts = {}) {
+  // the professional look hides the mascot around the app; games that star the elephant ask for it anyway (opts.always)
+  if (!opts.always && typeof lookPro === 'function' && lookPro()) return '';
   const eyes = mood === 'sleepy'
     ? `<path d="M41 55 q6 5 12 0" stroke="#2b2f45" stroke-width="3" fill="none" stroke-linecap="round"/>
        <path d="M67 55 q6 5 12 0" stroke="#2b2f45" stroke-width="3" fill="none" stroke-linecap="round"/>`
