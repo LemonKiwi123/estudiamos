@@ -63,7 +63,7 @@ function gameAvail(d) {
     millionaire: { ok: rp >= 6, info: rp >= 6 ? 'Win real peanuts for the shop!' : 'Needs at least 6 cards with text on both sides' },
     showdown: { ok: rp >= 5, info: rp >= 5 ? '👥 2 players on this PC' : 'Needs at least 5 cards with text on both sides' },
     tower: { ok: rp >= 3, info: rp >= 3 ? '👥 2 players on this PC' : 'Needs at least 3 cards with text on both sides' },
-    runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} single-word cards)`) : 'Needs at least 3 cards with a single word on each side' },
+    runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} cards)`) : 'Needs at least 3 cards with one line on each side (not stacked like a verb chart)' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
     builder: { ok: true, info: ['es', 'en'].includes(langBase(d.frontLang || '')) || ['es', 'en'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice · uses your deck’s words it knows' : '📝 Spanish or English grammar practice' },
     sentence: { ok: sent >= 1 && n >= 2, info: sent ? `${sent} sentence${sent > 1 ? 's' : ''} ready` : 'Add example sentences to your cards first' },
@@ -209,7 +209,7 @@ views.games = () => {
     <p class="muted" style="margin:0 0 18px">Practice with the cards in “${esc(d.name)}”. Games don’t change your study schedule.</p>
     ${friendTip('monkey', 'games')}
     <div class="game-grid">${Object.entries(GAMES).map(([k, g]) => `
-      <article class="game-card"><div class="emoji">${k === 'runner' ? mascot(40) : g.emoji}</div><h3>${g.title}</h3>
+      <article class="game-card"><div class="emoji">${k === 'runner' ? (mascot(40) || g.emoji) : g.emoji}</div><h3>${g.title}</h3>
         <p class="muted small" style="margin:0">${g.desc}</p>
         <div class="small" style="color:${av[k].ok ? 'var(--muted)' : 'var(--hard)'}">${esc(av[k].info)}</div>
         ${(k === 'sentence' || k === 'listen') && cardsOf(d.id).some(c => !c.example && c.front) ? `<button type="button" class="btn sm" data-act="fillExamples" data-id="${d.id}">✨ Add example sentences</button>` : ''}

@@ -5,15 +5,13 @@
 const RW = 800, RH = 270, GROUND = 222, ELE_X = 70, ELE = 92, JUMP_T = 0.82, JUMP_H = 118;
 let run = null;
 const runnerPool = deckId => cardsOf(deckId).filter(c => c.front.trim() && c.back.trim());   // (used by several games)
-/* Elephant run only uses cards with a single word on each side: one line, one word. A leading article or "to"
-   ("el gato", "to eat") and a pronunciation hint in brackets ("perder [pehr-dehr]") are fine.
-   Cards with the same word on both sides are left out (the answer would be the question). */
+/* Elephant run uses cards that have one line on each side: a word, a phrase or a sentence are all fine.
+   "Stacked" cards with several lines (like a verb chart: Golpear / Yo golpeo / Tú golpeas…) are left out,
+   and so are cards with the same text on both sides (the answer would be the question). */
 const runOneWord = t => {
   const s = String(t || '').trim();
-  if (!s || s.includes('\n')) return '';
-  const core = s.replace(/\s*[\[(][^\])]*[\])]/g, '').replace(/[¡!¿?.,;:]+/g, '').trim()
-    .replace(/^(el|la|los|las|un|una|unos|unas|lo|the|a|an|to)\s+/i, '');
-  return /^[\p{L}\p{N}'’-]+$/u.test(core) ? core.toLowerCase() : '';
+  if (!s || /[\r\n]/.test(s)) return '';
+  return s.replace(/\s*[\[(][^\])]*[\])]/g, '').replace(/[¡!¿?.,;:]+/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 };
 const runWordPool = deckId => cardsOf(deckId).filter(c => { const f = runOneWord(c.front), b = runOneWord(c.back); return f && b && f !== b; });
 const svgImg = svg => { const i = new Image(); i.src = 'data:image/svg+xml,' + encodeURIComponent(svg); return i; };
@@ -21,10 +19,17 @@ let RUN_IMGS = null;
 function runImgs() {   // the elephant is the star of this game, so it's drawn in every look (also the professional one)
   return RUN_IMGS ||= { happy: svgImg(mascot(ELE, 'happy', { always: true })), party: svgImg(mascot(ELE, 'party', { always: true })), hurt: svgImg(mascot(ELE, 'sleepy', { always: true })) };
 }
+// split text into lines no wider than max (canvas units); a single very long word is kept whole
+function runWrap(ctx, text, max) {
+  const words = String(text).split(/\s+/), lines = []; let line = '';
+  for (const w of words) { const t = line ? line + ' ' + w : w; if (line && ctx.measureText(t).width > max) { lines.push(line); line = w; } else line = t; }
+  if (line) lines.push(line);
+  return lines;
+}
 const imgReady = img => img && img.complete && img.naturalWidth > 0;   // a picture that failed to load can't be drawn (it throws)
 function startRunner(deckId) {
   const pool = runWordPool(deckId);
-  if (pool.length < 3) { toast('Elephant run needs at least 3 cards with a single word on each side'); return; }
+  if (pool.length < 3) { toast('Elephant run needs at least 3 cards with one line on each side (not stacked like a verb chart)'); return; }
   runImgs();
   run = { deckId, pool, queue: [], obstacles: [], speed: 175, dist: 0, hearts: 3, score: 0, results: [], over: false, paused: false,
     jump: null, bump: 0, start: Date.now(), gap: 1.1, last: 0, loop: 0, cheer: 0,
@@ -76,7 +81,7 @@ function endRunner() {
       <div class="word sm">${run.score > prev && prev > 0 ? 'New best score!' : 'Game over'}</div>
       <div><span class="score" style="font-size:44px">${run.score}</span> <span class="muted">jump${run.score === 1 ? '' : 's'} · best ${best}</span></div>
       ${friendTip('monkey', 'result', { pct: run.results.length ? right / run.results.length * 100 : 0 }, { compact: true, size: 48 })}
-      ${missed.length ? `<div class="muted small" style="max-width:420px">Missed: ${missed.slice(0, 8).map(m => `<b>${esc(m.q)}</b> = ${esc(m.a)}`).join(' · ')}${missed.length > 8 ? ' …' : ''}</div>` : '<div class="muted small">No mistakes. Amazing!</div>'}
+      ${missed.length ? `<div class="muted small" style="max-width:420px">Missed: ${missed.map(m => `<b>${esc(m.q)}</b> = ${esc(m.a)}`).join(' · ')}</div>` : '<div class="muted small">No mistakes. Amazing!</div>'}
       <div class="row" style="justify-content:center">
         <button type="button" class="btn primary" data-act="runAgain" data-id="${d.id}">Play again <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">Enter</kbd></button>
         <button type="button" class="btn" data-act="games" data-id="${d.id}">Other games</button>
@@ -361,14 +366,18 @@ function runDraw() {
       ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.fillRect(o.w / 2 + inset - 10, y, 4, 15);
     }
     ctx.restore();
-    const label = o.card.front.length > 18 ? o.card.front.slice(0, 17) + '…' : o.card.front;
-    ctx.font = '600 15px "Segoe UI", sans-serif';
-    const lw = Math.max(44, ctx.measureText(label).width + 22), ly = GROUND - o.h - 26;
+    // the sign shows the whole word or sentence: long ones wrap onto more lines instead of being cut off
+    const text = (o.state === 'cleared' ? '✓ ' : o.state === 'failed' ? '✗ ' : '') + o.card.front;
+    const size = text.length > 40 ? 13 : 15, lh = size + 4;
+    ctx.font = `600 ${size}px "Segoe UI", sans-serif`;
+    const lines = o.lines && o.linesFor === text ? o.lines : (o.linesFor = text, o.lines = runWrap(ctx, text, 230));
+    const lw = Math.max(44, Math.max(...lines.map(l => ctx.measureText(l).width)) + 22), bh = lines.length * lh + 10;
+    const bottom = GROUND - o.h - 12, top = bottom - bh, cx = Math.min(RW - lw / 2 - 4, Math.max(lw / 2 + 4, o.x + o.w / 2));
     ctx.fillStyle = o.state === 'cleared' ? '#23905a' : o.state === 'failed' ? '#cf3f3f' : (dark ? '#2a2f45' : '#ffffff');
-    roundRect(ctx, o.x + o.w / 2 - lw / 2, ly - 14, lw, 28, 14); ctx.fill();
+    roundRect(ctx, cx - lw / 2, top, lw, bh, Math.min(14, bh / 2)); ctx.fill();
     ctx.strokeStyle = o.state === 'pending' ? cssVar('--accent') : 'transparent'; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = o.state === 'pending' ? (dark ? '#fff' : '#1c1b19') : '#fff';
-    ctx.fillText((o.state === 'cleared' ? '✓ ' : o.state === 'failed' ? '✗ ' : '') + label, o.x + o.w / 2, ly + 1);
+    lines.forEach((l, i) => ctx.fillText(l, cx, top + 5 + lh / 2 + i * lh + 1));
   }
   // elephant
   const imgs = runImgs(), img = run.bump > 0 ? imgs.hurt : (run.jump || run.cheer > 0 ? imgs.party : imgs.happy);
