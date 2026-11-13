@@ -1,0 +1,72 @@
+ESTUDIAMOS {{VERSION}}
+Flashcards, quizzes and games for learning languages. Use it on your PC and your phone.
+=======================================================================================
+
+WHAT YOU NEED
+  * A Windows 10 or 11 PC with Microsoft Edge (it comes with Windows).
+  * Node.js (free). The setup can install it for you.
+  * Optional: an iPhone, iPad or Android phone.
+  * Optional: Tailscale (free), to use your phone away from home.
+
+
+INSTALL (about 2 minutes)
+  1. Unzip this folder somewhere you'll keep it, for example in Documents.
+     (Right-click the .zip > Extract All.) Don't run it from inside the .zip.
+  2. Double-click "Set up Estudiamos.cmd".
+       - If Windows says "Windows protected your PC", click "More info" > "Run anyway".
+         It says this about any program downloaded from the internet.
+  3. Answer the questions. The setup:
+       1. checks for Node.js (and offers to install it),
+       2. makes a place for your cards,
+       3. puts Estudiamos on your Desktop and Start menu,
+       4. lets your phone connect on your home Wi-Fi,
+       5. starts Estudiamos,
+       6. (optional) sets up Tailscale so your phone works anywhere.
+  4. Estudiamos opens. Pick a name and picture, and a short tour shows you around.
+
+  From now on, open it with the "Estudiamos" icon on your Desktop.
+  You can run the setup again any time. It only fixes what's missing.
+
+
+USE IT ON YOUR PHONE
+  In Estudiamos on the PC: Settings > Phone & sync > "Setup guide".
+  It walks you through it step by step:
+    * At home: phone and PC on the same Wi-Fi, then scan a QR code.
+    * Anywhere: install Tailscale on the PC and the phone, then open your PC's
+      secure address on the phone, for example https://my-pc.tail1234.ts.net
+  The PC has to be on and awake for the phone to sync.
+
+
+WHERE YOUR CARDS ARE KEPT
+  In the "EstudiarData" folder next to the "StudyCards" folder. The setup makes it.
+    * Your cards never go to any company's server. They stay on your PC and your phone.
+    * Daily backups are saved in EstudiarData\backups.
+    * Moving to a new PC? Copy the whole folder (StudyCards + EstudiarData) to the new
+      PC and run "Set up Estudiamos.cmd" there.
+
+  Estudiamos only goes online when you use these features:
+    * Word labels (noun, verb...) for unusual words: only that one word is looked up on Wiktionary.
+    * Suggested example sentences: looked up on Tatoeba.
+    * Email (only if you set it up yourself in Settings).
+
+
+UPDATING TO A NEW VERSION
+  Estudiamos checks for new versions once a day and tells you on the home screen.
+  Go to Settings > Updates > "Update now". It backs up your cards, installs the new
+  version and restarts, in about 30 seconds. Your phone gets it by itself.
+    * Every update is checked: it must be signed by the publisher, and every file must
+      match, or it's refused.
+    * Something wrong after an update? Settings > Updates > "Go back".
+    * Downloaded a new .zip yourself? Settings > Updates > "Update from file".
+  Your cards (the "EstudiarData" folder) are never replaced by an update.
+
+
+REMOVING ESTUDIAMOS
+  Delete the Estudiamos shortcut from your Desktop and Start menu, then delete this folder.
+  (Delete EstudiarData too only if you don't want your cards any more.)
+
+
+CREDITS AND LICENSES
+  Text scanning: Tesseract.js (Apache 2.0). Database: sql.js (MIT). Anki import: fzstd (MIT).
+  Full license texts are in StudyCards\lib.
+  Word labels from Wiktionary (CC BY-SA). Example sentences from Tatoeba (CC BY 2.0 FR).

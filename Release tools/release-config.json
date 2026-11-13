@@ -1,0 +1,4 @@
+{
+  "feed": "https://github.com/LemonKiwi123/estudiamos/releases/latest/download/latest.json",
+  "zipBase": "https://github.com/LemonKiwi123/estudiamos/releases/download/v{version}/"
+}

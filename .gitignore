@@ -1,0 +1,23 @@
+# Safety first: ignore EVERYTHING in this folder, then allow only the parts that belong on GitHub.
+# This way your cards (EstudiarData), downloads (Releases), private signing key and personal files
+# can never be uploaded by accident, even if new files appear here later.
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+!/GITHUB-SETUP.md
+!/StudyCards/
+!/Release tools/
+
+# never these, even inside the allowed folders
+PRIVATE-signing-key.pem
+*.pem.bak
+/Release tools/notes/
+/StudyCards/release-manifest.json
+/StudyCards/release-manifest.sig
+StudyCards.previous/
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
