@@ -273,11 +273,17 @@ function sgWarp(map, x, y, dir, quiet) {
   sgSaveNow(true); sgMusicSync();
   sg.banner = quiet ? null : { text: SG_MAPS[map].name, until: sg.frame + 110 };
 }
+/* how far along the story you are (0 to 13), and the point where each area normally shows up */
+const SG_STAGE_FLAGS = ['king', 'shard', 'kingDone', 'queen', 'tide', 'shard2', 'ship', 'oracle', 'isles', 'archmage', 'crystal', 'wayfare', 'lexicon'];
+const sgStage = () => SG_STAGE_FLAGS.filter(k => sgS()?.flags[k]).length;
+const SG_ZONE_STAGE = { south: 0, north: 1, hollow1: 1, hollow2: 2, sand: 4, sea: 7, archive1: 5, archive2: 5, isles: 9, deepsea: 9, ember1: 10, ember2: 10, tower1: 12, tower2: 12, tower3: 12 };
+const SG_MAX_FOES = 8;
 function sgEncounter(zone) {
   const z = SG_ZONES[zone]; if (!z) return;
   const total = z.list.reduce((a, [, w]) => a + w, 0), pick = () => { let r = Math.random() * total; for (const [k, w] of z.list) { r -= w; if (r <= 0) return k; } return z.list[0][0]; };
-  const n = 1 + Math.floor(Math.random() * z.max * (sgAlive().length >= 2 ? 1 : 0.7));
-  sgBattle(Array.from({ length: Math.max(1, Math.min(z.max, n)) }, pick));
+  const stage = sgStage(), max = Math.min(SG_MAX_FOES, z.max + Math.floor(stage / 2)), lo = Math.max(1, Math.ceil(max / 3));
+  const n = Math.round((lo + Math.random() * (max - lo)) * (sgAlive().length >= 2 ? 1 : 0.7));
+  sgBattle(Array.from({ length: Math.max(1, Math.min(max, n)) }, pick), { zone });
 }
 
 /* ---------- Talking, chests, seals ---------- */
@@ -630,14 +636,18 @@ setInterval(() => { if (sg?.ui?.type === 'map' && view.name === 'saga') sgMapDra
 /* ---------- Battles ---------- */
 const sgRnd = (a, b) => a + Math.random() * (b - a);
 function sgBattle(group, opts = {}) {
-  const counts = {}, foes = group.map(k => { counts[k] = (counts[k] || 0) + 1; return { key: k, hp: SG_MONSTERS[k].hp, max: SG_MONSTERS[k].hp, n: counts[k] }; });
-  for (const f of foes) if (counts[f.key] > 1) f.tag = 'ABC'[f.n - 1]; else f.tag = '';
+  // monsters level up as the story goes on: older areas catch up, newer ones get a little tougher too
+  const ahead = Math.max(0, sgStage() - (SG_ZONE_STAGE[opts.zone] ?? sgStage())), boost = opts.zone ? 1 + 0.08 * ahead + 0.01 * sgStage() : 1;
+  const counts = {}, foes = group.map(k => { counts[k] = (counts[k] || 0) + 1; const M = SG_MONSTERS[k], hp = Math.round(M.hp * boost);
+    return { key: k, hp, max: hp, n: counts[k], mul: boost, lv: Math.max(1, Math.round(Math.sqrt(M.xp) * 1.3 * boost)) }; });
+  for (const f of foes) if (counts[f.key] > 1) f.tag = 'ABCDEFGH'[f.n - 1]; else f.tag = '';
   sg.bt = { foes, hero: 0, round: 1, ward: 0, boss: !!opts.boss, final: foes.some(f => SG_MONSTERS[f.key].final), fixed: opts.fixed, story: opts.story, defend: {}, flashFoe: {}, intro: true };
   sg.held = null; sg.flash = 16; sgBattleMusic();
   const names = foes.map(f => SG_MONSTERS[f.key].name + (f.tag ? ' ' + f.tag : ''));
   sgSay(opts.boss ? [`⚠️ ${names[0]} attacks!`] : [`${names.length === 1 ? `A ${names[0]} appears!` : `${names.join(', ')} appear!`}`], () => { sg.bt.intro = false; sgHeroTurn(); });
 }
 const sgFoeName = f => `${SG_MONSTERS[f.key].name}${f.tag ? ' ' + f.tag : ''}`;
+const sgFoeAtk = f => SG_MONSTERS[f.key].atk * (f.mul || 1);
 const sgLiveFoes = () => sg.bt.foes.filter(f => f.hp > 0);
 function sgHeroTurn() {
   const s = sgS(), b = sg.bt;
@@ -655,7 +665,7 @@ function sgHeroTurn() {
 function sgNextHero() { if (!sg.bt) return; if (!sgLiveFoes().length) return sgWin(); sg.bt.hero++; sgHeroTurn(); }
 function sgPickFoe(fn, back) {
   const live = sgLiveFoes(); if (live.length === 1) return fn(live[0]);
-  sgMenu('Which foe?', live.map(f => ({ label: `👾 ${sgFoeName(f)}`, sub: `${Math.ceil(f.hp / f.max * 100)}% left`, fn: () => fn(f) })), back);
+  sgMenu('Which foe?', live.map(f => ({ label: `👾 ${sgFoeName(f)} · Lv ${f.lv || 1}`, sub: `${Math.ceil(f.hp / f.max * 100)}% left`, fn: () => fn(f) })), back);
 }
 function sgHitFoe(f, dmg, lines) {
   f.hp = Math.max(0, f.hp - dmg); sg.bt.flashFoe[sg.bt.foes.indexOf(f)] = 14; trSound('hit');
@@ -707,8 +717,8 @@ function sgCast(h, k, target, grade) {
 }
 function sgRun() { if (Math.random() < 0.65) { sg.bt = null; sgMusicSync(); return sgSay('You got away safely! 💨'); } sgSay('You couldn’t get away!', () => { sg.bt.hero = sgS().party.length; sgFoesTurn(); }); }
 function sgFoesTurn() {
-  const b = sg.bt, lines = [], party = sgS().party;
-  const soften = (dmg, v) => { const vi = party.indexOf(v); if (b.defend[vi]) dmg = Math.ceil(dmg / 2); if (b.ward) dmg = Math.ceil(dmg / 2); return Math.max(1, dmg); };
+  const b = sg.bt, lines = [], party = sgS().party, crowd = Math.min(1, 4.5 / Math.max(1, sgLiveFoes().length));   // a big crowd of monsters each hits a little softer
+  const soften = (dmg, v) => { const vi = party.indexOf(v); dmg = Math.round(dmg * crowd); if (b.defend[vi]) dmg = Math.ceil(dmg / 2); if (b.ward) dmg = Math.ceil(dmg / 2); return Math.max(1, dmg); };
   const hurt = (v, dmg) => { v.hp = Math.max(0, v.hp - dmg); const fell = v.hp <= 0; sgFall(v); return fell ? ` 💤 ${esc(v.name)} falls!` : ''; };
   const ail = (v, st, chance) => { if (!st || v.hp <= 0 || v.st?.[st] || Math.random() >= chance) return; (v.st ||= {})[st] = 1; lines.push(st === 'poison' ? `☠️ ${esc(v.name)} is poisoned!` : `🌑 ${esc(v.name)} is cursed! Their strength fades…`); };
   const special = (f, sp) => {
@@ -716,8 +726,8 @@ function sgFoesTurn() {
     lines.push(`${sgFx(sp.fx, sp.name)}👾 ${who} uses <b>${sp.name}</b>!`);
     if (sp.mpAll) { for (const v of targets) { const n = Math.min(v.mp, sp.mpAll); v.mp -= n; } lines.push('The party’s magic drains away! (−MP)'); return; }
     for (const v of sp.all ? targets : [targets[Math.floor(Math.random() * targets.length)]]) {
-      const atk = SG_MONSTERS[f.key].atk * (b.rage && SG_MONSTERS[f.key].final ? 1.25 : 1);
-      const raw = sp.mult ? (atk * sp.mult - sgStat(v, 'def') / 2) * sgRnd(0.85, 1.15) : sp.power * sgRnd(0.9, 1.25) * (b.rage && SG_MONSTERS[f.key].final ? 1.15 : 1);
+      const atk = sgFoeAtk(f) * (b.rage && SG_MONSTERS[f.key].final ? 1.25 : 1);
+      const raw = sp.mult ? (atk * sp.mult - sgStat(v, 'def') / 2) * sgRnd(0.85, 1.15) : sp.power * (f.mul || 1) * sgRnd(0.9, 1.25) * (b.rage && SG_MONSTERS[f.key].final ? 1.15 : 1);
       const dmg = soften(Math.round(raw), v);
       lines.push(`${esc(v.name)} takes ${dmg} damage!${hurt(v, dmg)}`);
       ail(v, sp.st, sp.stChance ?? 0.5);
@@ -733,7 +743,7 @@ function sgFoesTurn() {
       if (m.specials && Math.random() < 0.45) { special(f, m.specials[Math.floor(Math.random() * m.specials.length)]); continue; }
       if (m.cast && Math.random() < m.cast.chance) { special(f, { stChance: 0.5, ...m.cast }); continue; }
       if (m.drain && Math.random() < m.drain && t.mp > 0) { const n = Math.min(t.mp, 3 + Math.floor(Math.random() * (m.final ? 8 : 3))); t.mp -= n; lines.push(`👾 ${esc(sgFoeName(f))} whispers… ${esc(t.name)} loses ${n} MP!`); continue; }
-      const heavy = m.heavy && Math.random() < m.heavy.chance, atk = m.atk * (b.rage && m.final ? 1.25 : 1), raw = (atk * (heavy ? m.heavy.mult : 1) - sgStat(t, 'def') / 2) * sgRnd(0.85, 1.15);
+      const heavy = m.heavy && Math.random() < m.heavy.chance, atk = sgFoeAtk(f) * (b.rage && m.final ? 1.25 : 1), raw = (atk * (heavy ? m.heavy.mult : 1) - sgStat(t, 'def') / 2) * sgRnd(0.85, 1.15);
       const dmg = soften(Math.round(raw), t);
       lines.push(heavy ? `${sgFx(m.heavy.fx || 'slash', m.heavy.name)}👾 ${esc(sgFoeName(f))} uses <b>${m.heavy.name}</b>! ${esc(t.name)} takes ${dmg} damage!${hurt(t, dmg)}` : `👾 ${esc(sgFoeName(f))} attacks! ${esc(t.name)} takes ${dmg} damage!${hurt(t, dmg)}`);
       ail(t, 'poison', m.poison || 0); ail(t, 'curse', m.curse || 0);
@@ -749,7 +759,7 @@ function sgFoesTurn() {
   });
 }
 function sgWin() {
-  const s = sgS(), b = sg.bt, xp = b.foes.reduce((a, f) => a + SG_MONSTERS[f.key].xp, 0), gold = b.foes.reduce((a, f) => a + SG_MONSTERS[f.key].gold, 0);
+  const s = sgS(), b = sg.bt, xp = Math.round(b.foes.reduce((a, f) => a + SG_MONSTERS[f.key].xp * (f.mul || 1), 0)), gold = Math.round(b.foes.reduce((a, f) => a + SG_MONSTERS[f.key].gold * (f.mul || 1), 0));
   const share = Math.max(1, Math.ceil(xp / Math.max(1, sgAlive().length))), lines = [`🏆 Victory! Each hero gains ${share} XP.`, `💰 You found ${gold} gold.`];
   s.gold += gold; sg.session.wins++; sg.session.nuts += b.boss ? 5 : 1;
   if (b.fixed) s.beaten[b.fixed] = 1;
@@ -920,7 +930,40 @@ function sgPersonArt(look, dir, step) {
     if (dir === 'right') G = G.map(r => r.slice().reverse());
     G.forEach((r, y) => r.forEach((c, x) => { if (c >= 0) { g.fillStyle = L.colors[c]; g.fillRect(x, y, 1, 1); } }));
     if (L.crown) { g.fillStyle = '#f4c542'; g.fillRect(5, 0, 6, 2); g.fillRect(5, 0, 1, 1); g.fillStyle = '#c0392b'; g.fillRect(7, 1, 2, 1); }
+    if (H) sgClassGear(g, look, dir);
   });
+}
+/* what makes each class recognizable: bows, staffs, hoods, helmets, shields, books and lutes */
+function sgClassGear(g, key, dir) {
+  const face = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'side', flip = dir === 'right';
+  const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(flip ? 16 - x - w : x, y, w, h); };
+  const O = '#141420';
+  if (key === 'ranger') {
+    R(3, 0, 10, 3, '#2e6b2e'); R(2, 2, 2, 5, '#2e6b2e'); R(12, 2, 2, 5, '#2e6b2e'); R(7, 0, 2, 1, '#4f9a3c');   // green hood
+    if (face === 'up') { R(9, 5, 3, 8, '#6b4226'); R(9, 4, 1, 2, '#f6f6f0'); R(11, 4, 1, 2, '#f6f6f0'); R(10, 3, 1, 2, '#c0392b'); }   // quiver of arrows
+    else if (face === 'down') { R(13, 4, 1, 1, '#8b5a2b'); R(14, 5, 1, 7, '#8b5a2b'); R(13, 12, 1, 1, '#8b5a2b'); R(13, 5, 1, 7, '#e8e8e8'); }   // bow in the right hand
+    else { R(1, 4, 1, 1, '#8b5a2b'); R(0, 5, 1, 7, '#8b5a2b'); R(1, 12, 1, 1, '#8b5a2b'); R(1, 5, 1, 7, '#e8e8e8'); R(10, 6, 2, 6, '#6b4226'); R(10, 5, 1, 1, '#f6f6f0'); }
+  } else if (key === 'monk') {
+    const x = face === 'side' ? 1 : 13;
+    R(x, 1, 1, 16, '#8b5a2b'); R(x - 1, 0, 3, 2, '#f4c542');   // quarterstaff
+    if (face !== 'up') { for (let i = 0; i < 4; i++) R(5 + i * 2, 9, 1, 1, '#5e3a1a'); R(7, 10, 2, 1, '#5e3a1a'); }   // prayer beads
+    R(4, 13, 8, 1, '#c0392b');   // sash
+  } else if (key === 'rogue') {
+    R(3, 0, 10, 3, '#2c2c3e'); R(2, 2, 2, 6, '#2c2c3e'); R(12, 2, 2, 6, '#2c2c3e');   // dark hood
+    if (face === 'down') { R(5, 7, 6, 2, '#2c2c3e'); R(13, 9, 1, 4, '#dfe5ee'); R(13, 13, 1, 1, '#f4c542'); R(2, 9, 1, 4, '#dfe5ee'); R(2, 13, 1, 1, '#f4c542'); }   // face mask, two daggers
+    else if (face === 'side') { R(3, 7, 4, 2, '#2c2c3e'); R(1, 9, 1, 4, '#dfe5ee'); R(1, 13, 1, 1, '#f4c542'); }
+    else { R(4, 3, 8, 6, '#2c2c3e'); R(6, 9, 4, 1, '#8e2c3a'); }   // hood from behind, belt
+  } else if (key === 'paladin') {
+    R(4, 0, 8, 4, '#dfe5ee'); R(4, 0, 8, 1, '#8e9aae'); R(7, 0, 2, 1, '#f4c542'); if (face !== 'up') R(5, 3, 6, 1, O);   // silver helm with a gold crest
+    if (face === 'down') { R(1, 8, 4, 6, '#f6f6f0'); R(1, 8, 4, 1, '#f4c542'); R(2, 9, 2, 4, '#f6f6f0'); R(2, 10, 2, 1, '#f4c542'); R(2.5, 9, 1, 4, '#f4c542'); R(13, 5, 1, 7, '#dfe5ee'); R(12, 11, 3, 1, '#f4c542'); }
+    else if (face === 'side') { R(0, 8, 3, 6, '#f6f6f0'); R(1, 9, 1, 4, '#f4c542'); R(0, 10, 3, 1, '#f4c542'); }
+    else { R(5, 7, 6, 7, '#f6f6f0'); R(7, 8, 2, 5, '#f4c542'); R(6, 9, 4, 1, '#f4c542'); }   // cape with a gold cross
+  } else if (key === 'scribe') {
+    if (face !== 'up') { const x = face === 'side' ? 1 : 12; R(x, 9, 3, 4, '#7a2f3a'); R(x, 9, 3, 1, '#f4c542'); R(x + 1, 10, 1, 2, '#f6f6f0'); R(face === 'side' ? 2 : 3, 7, 1, 4, '#f6f6f0'); }   // spellbook and quill
+  } else if (key === 'cantor') {
+    if (face !== 'up') { const x = face === 'side' ? 0 : 11; R(x, 9, 4, 4, '#c8955a'); R(x + 1, 10, 2, 2, '#5e3a1a'); R(x + (face === 'side' ? 3 : 0), 6, 1, 4, '#8b5a2b'); }   // lute
+    else { R(4, 7, 4, 5, '#c8955a'); R(5, 9, 2, 2, '#5e3a1a'); }
+  }
 }
 function sgChestArt(open, locked) {
   return sgCache[`chest${open ? 1 : 0}${locked ? 1 : 0}`] ||= sgCanvas(16, 16, g => {
@@ -1067,14 +1110,19 @@ function sgDrawBattle(g) {
     });
   });
   // monsters
-  const live = b.foes, cnt = live.length, big = b.boss ? 2.6 : cnt === 1 ? 2 : cnt === 2 ? 1.7 : 1.35, size = Math.round(32 * big), gap = (SG_W - cnt * size) / (cnt + 1);
-  live.forEach((f, i) => {
+  const live = b.foes, cnt = live.length, two = cnt > 4, perRow = two ? Math.ceil(cnt / 2) : cnt;
+  const big = b.boss && cnt === 1 ? 2.6 : two ? Math.min(1.1, 150 / perRow / 32) : cnt === 1 ? 2 : cnt === 2 ? 1.7 : cnt === 3 ? 1.35 : 1.15, size = Math.round(32 * big);
+  const order = live.map((f, i) => i).sort((a, c) => (two && a < perRow ? 0 : 1) - (two && c < perRow ? 0 : 1));   // back row first
+  order.forEach(i => {
+    const f = live[i];
     if (f.hp <= 0 && !(b.flashFoe[i] > 0)) return;
     const blink = b.flashFoe[i] > 0 && b.flashFoe[i] % 4 < 2; if (b.flashFoe[i] > 0) b.flashFoe[i]--;
     if (blink) return;
-    const x = Math.round(gap + i * (size + gap)), y = Math.round(86 - size + Math.sin((sg.frame + i * 20) / 16) * 1.5);
+    const row = two && i >= perRow ? 1 : 0, col = two ? (row ? i - perRow : i) : i, inRow = two ? (row ? cnt - perRow : perRow) : cnt, gap = (SG_W - inRow * size) / (inRow + 1);
+    const x = Math.round(gap + col * (size + gap) + (two && !row ? size / 4 : 0)), y = Math.round((two ? (row ? 98 : 80) : 86) - size + Math.sin((sg.frame + i * 20) / 16) * 1.5);
     g.globalAlpha = f.hp <= 0 ? Math.max(0, (b.flashFoe[i] || 0) / 14) : 1;
     g.drawImage(sgMonsterArt(f.key), x, Math.max(30, y), size, size); g.globalAlpha = 1;
+    if (f.tag && cnt > 1) sgText(g, f.tag, x + size - 5, Math.max(30, y) + size - 7, '#ffffff');
   });
   if (b.ward) sgText(g, '🛡', 150, 34);
   if (sg.fx) sgDrawFx(g);
