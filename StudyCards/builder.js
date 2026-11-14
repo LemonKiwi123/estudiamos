@@ -658,7 +658,8 @@ views.builder = () => {
       <label class="row muted small" style="gap:6px;font-weight:400" title="When you press New words, keep the sentence you're building and only change the words below"><input type="checkbox" id="bldKeep" ${S.settings.bldKeep !== false ? 'checked' : ''}> Keep my sentence</label>
       <button type="button" class="btn small" data-act="bldWords">📚 Add my deck's words${(S.bldWords || []).length ? ` (${S.bldWords.length})` : ''}</button>
       <select class="inp" id="bldLang" style="margin:0;width:auto">${Object.entries(BLD_LANGS).map(([k, l]) => `<option value="${k}" ${k === bld.lang ? 'selected' : ''}>Build in ${l.name}</option>`).join('')}</select>
-    </div>`;
+    </div>
+    ${bldPosPicker()}`;
 };
 function bldCheckNow() {
   const line = bld.line.map(id => bld.tray.find(t => t.id === id)), r = BLD_LANGS[bld.lang].check(line);
@@ -1022,3 +1023,40 @@ function bldNewWords(keep) {
   bld.msg = '🔀 New words below. Your sentence is still here.';
 }
 Object.assign(actions, { bldNew: () => { if (!bld.done) bld.streak = 0; bldNewWords(!bld.done && S.settings.bldKeep !== false); render(); } });
+
+/* 🎯 Practice certain parts of speech: pick all of them, or just some (verbs, nouns…).
+   New sentences then use the types you picked, and the extra words below the sentence are only those types.
+   The sentence still gets whatever else it needs to be correct (a verb needs a subject, a noun may need an article). */
+const bldPosSel = () => { const v = S.settings.bldPos; return Array.isArray(v) && v.length && v.length < Object.keys(BLD_TYPES).length ? v.filter(k => BLD_TYPES[k]) : null; };
+function bldPosPicker() {
+  const sel = bldPosSel(), on = k => !sel || sel.includes(k);
+  return `<div class="bld-pos" role="group" aria-label="Parts of speech to practice"><span class="muted small">🎯 Practice:</span>
+    <button type="button" class="bld-pos-b all ${sel ? '' : 'on'}" data-act="bldPos" data-k="all" aria-pressed="${!sel}">All</button>
+    ${Object.entries(BLD_TYPES).map(([k, [name]]) => `<button type="button" class="bld-pos-b t-${k} ${sel && on(k) ? 'on' : ''}" data-act="bldPos" data-k="${k}" aria-pressed="${!!(sel && on(k))}">${name}s</button>`).join('')}</div>`;
+}
+const bldGenOne = () => BLD_LANGS[bld.lang].gen(bld.pref) || BLD_LANGS[bld.lang].gen(new Set());
+const bldRoundAll = bldRound;
+bldRound = function () {
+  const sel = bldPosSel(); if (!sel) return bldRoundAll();
+  const types = g => new Set(g.words.map(bldType)), score = g => sel.filter(k => types(g).has(k)).length;
+  let g = bldGenOne(), best = score(g);
+  for (let i = 0; i < 60 && best < sel.length; i++) { const x = bldGenOne(); if (!x) continue; const sc = score(x); if (sc > best) { g = x; best = sc; } }
+  // the extra words: only the picked types, gathered from a few more sentences
+  const have = new Set(g.words.map(w => w.w)), pool = [];
+  const take = c => { if (sel.includes(bldType(c)) && !have.has(c.w)) { have.add(c.w); pool.push(chip({ ...c })); } };
+  g.extra.forEach(take);
+  for (let i = 0; i < 25 && pool.length < 10; i++) { const x = bldGenOne(); if (x) [...x.words, ...x.extra].forEach(take); }
+  const tray = shuffle([...g.words, ...shuffle(pool).slice(0, Math.max(4, 14 - g.words.length))]).map(c => ({ ...c, used: false }));
+  Object.assign(bld, { heatShown: 0, gap: null, tray, line: [], example: g.words, english: g.english, msg: null, bad: -1, fails: 0, done: false, hint: -1, showEx: false });
+};
+Object.assign(actions, {
+  bldPos: el => {
+    const all = Object.keys(BLD_TYPES), k = el.dataset.k; let sel = bldPosSel();
+    if (k === 'all') sel = null;
+    else if (!sel) sel = [k];   // from "All", tapping a type picks just that type
+    else sel = sel.includes(k) ? sel.filter(x => x !== k) : [...sel, k];
+    S.settings.bldPos = sel && sel.length && sel.length < all.length ? sel : null; save();
+    if (!bld.done) bld.streak = 0;
+    bldNewWords(!bld.done && S.settings.bldKeep !== false); render();
+  },
+});

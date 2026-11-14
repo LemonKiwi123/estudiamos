@@ -354,6 +354,9 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .bld-chip:active:not([disabled]){transform:translateY(1px);box-shadow:none}
 .bld-chip .g{font-size:11px;font-weight:500;color:var(--muted)}
 /* word types: one color each (chip border, tag and the color key) */
+.bld-pos{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin-top:10px}
+.bld-pos-b{--tc:var(--accent);border:2px solid var(--tc);background:transparent;color:var(--tc);border-radius:99px;padding:3px 11px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.bld-pos-b.on{background:var(--tc);color:#fff}
 .t-noun{--tc:#2f6fd6}.t-verb{--tc:#d23b3b}.t-adj{--tc:#1f9a52}.t-pron{--tc:#8a4fd8}.t-det{--tc:#c98a00}.t-prep{--tc:#0f9b8e}.t-conj{--tc:#d6337f}.t-adv{--tc:#5b6b80}
 .bld-chip[class*=" t-"]{border-color:color-mix(in srgb,var(--tc) 55%,var(--border));box-shadow:0 2px 0 color-mix(in srgb,var(--tc) 45%,var(--border))}
 .bld-chip .t{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--tc);border-radius:999px;padding:1px 7px;margin-bottom:2px;line-height:1.4}
