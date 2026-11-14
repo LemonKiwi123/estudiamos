@@ -64,6 +64,7 @@ function gameAvail(d) {
     showdown: { ok: rp >= 5, info: rp >= 5 ? '👥 2 players on this PC' : 'Needs at least 5 cards with text on both sides' },
     tower: { ok: rp >= 3, info: rp >= 3 ? '👥 2 players on this PC' : 'Needs at least 3 cards with text on both sides' },
     runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} cards)`) : 'Needs at least 3 cards with one line on each side (not stacked like a verb chart)' },
+    numbers: { ok: true, info: '🎧 Listening, reading and writing · no cards needed' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
     builder: { ok: true, info: ['es', 'en'].includes(langBase(d.frontLang || '')) || ['es', 'en'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice · uses your deck’s words it knows' : '📝 Spanish or English grammar practice' },
     sentence: { ok: sent >= 1 && n >= 2, info: sent ? `${sent} sentence${sent > 1 ? 's' : ''} ready` : 'Add example sentences to your cards first' },
@@ -85,12 +86,14 @@ const GAMES = {
   millionaire: { emoji: '🥜', title: 'Peanut Millionaire', desc: 'Answer 15 harder-and-harder questions to climb to 1,000,000 peanuts. Use your lifelines wisely!' },
   showdown: { emoji: '🎤', title: 'Word Showdown', desc: 'A quiz-show board for 2 players: pick tiles worth 100–500, steal wrong answers, and find the Double Down!' },
   tower: { emoji: '🧱', title: 'Word Tower', desc: 'Two players take turns pulling the block with the right meaning. One wrong pick and the tower crashes!' },
+  numbers: { emoji: '🔢', title: 'Numbers & ABC', desc: 'Hear, read and write numbers and letters in the language you’re learning. Works without any cards.' },
   runner: { emoji: '🐘', title: 'Elephant run', desc: 'Help the elephant jump over stacks of books by picking the right meaning before they arrive.' },
 };
 
 function startGame(type, deckId) {
   if (type === 'builder') { startBuilder(deckId); return; }
   if (type === 'runner') { startRunner(deckId); return; }
+  if (type === 'numbers') { startNumGame(deckId); return; }
   if (type === 'tower') { go({ name: 'towerSetup', deckId }); return; }
   if (type === 'showdown') { go({ name: 'showdownSetup', deckId }); return; }
   if (type === 'millionaire') { startMillionaire(deckId); return; }

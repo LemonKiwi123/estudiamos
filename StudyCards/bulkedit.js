@@ -101,7 +101,7 @@ function stripMask(str, kinds) {   // which characters to delete. kinds.mode: 'a
 }
 const stripTidy = t => t.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+([,.;:!?])/g, '$1').replace(/^[ \t]+|[ \t]+$/gm, '');
 function stripText(str, kinds) { if (!str) return str; const del = stripMask(str, kinds); let out = ''; for (let i = 0; i < str.length; i++) if (!del[i]) out += str[i]; return stripTidy(out).trim(); }
-function stripHtml(html, kinds) {   // the same thing across the text inside rich text, leaving the tags (colors, bold…) alone
+function stripBracketsHtml(html, kinds) {   // the same thing across the text inside rich text, leaving the tags (colors, bold…) alone
   const box = document.createElement('div'); box.innerHTML = html;
   const nodes = [], walk = document.createTreeWalker(box, NodeFilter.SHOW_TEXT); while (walk.nextNode()) nodes.push(walk.currentNode);
   const all = nodes.map(n => n.nodeValue).join(''), del = stripMask(all, kinds); let pos = 0;
@@ -162,7 +162,7 @@ function openBulkStrip() {
       const undo = plan.map(({ c }) => ({ c, v: Object.fromEntries([...fields, ...fields.map(f => f + 'Html')].map(k => [k, c[k]])) }));
       let nb = 0, nf = 0;
       for (const { c, ch, fm } of plan) {
-        for (const [f, nv] of Object.entries(ch)) { c[f] = nv; if (c[f + 'Html']) c[f + 'Html'] = stripHtml(c[f + 'Html'], kinds); }
+        for (const [f, nv] of Object.entries(ch)) { c[f] = nv; if (c[f + 'Html']) c[f + 'Html'] = stripBracketsHtml(c[f + 'Html'], kinds); }
         for (const f of fm) fmtClear(c, f);
         if (Object.keys(ch).length) nb++; if (fm.length) nf++;
       }

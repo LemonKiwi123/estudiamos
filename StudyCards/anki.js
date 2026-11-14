@@ -444,3 +444,40 @@ Object.assign(actions, {
   importFileInto: el => pickBinaryFile('.apkg,.colpkg,.ofc,.csv,.tsv,.txt', f => importFile(f, deckById(el.dataset.id))),
   exportDialog: el => exportDialog(el.dataset.id ? deckById(el.dataset.id) : null),
 });
+
+/* ---------- Drag a file onto the page to import it ----------
+   Home page: drop an Anki (.apkg / .colpkg), Noji (.ofc), CSV or text file to import it (same as "Import file…").
+   A deck's page: the cards go into that deck (same as its Import button). Pictures dropped into a card editor still work as before.
+   Anywhere else a dropped file is ignored, so the browser doesn't open it in place of the app. */
+(() => {
+  const OK = /\.(apkg|colpkg|ofc|csv|tsv|txt|json)$/i;
+  let depth = 0;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  const target = () => view?.name === 'home' ? 'home' : view?.name === 'deck' && deckById(view.deckId) ? 'deck' : null;
+  const overEditor = e => !!e.target.closest?.('.ed-area, .ed-tools, dialog');
+  function show(on) {
+    let o = document.getElementById('dropImport');
+    if (!on) { o?.remove(); return; }
+    if (o) return;
+    const d = target() === 'deck' ? deckById(view.deckId) : null;
+    o = document.createElement('div'); o.id = 'dropImport';
+    o.innerHTML = `<div class="di-box"><div class="di-ico">📥</div><b>Drop to import${d ? ` into “${esc(d.name)}”` : ''}</b><div class="muted small">Anki .apkg / .colpkg, Noji .ofc, CSV or text</div></div>`;
+    document.body.append(o);
+  }
+  document.addEventListener('dragenter', e => { if (!hasFiles(e) || overEditor(e) || !target()) return; e.preventDefault(); depth++; show(true); });
+  document.addEventListener('dragover', e => {
+    if (!hasFiles(e) || overEditor(e)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = target() ? 'copy' : 'none';
+  });
+  document.addEventListener('dragleave', e => { if (!hasFiles(e)) return; depth = Math.max(0, depth - 1); if (!depth) show(false); });
+  document.addEventListener('drop', e => {
+    if (!hasFiles(e) || overEditor(e)) return;
+    e.preventDefault(); depth = 0; show(false);
+    const where = target(); if (!where) return;
+    const files = [...e.dataTransfer.files], f = files.find(x => OK.test(x.name));
+    if (!f) { toast('That kind of file can’t be imported. Use an Anki .apkg / .colpkg, Noji .ofc, CSV or text file.'); return; }
+    if (files.length > 1) toast(`Importing “${f.name}” (one file at a time)`);
+    if (where === 'deck' && /\.json$/i.test(f.name)) { toast('Backups (.json) are restored from the home page or Settings'); return; }
+    importFile(f, where === 'deck' ? deckById(view.deckId) : undefined);
+  });
+})();

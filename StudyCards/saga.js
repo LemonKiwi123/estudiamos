@@ -11,7 +11,8 @@ const sgS = () => sgSlots()[S.sagaSlot || 'a'] || null;
 const sgHero = (key, name) => { const h = { key, name, lv: 1, xp: 0, gear: { weapon: 'stick', armor: 'cloth' } }; h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); return h; };
 function sgFix(s) {
   if (!s) return s;
-  s.flags ||= {}; s.got ||= {}; s.bag ||= {}; s.gearBag ||= {}; s.beaten ||= {}; s.playMs ||= 0;
+  s.flags ||= {}; s.got ||= {}; s.bag ||= {}; s.gearBag ||= {}; s.beaten ||= {}; s.playMs ||= 0; s.bench ||= []; s.met ||= {};
+  for (const h of [...s.party, ...s.bench]) { h.st ||= {}; s.met[h.key] = 1; }
   if (!SG_MAPS[s.map]) Object.assign(s, { map: 'town', x: 9, y: 9, dir: 'down' });
   return s;
 }
@@ -30,7 +31,10 @@ function sgSaveNow(silent) {
 const sgNeed = lv => Math.round(10 * lv ** 1.9);
 function sgBase(h, k) { const [b, per] = SG_HEROES[h.key][k]; return Math.floor(b + per * (h.lv - 1)); }
 function sgGearBonus(h, k) { let n = 0; for (const g of Object.values(h.gear || {})) n += SG_GEAR[g]?.[k] || 0; return n; }
-const sgStat = (h, k) => sgBase(h, k) + sgGearBonus(h, k);
+const sgStat = (h, k) => { const v = sgBase(h, k) + sgGearBonus(h, k); return h.st?.curse && k !== 'agi' ? Math.floor(v * 0.6) : v; };
+const SG_ST = { poison: ['☠️', 'poisoned', '#9b59b6'], curse: ['🌑', 'cursed', '#5b2a6e'] };
+const sgStIcons = h => h.hp > 0 ? Object.keys(h.st || {}).filter(k => h.st[k] && SG_ST[k]).map(k => SG_ST[k][0]).join('') : '';
+function sgFall(h) { if (h.hp <= 0) { h.hp = 0; h.st = {}; } }
 const sgMax = (h, k) => sgBase(h, k);
 const sgSpellsOf = h => Object.entries(SG_SPELLS).filter(([, sp]) => sp.who === h.key && h.lv >= sp.lv).map(([k]) => k);
 const sgAlive = () => sgS().party.filter(h => h.hp > 0);
@@ -82,7 +86,7 @@ function sgGiveXp(lines, amount) {
 /* ---------- State ---------- */
 let sg = null;
 const SG_DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-const sgTile = (map, x, y) => (SG_MAPS[map].rows[y] || '')[x] || (['cave', 'archive'].includes(SG_MAPS[map].theme) ? 'X' : SG_MAPS[map].theme === 'desert' ? 'M' : '#');
+const sgTile = (map, x, y) => (SG_MAPS[map].rows[y] || '')[x] || (['cave', 'archive', 'ember', 'tower'].includes(SG_MAPS[map].theme) ? 'X' : SG_MAPS[map].theme === 'desert' ? 'M' : SG_MAPS[map].theme === 'tavern' ? 'O' : '#');
 function startSaga(deckId) {
   sgFix(sgS());
   const s = sgS();
@@ -92,7 +96,7 @@ function startSaga(deckId) {
   go({ name: 'saga' });
   if (!s.flags.intro) { s.flags.intro = 1; setTimeout(() => sgSay(SG_STORY.intro, () => sgSay(['You stand in the great hall of Castle Quillhaven.', 'Talk to people with A. Open your menu with B.'])), 300); }
 }
-const sgNpcs = map => { const s = sgS(); return SG_MAPS[map].npcs.filter(n => !(n.join && s.party.some(h => h.key === n.join))).map(n => { const o = sg?.np[map + ':' + n.id]; return o ? Object.assign(Object.create(n), o) : n; }); };
+const sgNpcs = map => { const s = sgS(); return SG_MAPS[map].npcs.filter(n => !(n.join && s.party.some(h => h.key === n.join)) && !(n.hire && s.met?.[n.hire])).map(n => { const o = sg?.np[map + ':' + n.id]; return o ? Object.assign(Object.create(n), o) : n; }); };
 const sgObjs = map => { const s = sgS(); return SG_MAPS[map].objs.filter(o => !((o.type === 'foeSpot' || o.type === 'boss') && s.beaten[o.id]) && !(o.type === 'npc' && s.party.some(h => h.key === o.join)) && !(o.type === 'seal' && s.flags[o.id])); };
 const sgNpcAt = (map, x, y) => sgNpcs(map).find(n => n.x === x && n.y === y);
 const sgObjAt = (map, x, y) => sgObjs(map).find(o => o.x === x && o.y === y);
@@ -110,8 +114,9 @@ const sgHardScript = t => /[぀-ヿ㐀-鿿가-힯؀-ۿ֐-׿Ѐ-ӿ฀-๿]/.test(t
 function sgAsk(title, then) {
   const c = sgCard(), rev = Math.random() < 0.3, prompt = rev ? c.back : c.front, answer = rev ? c.front : c.back;
   const pool = sg.pool.filter(x => x.id !== c.id).map(x => rev ? x.front : x.back);
-  const q = { mode: 'mc', card: c, title, prompt, answer, lang: rev ? sg.d.backLang : sg.d.frontLang, opts: pickOptions(answer, pool, 4), t0: Date.now(), then, given: null };
+  const lim = sgTimeLimit(), q = { mode: 'mc', card: c, title, prompt, answer, lang: rev ? sg.d.backLang : sg.d.frontLang, opts: pickOptions(answer, pool, 4), t0: Date.now(), then, given: null, limit: lim ? lim * 1000 : 0 };
   sg.ui = { type: 'question', q }; sgBox(); trMusic.setDuck?.(0.4);
+  if (q.limit) q.timer = setTimeout(() => { if (sg?.ui?.q === q && q.given == null) sgAnswer(null); }, q.limit + 150);
   if (S.settings.trAloud ?? (typeof autoplayOn === 'function' && autoplayOn())) setTimeout(() => speak(prompt, q.lang), 150);
 }
 /* spells: type the word in the language you're learning (falls back to 6 choices for non-Latin scripts or long answers) */
@@ -134,18 +139,29 @@ function sgGrade(given, answer) {
   if (alts.some(a => a.length >= 4 && sgLev(g, a) <= 1)) return 'close';
   return 'wrong';
 }
+/* ⏱️ how long the word meter lasts in battle (seconds, 0 = no limit) */
+const SG_TIMES = [0, 4, 6, 8, 10, 15];
+const sgTimeLimit = () => { const v = S.settings?.sgTime; return SG_TIMES.includes(v) ? v : 6; };
+/* speed bonus: answer at once = up to +60% damage, at the end of the meter = +0% */
+function sgSpeed(q) {
+  const ms = q.ms ?? 99999, ref = q.limit || 6000, frac = Math.min(1, ms / ref);
+  const mult = q.grade === 'exact' ? 1 + 0.6 * (1 - frac) : 1;
+  return { mult, crit: q.grade === 'exact' && frac < 0.3, pct: Math.round((mult - 1) * 100) };
+}
 function sgAnswer(given) {
   const q = sg.ui?.q; if (!q || q.given != null) return;
-  q.given = given;
-  q.grade = q.mode === 'type' ? sgGrade(given, q.answer) : norm(given) === norm(q.answer) ? 'exact' : 'wrong';
-  q.ok = q.grade !== 'wrong'; q.fast = q.grade === 'exact' && Date.now() - q.t0 < (q.mode === 'type' ? 9000 : 5000);
+  clearTimeout(q.timer); q.ms = Date.now() - q.t0;
+  q.timeout = given == null; q.given = given ?? '';
+  q.grade = q.timeout ? 'wrong' : q.mode === 'type' ? sgGrade(given, q.answer) : norm(given) === norm(q.answer) ? 'exact' : 'wrong';
+  q.ok = q.grade !== 'wrong'; q.fast = q.mode === 'type' ? q.grade === 'exact' && q.ms < 9000 : sgSpeed(q).crit;
   sg.session.results.push({ cardId: q.card.id, q: q.prompt, a: q.answer, given: q.given, ok: q.ok });
   if (typeof sdSound === 'function') sdSound(q.ok ? 'right' : 'wrong');
   sgBox();
-  setTimeout(() => { trMusic.setDuck?.(1); if (sg?.ui?.q === q) { sg.ui = null; q.then(q.grade, q.fast); } }, q.ok ? 800 : 1700);
+  setTimeout(() => { trMusic.setDuck?.(1); if (sg?.ui?.q === q) { sg.ui = null; q.then(q.grade, q.fast, q); } }, q.ok ? 800 : 1700);
 }
 
 /* ---------- Windows: text, menus, questions (drawn over the game screen) ---------- */
+const sgFx = (kind, name) => `<i hidden data-fx="${kind || 'dark'}|${esc(name || '')}"></i>`;
 function sgSay(lines, then) { sg.ui = { type: 'text', lines: [].concat(lines), i: 0, then }; sgBox(); }
 function sgMenu(title, items, back, opts = {}) { sg.ui = { type: 'menu', title, items, sel: Math.max(0, Math.min(opts.sel ?? 0, items.length - 1)), back, ...opts }; if (sg.ui.items[sg.ui.sel]?.disabled) sg.ui.sel = Math.max(0, items.findIndex(x => !x.disabled)); sgBox(); }
 function sgA() {
@@ -169,7 +185,21 @@ function sgMenuMove(dir) {
   let i = u.sel; for (let t = 0; t < n; t++) { i = (i + d + n * 4) % n; if (!u.items[i].disabled) break; }
   u.sel = i; sgBox();
 }
-function sgBox() {
+const sgLang = () => gtWant(sg?.d?.frontLang);
+function sgNames() {
+  const s = sgS(); return [s?.name, ...(s?.party || []).map(h => h.name), ...(s?.bench || []).map(h => h.name), ...Object.values(SG_NAMES), ...Object.values(SG_MONSTERS).map(m => m.name),
+    ...Object.values(SG_MAPS).map(m => m.name), ...Object.values(SG_ITEMS).map(i => i.name), ...Object.values(SG_GEAR).map(g => g.name), ...Object.values(SG_SPELLS).map(x => x.name),
+    ...Object.values(SG_MAPS).flatMap(m => (m.npcs || []).map(n => n.name)), 'King Aldous', 'Queen Ysolde', 'Sage Orrin', 'Archmage Veyra', 'Sir Aldric', 'The Oracle', 'Quill Swan', 'Lexicon'].filter(Boolean);
+}
+function sgLangLabel() { return gtLangLabel(sg?.d?.frontLang); }
+function sgLangMenu() {
+  const b = gtBase(sg.d?.frontLang), ok = !!GT_BOOKS[b], on = !!sgLang();
+  sgMenu('🌐 Game language', [{ label: `${!on ? '✅ ' : ''}English`, fn: () => { S.settings.gameLang = 'en'; save(); sgLangMenu(); } },
+    { label: `${on ? '✅ ' : ''}${ok ? GT_LANG_NAMES[b] : (langName(sg.d?.frontLang) || 'Your language')}`, sub: ok ? 'Menus, battles and the story in the language you are learning. Names stay the same.' : 'Not ready yet for this deck’s language. Spanish decks can use it.', disabled: !ok,
+      fn: () => { S.settings.gameLang = 'target'; save(); sgLangMenu(); } }], () => sgOptions(3));
+}
+function sgBox() { sgBoxRaw(); const l = sgLang(), q = sg?.ui?.q; if (l) gtBox($('#sgBox'), l, sgNames().concat(q ? [q.answer, q.given] : [])); }
+function sgBoxRaw() {
   const el = $('#sgBox'); if (!el || !sg) return;
   const u = sg.ui;
   if (u?.type !== 'map') gameMapClose();
@@ -177,7 +207,8 @@ function sgBox() {
   el.classList.toggle('big', !!(u?.type === 'question' || (u?.type === 'menu' && (u.items.length > 5 || u.big))));
   el.classList.toggle('low', !!sg.bt && u?.type !== 'question' && !(u?.type === 'menu' && u.items.length > 5));
   if (!u) { el.innerHTML = ''; return; }
-  if (u.type === 'text') { el.innerHTML = `<div class="sg-text">${u.lines[u.i]}</div><button type="button" class="sg-next" data-act="sgA" aria-label="Next">▼</button>`; return; }
+  if (u.type === 'text') { const fx = /data-fx="([^"|]*)\|([^"]*)"/.exec(u.lines[u.i]); if (fx && u.fxAt !== u.i) { u.fxAt = u.i; sg.fx = { kind: fx[1], name: fx[2].replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, '’'), t: 0 }; if (sg.bt) sg.shake = 8; }
+    el.innerHTML = `<div class="sg-text">${u.lines[u.i]}</div><button type="button" class="sg-next" data-act="sgA" aria-label="Next">▼</button>`; return; }
   if (u.type === 'map') { el.classList.remove('open'); el.innerHTML = ''; gameMapPop(sgMapHtml(u), 'sg'); sgMapDraw(); return; }
   if (u.type === 'menu') {
     el.innerHTML = `${u.title ? `<div class="sg-mtitle">${u.title}</div>` : ''}<div class="sg-menu ${u.cols === 2 ? 'two' : ''}">${u.items.map((it, i) =>
@@ -188,12 +219,13 @@ function sgBox() {
   }
   if (u.type === 'question') {
     const q = u.q, done = q.given != null;
-    const verdict = !done ? '' : q.grade === 'exact' ? (q.fast ? (q.spell ? '⚡ Perfect and fast!' : '⚡ Fast and right! Critical!') : '✓ Right!') : q.grade === 'close' ? `≈ Almost! It’s <b>${esc(q.answer)}</b>` : `✗ It was: <b>${esc(q.answer)}</b>`;
+    const sp = q.mode === 'mc' && done ? sgSpeed(q) : null;
+    const verdict = !done ? '' : q.timeout ? `⏱️ Time’s up! It was: <b>${esc(q.answer)}</b>` : q.grade === 'exact' ? (q.spell ? (q.fast ? '⚡ Perfect and fast!' : '✓ Right!') : sp.crit ? `⚡ Lightning fast! Critical! (+${sp.pct}%)` : sp.pct >= 5 ? `✓ Right! Speed bonus +${sp.pct}%` : '✓ Right!') : q.grade === 'close' ? `≈ Almost! It’s <b>${esc(q.answer)}</b>` : `✗ It was: <b>${esc(q.answer)}</b>`;
     el.innerHTML = `<div class="sg-q"><div class="sg-mtitle">${q.title}</div>
       <div class="sg-prompt"><span>${esc(q.prompt)}</span>${!q.spell && typeof speakBtn === 'function' ? speakBtn(q.prompt, q.lang) : ''}</div>
       ${q.mode === 'type'
         ? `<form class="sg-typeform" data-sgtype="1"><input id="sgType" autocomplete="off" autocapitalize="off" spellcheck="false" lang="${esc(q.lang || '')}" placeholder="Type the word…" aria-label="Spell it in ${esc(langName(q.lang) || 'the deck language')}" ${done ? 'disabled' : ''} value="${done ? esc(q.given) : ''}"><button type="submit" class="sg-cast" ${done ? 'disabled' : ''}>✨ Cast</button></form>`
-        : `<div class="sg-timer"><div style="animation-duration:5s"></div></div><div class="sg-opts ${q.opts.length > 4 ? 'six' : ''}">${q.opts.map((o, i) => { const st = !done ? '' : norm(o) === norm(q.answer) ? 'right' : o === q.given ? 'wrong' : 'dim';
+        : `${q.limit ? `<div class="sg-timer"><div style="animation-duration:${q.limit / 1000}s;${done ? 'animation-play-state:paused' : ''}"></div></div>` : ''}<div class="sg-opts ${q.opts.length > 4 ? 'six' : ''}">${q.opts.map((o, i) => { const st = !done ? '' : norm(o) === norm(q.answer) ? 'right' : o === q.given ? 'wrong' : 'dim';
           return `<button type="button" class="sg-opt ${st}" data-act="sgAns" data-i="${i}" ${done ? 'disabled' : ''}><kbd>${i + 1}</kbd>${esc(o)}</button>`; }).join('')}</div>`}
       ${done ? `<div class="sg-verdict">${verdict}</div>` : ''}</div>`;
   }
@@ -220,7 +252,8 @@ function sgArrive(prev) {
     if (w.need === 'tide' && !s.flags.tideUsed) { s.flags.tideUsed = 1; sg.held = null; return sgSay('🌊 The Tide Charm glows… the sea draws back from the old stairs!', () => sgWarp(w.map, SG_MAPS[w.map].start.x, SG_MAPS[w.map].start.y, 'up')); }
     return w.at === 'start' ? sgWarp(w.map, SG_MAPS[w.map].start.x, SG_MAPS[w.map].start.y, 'up') : sgWarp(w.map, w.x, w.y, w.dir);
   }
-  if (m.town && s.y === m.rows.length - 1) return sgWarp(m.exitTo.map, m.exitTo.x, m.exitTo.y, m.exitTo.dir);
+  if ((m.town || m.inside) && s.y === m.rows.length - 1) return sgWarp(m.exitTo.map, m.exitTo.x, m.exitTo.y, m.exitTo.dir);
+  if (s.steps % 4 === 0) { let hurt = false; for (const h of sgAlive()) if (h.st?.poison && h.hp > 1) { h.hp--; hurt = true; } if (hurt) { sg.shake = 4; sg.poisonFlash = 6; } }
   if (t === '<') { const u = m.upTo; return typeof u === 'string' ? sgWarp(u, SG_MAPS[u].stairs.x, SG_MAPS[u].stairs.y, 'down') : sgWarp(u.map, u.x, u.y, u.dir); }
   if (t === '>') {
     const seal = m.objs.find(o => o.type === 'seal' && o.x === s.x && o.y === s.y);
@@ -229,10 +262,12 @@ function sgArrive(prev) {
   }
   // random battles
   const rate = { '.': 18, h: 14, f: 9, d: 15, C: 13, c: 12, W: 16 }[t];
-  if (rate && m.zone && --sg.grace <= 0 && Math.random() < 1 / rate) { sg.held = null; sg.grace = 4; sgEncounter(s.boat ? 'sea' : m.zone(s.x, s.y)); }
+  if (rate && m.zone && --sg.grace <= 0 && Math.random() < 1 / rate) { sg.held = null; sg.grace = 4; sgEncounter(s.boat ? (m.seaZone || 'sea') : m.zone(s.x, s.y)); }
 }
 function sgWarp(map, x, y, dir, quiet) {
-  const s = sgS(); Object.assign(s, { map, x, y, dir, boat: false }); sg.trail = []; sg.np = {}; sg.grace = 5; sg.flash = 8;
+  const s = sgS(); Object.assign(s, { map, x, y, dir, boat: s.flags.ship && sgTile(map, x, y) === 'W' }); sg.trail = []; sg.np = {}; sg.grace = 5; sg.flash = 8;
+  if (s.boat) { delete s.shipAt; }
+  if (map === 'eastsea' && !s.flags.isles) { s.flags.isles = 1; setTimeout(() => sg && !sg.bt && sgSay(SG_STORY.isles), 400); }
   if (SG_MAPS[map].town) s.home = map;
   (s.seen ||= {})[map] = 1;
   sgSaveNow(true); sgMusicSync();
@@ -251,10 +286,11 @@ function sgInteract() {
   const s = sgS(), [dx, dy] = SG_DIRS[s.dir], fx = s.x + dx, fy = s.y + dy, m = SG_MAPS[s.map];
   const o = sgObjAt(s.map, fx, fy); if (o) return sgUseObj(o);
   let n = sgNpcAt(s.map, fx, fy);
-  if (!n && sgTile(s.map, fx, fy) === 'L') n = sgNpcAt(s.map, fx + dx, fy + dy);   // talk across the throne
+  if (!n && 'L=A'.includes(sgTile(s.map, fx, fy))) n = sgNpcAt(s.map, fx + dx, fy + dy);   // talk across the throne, the bar or the altar
   if (n) { n.dir && (sg.np[s.map + ':' + n.id] = { ...(sg.np[s.map + ':' + n.id] || { x: n.x, y: n.y }), dir: { up: 'down', down: 'up', left: 'right', right: 'left' }[s.dir] }); return sgTalk(n); }
   if (m.doors?.[fx + ',' + fy]) return sgDoor(m.doors[fx + ',' + fy]);
   if (sgTile(s.map, fx, fy) === 'Z') return sgOracle();
+  if (sgTile(s.map, fx, fy) === 'z') return sgShrine();
   if (m.signs?.[fx + ',' + fy]) return sgSay(`🪧 ${esc(m.signs[fx + ',' + fy])}`);
 }
 function sgTalk(n) {
@@ -269,6 +305,15 @@ function sgTalk(n) {
     if (!s.flags.queen) { s.flags.queen = 1; s.gold += 300; sgSaveNow(true); return sgSay(SG_STORY.queenFirst(esc(s.name))); }
     return sgSay(s.flags.tide ? SG_STORY.queenCharm : SG_STORY.queenAgain);
   }
+  if (n.priest) return sgPriest(n);
+  if (n.barkeep) return sgBarkeep(n);
+  if (n.hire) return sgHire(n);
+  if (n.archmage) {
+    if (s.flags.crystal && !s.flags.wayfare) { s.flags.wayfare = 1; sg.session.nuts += 5; sgSaveNow(true); return sgSay(SG_STORY.archmageWayfare(esc(s.name)), () => sgJingle('sg_level')); }
+    if (s.flags.wayfare) return sgSay(SG_STORY.archmageAfter);
+    if (!s.flags.archmage) { s.flags.archmage = 1; sgSaveNow(true); return sgSay(SG_STORY.archmageFirst(esc(s.name))); }
+    return sgSay(SG_STORY.archmageAgain);
+  }
   if (n.join === 'scribe') {
     if (!s.flags.king) return sgSay(SG_STORY.tamsin.before);
     return sgSay(SG_STORY.tamsin.join(esc(s.name)), () => { sgJoin('scribe'); });
@@ -277,17 +322,65 @@ function sgTalk(n) {
   if (n.lines) return sgSay(n.lines);
 }
 function sgJoin(key) {
-  const s = sgS(); if (s.party.some(h => h.key === key)) return;
-  const lead = s.party[0], h = sgHero(key, SG_NAMES[key]);
+  const s = sgS(); if (s.party.some(h => h.key === key) || s.bench.some(h => h.key === key)) return;
+  const lead = s.party[0], h = sgHero(key, SG_NAMES[key]); h.st = {};
   while (h.lv < Math.max(1, lead.lv - 1)) { h.lv++; } h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp');
+  const kit = SG_START_GEAR[key]; if (kit) { const [w, a] = kit[lead.lv >= 18 ? 2 : lead.lv >= 9 ? 1 : 0]; h.gear = { weapon: w, armor: a }; }
+  s.met[key] = 1;
+  if (s.party.length >= SG_PARTY_MAX) { s.bench.push(h); sgJingle('sg_level'); sgSaveNow(true); return sgSay(`Your party is full, so ${esc(h.name)} will wait at the tavern. Talk to any barkeep to change who travels with you.`); }
   s.party.push(h); sgJingle('sg_level'); sgSaveNow(true);
+}
+/* ⛪ priests: wake the fallen, cure poison and curses, sell holy water, and pray (save) */
+function sgPriest(n, sel = 0) {
+  const s = sgS(), fallen = s.party.filter(h => h.hp <= 0), sick = s.party.filter(h => h.hp > 0 && (h.st?.poison || h.st?.curse)), who = esc(n.name || 'The priest');
+  const cureFee = sick.length * 10, inChurch = SG_MAPS[s.map].inside;
+  sgMenu(`⛪ ${who}: “Bless you, child. How may I help?” · 💰 ${s.gold}`, [
+    { label: '🙏 Pray', sub: inChurch ? 'Your journey is written down (saved) and you feel at peace.' : 'Ask for a blessing on the road.', fn: () => { sgSaveNow(true); sg.flash = 12; sgSay([`${who}: May the first words guide your steps.`, inChurch ? '📜 Your journey is saved.' : '✨ You feel calmer.'], () => sgPriest(n, 0)); } },
+    ...fallen.map(h => { const fee = 10 * h.lv; return { label: `🕯️ Revive ${esc(h.name)} (${fee} gold)`, disabled: s.gold < fee, fn: () => { s.gold -= fee; h.hp = sgMax(h, 'hp'); h.st = {}; sg.flash = 16; sgSaveNow(true); sgSay(`✨ ${esc(h.name)} opens their eyes. Welcome back!`, () => sgPriest(n, 1)); } }; }),
+    { label: `✨ Cure poison and curses${sick.length ? ` (${cureFee} gold)` : ''}`, sub: sick.length ? sick.map(h => `${esc(h.name)} ${sgStIcons(h)}`).join(', ') : 'Nobody needs it right now.', disabled: !sick.length || s.gold < cureFee,
+      fn: () => { s.gold -= cureFee; for (const h of sick) h.st = {}; sg.flash = 16; sgSaveNow(true); sgSay(`${who} lays a hand on each of you. ✨ Everyone is cured!`, () => sgPriest(n, 2)); } },
+    { label: `💧 Holy water (40 gold) · you have ${s.bag.holywater || 0}`, sub: 'Lifts a curse. Only priests have it.', disabled: s.gold < 40, fn: () => { s.gold -= 40; s.bag.holywater = (s.bag.holywater || 0) + 1; sgSaveNow(true); sgSay(`${who}: Here, blessed this morning. 💧`, () => sgPriest(n, 3)); } },
+    { label: 'Leave', fn: () => sgSay(`${who}: Go in peace.`) }], () => {}, { sel });
+}
+/* 🛕 wayside shrines heal everyone, wake the fallen and cure poison and curses */
+function sgShrine() {
+  const s = sgS();
+  sgSay(['You kneel at the old stone shrine and pray…', '✨ A warm light washes over the party.'], () => {
+    for (const h of s.party) { if (h.hp <= 0) h.hp = 1; h.hp = sgMax(h, 'hp'); h.st = {}; }
+    sg.flash = 22; sgJingle('sg_inn'); sgSaveNow(true); sgSay('Everyone is healed, the fallen stand up again, and every curse and poison is gone!');
+  });
+}
+/* 🍺 barkeeps: rumors (what to do next), stew, and who travels with you */
+function sgBarkeep(n, sel = 0) {
+  const s = sgS(), stew = 6 + 2 * s.party[0].lv;
+  sgMenu(`🍺 ${esc(n.name || 'Barkeep')}: “What’ll it be, traveler?” · 💰 ${s.gold}`, [
+    { label: '👂 Any rumors?', fn: () => sgSay(`${esc(n.name || 'Barkeep')}: ${sgHint(s)}`, () => sgBarkeep(n, 0)) },
+    { label: `🍲 Hearty stew for everyone (${stew} gold)`, sub: 'Restores half of everyone’s HP.', disabled: s.gold < stew, fn: () => { s.gold -= stew; for (const h of sgAlive()) h.hp = Math.min(sgMax(h, 'hp'), h.hp + Math.ceil(sgMax(h, 'hp') / 2)); sgSaveNow(true); sgSay('Mmm! Hot, salty and full of beans. Everyone feels stronger. 🍲', () => sgBarkeep(n, 1)); } },
+    { label: '👥 Change who travels with me', sub: s.bench.length ? `${s.bench.length} waiting here: ${s.bench.map(h => esc(h.name)).join(', ')}` : 'Nobody is waiting at the tavern.', disabled: !s.bench.length, fn: () => sgRoster(n) },
+    { label: 'Leave', fn: () => sgSay(`${esc(n.name || 'Barkeep')}: Come back soon!`) }], () => {}, { sel });
+}
+function sgRoster(n) {
+  const s = sgS(), lead = s.party[0];
+  const train = h => { while (h.lv < lead.lv - 2) { const oh = sgMax(h, 'hp'), om = sgMax(h, 'mp'); h.lv++; h.hp += sgMax(h, 'hp') - oh; h.mp += sgMax(h, 'mp') - om; } };
+  sgMenu('👥 Who travels with you? (4 at most) · pick someone to swap', [
+    ...s.party.map((h, i) => ({ label: `🚶 ${sgHeroLine(h)}`, sub: i === 0 ? 'The leader always travels.' : 'Travels with you. Pick to send to the tavern.', disabled: i === 0 || (!s.bench.length && s.party.length <= 1), fn: () => {
+      s.party.splice(i, 1); s.bench.push(h); sgSaveNow(true); sgSay(`${esc(h.name)} sits down by the fire to wait.`, () => sgRoster(n)); } })),
+    ...s.bench.map((h, i) => ({ label: `🪑 ${sgHeroLine(h)}`, sub: s.party.length >= SG_PARTY_MAX ? 'Waiting. Your party is full: send someone to the tavern first.' : 'Waiting here. Pick to bring along.', disabled: s.party.length >= SG_PARTY_MAX, fn: () => {
+      s.bench.splice(i, 1); train(h); s.party.push(h); sgSaveNow(true); sgSay(`${esc(h.name)} joins the party again!${h.lv >= lead.lv - 2 ? '' : ''}`, () => sgRoster(n)); } }))], () => sgBarkeep(n, 2), { big: true });
+}
+function sgHire(n) {
+  const s = sgS(), H = SG_HEROES[n.hire], name = SG_NAMES[n.hire];
+  sgSay([`${name} the ${H.cls}: ${{ ranger: 'Need a sharp eye and a steady bow? I never miss. Well. Hardly ever.', rogue: 'Locks, pockets, shadows. I’m good with all three.', monk: 'I can heal wounds and lift poisons and curses with my hands.', paladin: 'My shield and my light are yours, if your cause is just.' }[n.hire] || 'I could join you.'}`,
+    `${name}: ${n.cost} gold, and I’m yours for the whole journey.`], () => sgMenu(`Hire ${name} the ${H.cls} for ${n.cost} gold? · 💰 ${s.gold}`, [
+    { label: `${H.icon} Hire ${name} (${n.cost} gold)`, disabled: s.gold < n.cost, fn: () => { s.gold -= n.cost; sgSay(`${H.icon} <b>${name} the ${H.cls}</b> joined the party!`, () => sgJoin(n.hire)); } },
+    { label: 'Not now', fn: () => sgSay(`${name}: Suit yourself. I’ll be here.`) }], () => {}));
 }
 function sgUseObj(o) {
   const s = sgS();
   if (o.type === 'chest' || o.type === 'lockChest') {
     if (s.got[o.id]) return sgSay('The chest is empty.');
     if (o.guard && !s.beaten[o.guard]) return sgSay(`${SG_MONSTERS[o.guard].name} guards this chest.`);
-    const open = () => { s.got[o.id] = 1; const lines = sgGive(o.give); sgSaveNow(true); sgSay([`You opened the chest!`, ...lines], o.story ? () => sgSay(SG_STORY[o.story]) : null); };
+    const open = () => { s.got[o.id] = 1; const lines = sgGive(o.give); sgSaveNow(true); sgSay([`You opened the chest!`, ...lines], o.story ? () => { const t = SG_STORY[o.story]; sgSay(typeof t === 'function' ? t(esc(s.name)) : t, o.story === 'lexicon' ? () => sgJingle('sg_fanfare') : null); } : null); };
     if (o.type === 'lockChest') return sgSay('A word-lock seals this chest. Spell the word to open it!', () => sgAskSpell('🔒 Word-lock: spell this word', g => g === 'wrong' ? sgSay('The lock stays shut. Try again!') : open()));
     return open();
   }
@@ -329,6 +422,7 @@ function sgGive(give) {
     if (k === 'gold') { s.gold += v; out.push(`💰 You found <b>${v} gold</b>!`); }
     else if (k === 'gear') { s.gearBag[v] = (s.gearBag[v] || 0) + 1; out.push(`⚔️ You found a <b>${SG_GEAR[v].name}</b>! Equip it from the menu.`); }
     else if (k === 'shard') { s.flags[v > 1 ? 'shard' + v : 'shard'] = 1; }
+    else if (k === 'flag') { s.flags[v] = 1; }
     else { s.bag[k] = (s.bag[k] || 0) + v; out.push(`${SG_ITEMS[k].icon} You found <b>${v > 1 ? v + ' × ' : ''}${SG_ITEMS[k].name}</b>!`); }
   }
   return out;
@@ -339,10 +433,12 @@ function sgDoor(kind) {
   const s = sgS();
   const m = SG_MAPS[s.map];
   if (kind === 'sage') return sgSage();
+  if (kind === 'tavern' || kind === 'church') { const id = m[kind], r = SG_MAPS[id]; if (r) return sgWarp(id, r.entry.x, r.entry.y, 'up'); }
   if (kind === 'inn') {
     const cost = m.inn || 10;
     return sgMenu(`🛏️ Inn: “A warm bed is ${cost} gold for the whole party.” · 💰 ${s.gold}`, [
-      { label: `Stay the night (${cost} gold)`, disabled: s.gold < cost, fn: () => { s.gold -= cost; for (const h of s.party) { h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); } sgSaveNow(true); sg.flash = 20; sgJingle('sg_inn'); sgSay(['Good night…', '☀️ Good morning! Everyone is fully rested.']); } },
+      { label: `Stay the night (${cost} gold)`, disabled: s.gold < cost, fn: () => { s.gold -= cost; const cursed = s.party.some(h => h.hp > 0 && h.st?.curse); for (const h of s.party) { if (h.hp > 0) { h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); if (h.st) delete h.st.poison; } } sgSaveNow(true); sg.flash = 20; sgJingle('sg_inn');
+        sgSay(['Good night…', '☀️ Good morning! Everyone is rested, and the poison is gone.', ...(s.party.some(h => h.hp <= 0) ? ['Innkeeper: Your fallen friend needs a priest. Try the church.'] : []), ...(cursed ? ['Innkeeper: That curse won’t sleep off. A priest or Holy water will lift it.'] : [])]); } },
       { label: 'No thanks', fn: () => sgSay('Come back any time!') }], () => {});
   }
   if (kind === 'shop') return sgShop(m.shop || ['herb', 'bigherb', 'ether', 'feather', 'phoenix'], 'items');
@@ -368,22 +464,60 @@ function sgShop(list, kind, sel = 0) {
 }
 
 /* ---------- Menu ---------- */
-const sgHeroLine = h => `${SG_HEROES[h.key].icon} <b>${esc(h.name)}</b> Lv ${h.lv} · ❤️ ${h.hp}/${sgMax(h, 'hp')} · 💧 ${h.mp}/${sgMax(h, 'mp')}${h.hp <= 0 ? ' · 💤 fallen' : ''}`;
+const sgHeroLine = h => `${SG_HEROES[h.key].icon} <b>${esc(h.name)}</b> Lv ${h.lv} · ❤️ ${h.hp}/${sgMax(h, 'hp')} · 💧 ${h.mp}/${sgMax(h, 'mp')}${h.hp <= 0 ? ' · 💤 fallen' : ''}${h.hp > 0 && h.st?.poison ? ' · ☠️ poisoned' : ''}${h.hp > 0 && h.st?.curse ? ' · 🌑 cursed' : ''}`;
 function sgMainMenu() {
   const s = sgS();
   sgMenu(`📍 <b>${esc(SG_MAPS[s.map].name)}</b><br><small>💰 ${s.gold} gold · ${s.party.map(h => `${SG_HEROES[h.key].icon} ${esc(h.name)} Lv${h.lv}`).join(' · ')}</small>`, [
     { label: '👥 Party', fn: () => sgPartyMenu() }, { label: '✨ Spells', fn: () => sgFieldSpells() },
     { label: '🎒 Items', fn: () => sgItemMenu(false) }, { label: '⚔️ Equipment', fn: () => sgEquipMenu() },
-    { label: '🗺️ Map', fn: () => sgMapOpen('world') }, { label: '💾 Save', fn: () => sgSaveNow() }, { label: '🎨 Console color', fn: () => trShellMenu((t, it, bk, sel) => sgMenu(t, it, bk, { sel }), () => sgMainMenu()) },
-    { label: '🚪 Save and leave', fn: () => sgQuit() }], () => {}, { cols: 2 });
+    { label: '🗺️ Map', fn: () => sgMapOpen('world') }, ...(s.flags.wayfare ? [{ label: '🌀 Wayfare', fn: () => sgWayfare(() => sgMainMenu()) }] : []),
+    { label: '💾 Save', fn: () => sgSaveNow() }, { label: '📂 Load game', fn: () => sgLoadMenu() },
+    { label: '⚙️ Options', fn: () => sgOptions() }, { label: '🚪 Save and leave', fn: () => sgQuit() }], () => {}, { cols: 2 });
 }
+function sgOptions(sel = 0) {
+  sgMenu('⚙️ Options', [
+    { label: `🖍️ Screen colors: ${sgPalette()[1]}`, sub: 'Full color, or a classic 4-color handheld screen.', fn: () => sgPaletteMenu() },
+    { label: '🎨 Console color', sub: 'Pick the color of the handheld.', fn: () => trShellMenu((t, it, bk, sl) => sgMenu(t, it, bk, { sel: sl }), () => sgOptions(1)) },
+    { label: `⏱️ Answer timer: ${sgTimeLimit() ? sgTimeLimit() + ' seconds' : 'off'}`, sub: 'How long the word meter lasts in battle. Run out and you miss!', fn: () => sgTimerMenu() },
+    { label: `🌐 Game language: ${sgLangLabel()}`, sub: 'Play the game’s words in the language you are learning.', fn: () => sgLangMenu() }], () => sgMainMenu(), { sel });
+}
+function sgTimerMenu() {
+  const cur = sgTimeLimit();
+  sgMenu('⏱️ Answer timer · how long the word meter lasts', SG_TIMES.map(t => ({ label: `${t === cur ? '✅ ' : ''}${t ? t + ' seconds' : 'Off (no time limit)'}`, sub: t === 6 ? 'The usual.' : t === 0 ? 'No misses for slow answers. Speed still adds damage.' : '', fn: () => { S.settings.sgTime = t; save(); sgTimerMenu(); } })), () => sgOptions(2), { sel: SG_TIMES.indexOf(cur) });
+}
+/* 📂 load another slot without leaving the game */
+function sgLoadMenu() {
+  const slots = sgSlots(), cur = S.sagaSlot || 'a';
+  sgMenu('📂 Load game · your journey here is saved first', ['a', 'b', 'c'].map(k => { const v = slots[k]; return {
+    label: `Slot ${k.toUpperCase()}${k === cur ? ' · playing now' : ''}`, sub: v ? `${esc(v.name)} · 📍 ${esc(SG_MAPS[v.map]?.name || '')} · 💰 ${v.gold} · ${v.party.map(h => `${SG_HEROES[h.key]?.icon || ''} Lv${h.lv}`).join(' ')}${v.savedAt ? ` · saved ${new Date(v.savedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}` : ''}` : 'Empty',
+    disabled: !v || k === cur, fn: () => sgLoadSlot(k) }; }), () => sgMainMenu());
+}
+function sgLoadSlot(k) {
+  sgSaveNow(true);
+  const old = sg; if (old.loop) cancelAnimationFrame(old.loop); old.loop = 0;
+  S.sagaSlot = k; save();
+  startSaga(old.deckId); sg.session = old.session;
+  setTimeout(() => sg && !sg.ui && sgSay(`📂 Loaded slot ${k.toUpperCase()}. Welcome back, ${esc(sgS().name)}!`), 350);
+}
+/* 🌀 Wayfare: fly to any town you have visited (taught by the Archmage near the end) */
+function sgWayfare(back) {
+  const s = sgS(), caster = s.party.filter(h => h.hp > 0).sort((a, b) => b.mp - a.mp)[0], cost = 4;
+  const towns = Object.entries(SG_MAPS).filter(([id, m]) => m.town && s.seen?.[id]);
+  sgMenu(`🌀 Wayfare · ${caster ? `${esc(caster.name)} casts it (${cost} MP, has ${caster.mp})` : 'nobody can cast'} · pick a town`, towns.map(([id, m]) => ({
+    label: `🏘️ ${esc(m.name)}${id === s.map ? ' · you are here' : ''}`, sub: SG_TOWN_REGION[sgMapRoot(id).map] || '', disabled: !caster || caster.mp < cost || id === s.map,
+    fn: () => { caster.mp -= cost; const root = sgMapRoot(id).map, hb = SG_HARBOR[root] || SG_HARBOR.seravel; if (s.flags.ship) { s.shipMap = hb.map; s.shipAt = hb.at; }
+      sgSay([`${esc(caster.name)} draws a glowing circle in the air… 🌀`, `Whoosh! The party flies to ${esc(m.name)}!`], () => sgWarp(id, m.home.x, m.home.y, 'down')); } })), back, { big: true });
+}
+const SG_TOWN_REGION = { field: 'Kingdom of Aldermere', seravel: 'Kingdom of Seravel', eastsea: 'The Eastern Isles' };
+
 function sgPartyMenu() {
   const s = sgS();
   sgMenu('👥 Party', s.party.map(h => ({ label: sgHeroLine(h), sub: `${SG_HEROES[h.key].cls} · ⚔️ ${sgStat(h, 'atk')} · 🛡️ ${sgStat(h, 'def')} · 💨 ${sgStat(h, 'agi')} · 🔮 ${sgStat(h, 'mag')} · next level in ${sgNeed(h.lv) - h.xp} XP<br>${SG_GEAR[h.gear.weapon]?.name || 'No weapon'} · ${SG_GEAR[h.gear.armor]?.name || 'No armor'} · Spells: ${sgSpellsOf(h).map(k => SG_SPELLS[k].name).join(', ') || 'none yet'}`, fn: () => sgPartyMenu() })), () => sgMainMenu(), { big: true });
 }
 function sgFieldSpells() {
   const s = sgS(), items = [];
-  for (const h of s.party) for (const k of sgSpellsOf(h)) { const sp = SG_SPELLS[k]; if (!['heal', 'healAll', 'revive'].includes(sp.kind)) continue;
+  if (s.flags.wayfare) items.push({ label: '🌀 <b>Wayfare</b> · 4 MP', sub: 'Fly to any town you have visited.', fn: () => sgWayfare(() => sgFieldSpells()) });
+  for (const h of s.party) for (const k of sgSpellsOf(h)) { const sp = SG_SPELLS[k]; if (!['heal', 'healAll', 'revive', 'cure', 'cureAll'].includes(sp.kind)) continue;
     items.push({ label: `${SG_HEROES[h.key].icon} ${esc(h.name)}: <b>${sp.name}</b> · ${sp.mp} MP`, sub: sp.desc, disabled: h.hp <= 0 || h.mp < sp.mp, fn: () => sgFieldCast(h, k) }); }
   if (!items.length) items.push({ label: 'No healing spells yet. Lyra the Cantor knows some!', disabled: true, fn: () => {} });
   sgMenu('✨ Spells you can use here', items, () => sgMainMenu());
@@ -391,29 +525,33 @@ function sgFieldSpells() {
 function sgFieldCast(h, k) {
   const s = sgS(), sp = SG_SPELLS[k];
   if (sp.kind === 'healAll') { h.mp -= sp.mp; for (const a of sgAlive()) a.hp = Math.min(sgMax(a, 'hp'), a.hp + sgHealAmt(h, sp)); sgSaveNow(true); return sgSay(`${esc(h.name)} sings ${sp.name}. Everyone feels better! 🎶`, sgFieldSpells); }
-  sgMenu(`${sp.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: sp.kind === 'revive' ? t.hp > 0 : t.hp <= 0 || t.hp >= sgMax(t, 'hp'), fn: () => {
+  if (sp.kind === 'cureAll') { h.mp -= sp.mp; for (const a of sgAlive()) a.st = {}; sgSaveNow(true); return sgSay(`${esc(h.name)} casts ${sp.name}. Every poison and curse is lifted! ✨`, sgFieldSpells); }
+  sgMenu(`${sp.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: sp.kind === 'revive' ? t.hp > 0 : sp.kind === 'cure' ? t.hp <= 0 || !(t.st?.poison || t.st?.curse) : t.hp <= 0 || t.hp >= sgMax(t, 'hp'), fn: () => {
     h.mp -= sp.mp;
-    if (sp.kind === 'revive') t.hp = Math.ceil(sgMax(t, 'hp') / 2); else t.hp = Math.min(sgMax(t, 'hp'), t.hp + sgHealAmt(h, sp));
-    sgSaveNow(true); sgSay(`${esc(h.name)} casts ${sp.name}. ${esc(t.name)} ${sp.kind === 'revive' ? 'is back on their feet!' : 'feels much better!'}`, sgFieldSpells);
+    if (sp.kind === 'revive') t.hp = Math.ceil(sgMax(t, 'hp') / 2); else if (sp.kind === 'cure') t.st = {}; else t.hp = Math.min(sgMax(t, 'hp'), t.hp + sgHealAmt(h, sp));
+    sgSaveNow(true); sgSay(`${esc(h.name)} casts ${sp.name}. ${esc(t.name)} ${sp.kind === 'revive' ? 'is back on their feet!' : sp.kind === 'cure' ? 'is cured!' : 'feels much better!'}`, sgFieldSpells);
   } })), () => sgFieldSpells());
 }
 function sgItemMenu(inBattle, user) {
   const s = sgS(), items = Object.entries(s.bag).filter(([k, n]) => n > 0 && SG_ITEMS[k]).map(([k, n]) => ({ label: `${SG_ITEMS[k].icon} ${SG_ITEMS[k].name} ×${n}`, sub: SG_ITEMS[k].desc,
     disabled: inBattle && k === 'feather', fn: () => k === 'feather' ? sgFeather() : sgItemTarget(k, inBattle, user) }));
   if (!items.length) items.push({ label: 'Your bag is empty. The item shop in Quillhaven sells herbs.', disabled: true, fn: () => {} });
+  if (!inBattle) items.push({ label: '🔑 Key items', sub: sgKeyItems() || 'None yet.', disabled: true, fn: () => {} });
   sgMenu('🎒 Items', items, inBattle ? () => sgHeroTurn() : () => sgMainMenu());
 }
 function sgItemTarget(k, inBattle, user) {
   const s = sgS(), it = SG_ITEMS[k];
-  sgMenu(`Use ${it.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: it.revive ? t.hp > 0 : t.hp <= 0 || (it.heal ? t.hp >= sgMax(t, 'hp') : t.mp >= sgMax(t, 'mp')), fn: () => {
+  sgMenu(`Use ${it.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: it.revive ? t.hp > 0 : it.cure ? t.hp <= 0 || !t.st?.[it.cure] : t.hp <= 0 || (it.heal ? t.hp >= sgMax(t, 'hp') : t.mp >= sgMax(t, 'mp')), fn: () => {
     s.bag[k]--;
     let msg;
-    if (it.revive) { t.hp = Math.ceil(sgMax(t, 'hp') * it.revive); msg = `${esc(t.name)} is back on their feet! ${it.icon}`; }
+    if (it.cure) { delete t.st[it.cure]; msg = `${esc(t.name)} is ${it.cure === 'curse' ? 'free of the curse' : 'cured of poison'}! ${it.icon}`; }
+    else if (it.revive) { t.hp = Math.ceil(sgMax(t, 'hp') * it.revive); msg = `${esc(t.name)} is back on their feet! ${it.icon}`; }
     else if (it.heal) { const b = t.hp; t.hp = Math.min(sgMax(t, 'hp'), t.hp + it.heal); msg = `${esc(t.name)} recovers ${t.hp - b} HP. ${it.icon}`; }
     else { const b = t.mp; t.mp = Math.min(sgMax(t, 'mp'), t.mp + it.mp); msg = `${esc(t.name)} recovers ${t.mp - b} MP. ${it.icon}`; }
     sgSaveNow(true); sgSay(msg, inBattle ? () => sgNextHero() : () => sgItemMenu(false));
   } })), () => sgItemMenu(inBattle, user));
 }
+const sgKeyItems = () => { const f = sgS().flags; return [f.shard && '💎 Lexicon Shard 1', f.shard2 && '💎 Lexicon Shard 2', f.tide && '🌊 Tide Charm', f.ship && '⛵ Quill Swan', f.crystal && '💠 Voice Crystal', f.wayfare && '🌀 Wayfare (spell)', f.lexicon && '📖 The whole Lexicon'].filter(Boolean).join(' · '); };
 function sgFeather() {
   const s = sgS();
   s.bag.feather--; sgSay(['You toss the feather into the air… 🪶', 'A gust of wind carries the party home!'], () => { const h = SG_MAPS[s.home || 'town']; sgWarp(s.home || 'town', h.home.x, h.home.y, 'down'); });
@@ -433,19 +571,22 @@ function sgEquipHero(i) {
 function sgQuit() { sgSaveNow(true); sgFinish(); go({ name: 'games', deckId: sg?.deckId || view.deckId }); }
 
 /* ---------- 🗺️ Map: both kingdoms, or a close-up of this area ---------- */
-const SG_OVERWORLDS = ['field', 'seravel'];
-const SG_PLACES = { '5,16': ['Quillhaven', 'town'], '17,2': ['Hollow of Echoes', 'hollow1'], '22,5': ['Mountain pass', null], '6,7': ['Mirage Well', 'well'], '17,12': ['Port Lumen', 'port'], '15,15': ['Sunken Archive', 'archive1'], '22,17': ['Isle shrine', null], '19,5': ['Royal dock', null] };
+const SG_OVERWORLDS = ['field', 'seravel', 'eastsea'];
+const SG_PLACES = {
+  field: { '5,16': ['Quillhaven', 'town'], '17,2': ['Hollow of Echoes', 'hollow1'], '22,5': ['Mountain pass', null], '21,12': ['Briarwick', 'briar'] },
+  seravel: { '6,7': ['Mirage Well', 'well'], '17,12': ['Port Lumen', 'port'], '15,15': ['Sunken Archive', 'archive1'], '22,17': ['Isle shrine', null], '19,5': ['Royal dock', null], '4,17': ['Sandmere', 'sandmere'] },
+  eastsea: { '5,11': ['Gullhaven', 'gull'], '12,4': ['Frosthold', 'frost'], '17,13': ['Lanternreach', 'lantern'], '24,20': ['Emberfall', 'emberfall'], '26,6': ['Last Light', 'lastlight'], '28,19': ['Ember Cave', 'ember1'], '31,4': ['Tower of Silence', 'tower1'] } };
 function sgMapRoot(map) {   // which overworld tile a town or dungeon floor sits on
   for (let guard = 0; guard < 6 && !SG_OVERWORLDS.includes(map); guard++) {
     const m = SG_MAPS[map];
     if (typeof m.upTo === 'string') { map = m.upTo; continue; }
     if (m.upTo) return { map: m.upTo.map, x: m.upTo.x, y: m.upTo.y };
-    if (m.exitTo) return { map: m.exitTo.map, x: m.exitTo.x, y: m.exitTo.y - (m.exitTo.dir === 'down' ? 1 : 0) };
+    if (m.exitTo) { if (!SG_OVERWORLDS.includes(m.exitTo.map)) { map = m.exitTo.map; continue; } return { map: m.exitTo.map, x: m.exitTo.x, y: m.exitTo.y - (m.exitTo.dir === 'down' ? 1 : 0) }; }
     break;
   }
   const s = sgS(); return { map, x: s.x, y: s.y };
 }
-const SG_MAP_COL = c => ({ '.': '#4caf50', f: '#1e6b35', h: '#81c784', M: '#7a6a58', W: '#2f6fd0', B: '#8b5a2b', P: '#d9b878', U: '#c0392b', V: '#3e2a1c', Y: '#c49a5a', d: '#e6c77a', k: '#2e8b4a', Q: '#8b5a2b', u: '#c0763a', Z: '#f5eef8',
+const SG_MAP_COL = c => ({ z: '#f4c542', I: '#2a1a40', g: '#2e7d32', N: '#5d6d7e', _: '#c8955a', O: '#6b4226', '=': '#8b5a2b', t: '#8b5a2b', b: '#a87440', p: '#6b4226', A: '#f6f6f0', G: '#7d3c98', '.': '#4caf50', f: '#1e6b35', h: '#81c784', M: '#7a6a58', W: '#2f6fd0', B: '#8b5a2b', P: '#d9b878', U: '#c0392b', V: '#3e2a1c', Y: '#c49a5a', d: '#e6c77a', k: '#2e8b4a', Q: '#8b5a2b', u: '#c0763a', Z: '#f5eef8',
   '#': '#666c75', K: '#b03a48', L: '#f4c542', R: '#c0392b', H: '#f3e2c0', D: '#5e3a1a', S: '#8b5a2b', F: '#ff8fb1', T: '#1e6b35', X: '#2a1d12', C: '#7a5a3e', c: '#6d5038', '<': '#f6f6f0', '>': '#14141c' })[c] || '#444';
 function sgMapOpen(view = 'world') { sg.ui = { type: 'map', view }; sgBox(); }
 function sgMapHtml(u) {
@@ -468,17 +609,17 @@ function sgMapDraw() {
     const [px, py] = mm.at(s.x, s.y); star(px + mm.t / 2, py + mm.t / 2, Math.max(4, mm.t * 0.7));
     return;
   }
-  const seen = s.seen || {}, known = { field: true, seravel: !!(seen.seravel || s.flags.kingDone) }, root = sgMapRoot(s.map), half = (W - 12) / 2;
+  const seen = s.seen || {}, known = { field: true, seravel: !!(seen.seravel || s.flags.kingDone), eastsea: !!seen.eastsea }, root = sgMapRoot(s.map), half = (W - 16) / 3;
   SG_OVERWORLDS.forEach((id, i) => {
     const m = SG_MAPS[id], x0 = 4 + i * (half + 4);
-    g.fillStyle = '#ffffff'; g.font = 'bold 15px ui-monospace,monospace'; g.fillText(id === 'field' ? '👑 Kingdom of Aldermere' : '🏜️ Kingdom of Seravel', x0 + 2, 4);
+    g.fillStyle = '#ffffff'; g.font = 'bold 13px ui-monospace,monospace'; g.fillText({ field: '👑 Aldermere', seravel: '🏜️ Seravel', eastsea: '🏝️ Eastern Isles' }[id], x0 + 2, 4);
     if (!known[id]) { g.fillStyle = '#1b2266'; g.fillRect(x0, 24, half, H - 30); g.fillStyle = '#8f98d8'; g.font = 'bold 22px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText('???', x0 + half / 2, H / 2 - 12); g.font = '12px ui-monospace,monospace'; g.fillText('Not explored yet', x0 + half / 2, H / 2 + 16); g.textAlign = 'left'; return; }
     const mm = trMiniMap(cv, m.rows, SG_MAP_COL, { x0, y0: 26, maxW: half, maxH: H - 30, pad: 2 });
-    for (const [k, [name, target]] of Object.entries(SG_PLACES)) {
-      const [tx, ty] = k.split(',').map(Number); if (!m.rows[ty] || !'UVYZQu'.includes(m.rows[ty][tx])) continue;
+    for (const [k, [name, target]] of Object.entries(SG_PLACES[id] || {})) {
+      const [tx, ty] = k.split(',').map(Number); if (!m.rows[ty] || !'UVYZQuI'.includes(m.rows[ty][tx])) continue;
       const [x, y] = mm.at(tx, ty), ok = !target || seen[target] || target === s.map;
-      g.font = 'bold 13px ui-monospace,monospace'; const label = ok ? name : '???', w = g.measureText(label).width + 8, lx = Math.max(x0 + 1, Math.min(x0 + half - w - 1, x + mm.t / 2 - w / 2)), ly = y + mm.t + 2 > H - 20 ? y - 20 : y + mm.t + 2;
-      g.fillStyle = 'rgba(10,20,80,.85)'; g.fillRect(lx, ly, w, 18); g.strokeStyle = '#ffffff'; g.lineWidth = 1; g.strokeRect(lx + 0.5, ly + 0.5, w - 1, 17); g.fillStyle = '#ffffff'; g.fillText(label, lx + 4, ly + 3);
+      g.font = 'bold 11px ui-monospace,monospace'; const label = ok ? name : '???', w = g.measureText(label).width + 8, lx = Math.max(x0 + 1, Math.min(x0 + half - w - 1, x + mm.t / 2 - w / 2)), ly = y + mm.t + 2 > H - 20 ? y - 20 : y + mm.t + 2;
+      g.fillStyle = 'rgba(10,20,80,.85)'; g.fillRect(lx, ly, w, 18); g.strokeStyle = '#ffffff'; g.lineWidth = 1; g.strokeRect(lx + 0.5, ly + 0.5, w - 1, 17); g.fillStyle = '#ffffff'; g.fillText(label, lx + 4, ly + 4);
     }
     if (s.shipAt && s.shipMap === id && !s.boat) { const [bx, by] = s.shipAt.split(',').map(Number), [x, y] = mm.at(bx, by); g.font = `${mm.t + 6}px sans-serif`; g.fillText('⛵', x - 3, y - 4); }
     if (root.map === id) { const [x, y] = mm.at(root.x, root.y); star(x + mm.t / 2, y + mm.t / 2, Math.max(5, mm.t * 0.8)); if (s.boat) { g.font = `${mm.t + 6}px sans-serif`; g.fillText('⛵', x - 3, y - 4 - mm.t); } }
@@ -491,7 +632,7 @@ const sgRnd = (a, b) => a + Math.random() * (b - a);
 function sgBattle(group, opts = {}) {
   const counts = {}, foes = group.map(k => { counts[k] = (counts[k] || 0) + 1; return { key: k, hp: SG_MONSTERS[k].hp, max: SG_MONSTERS[k].hp, n: counts[k] }; });
   for (const f of foes) if (counts[f.key] > 1) f.tag = 'ABC'[f.n - 1]; else f.tag = '';
-  sg.bt = { foes, hero: 0, round: 1, ward: 0, boss: !!opts.boss, fixed: opts.fixed, story: opts.story, defend: {}, flashFoe: {}, intro: true };
+  sg.bt = { foes, hero: 0, round: 1, ward: 0, boss: !!opts.boss, final: foes.some(f => SG_MONSTERS[f.key].final), fixed: opts.fixed, story: opts.story, defend: {}, flashFoe: {}, intro: true };
   sg.held = null; sg.flash = 16; sgBattleMusic();
   const names = foes.map(f => SG_MONSTERS[f.key].name + (f.tag ? ' ' + f.tag : ''));
   sgSay(opts.boss ? [`⚠️ ${names[0]} attacks!`] : [`${names.length === 1 ? `A ${names[0]} appears!` : `${names.join(', ')} appear!`}`], () => { sg.bt.intro = false; sgHeroTurn(); });
@@ -503,9 +644,10 @@ function sgHeroTurn() {
   while (b.hero < s.party.length && s.party[b.hero].hp <= 0) b.hero++;
   if (b.hero >= s.party.length) return sgFoesTurn();
   const h = s.party[b.hero], spells = sgSpellsOf(h);
+  if (h.st?.curse && !b.cursed?.[b.hero] && Math.random() < 0.15) { (b.cursed ||= {})[b.hero] = 1; return sgSay(`🌑 The curse holds ${esc(h.name)} still! They can’t move this turn.`, sgNextHero); }
   sgMenu(`${SG_HEROES[h.key].icon} <b>${esc(h.name)}</b> · ❤️ ${h.hp}/${sgMax(h, 'hp')} · 💧 ${h.mp}/${sgMax(h, 'mp')}`, [
     { label: '⚔️ Fight', fn: () => sgPickFoe(f => sgFight(h, f), () => sgHeroTurn()) },
-    { label: `✨ ${h.key === 'knight' ? 'Skill' : 'Spell'}`, disabled: !spells.length, fn: () => sgSpellMenu(h) },
+    { label: `✨ ${['knight', 'ranger', 'rogue'].includes(h.key) ? 'Skill' : 'Spell'}`, disabled: !spells.length, fn: () => sgSpellMenu(h) },
     { label: '🛡️ Defend', fn: () => { b.defend[b.hero] = true; sgSay(`${esc(h.name)} raises their guard.`, sgNextHero); } },
     { label: '🎒 Item', fn: () => sgItemMenu(true, h) },
     ...(b.hero === 0 ? [{ label: '🏃 Run', disabled: b.boss || !!b.fixed, fn: () => sgRun() }] : [])], null, { cols: 2 });
@@ -521,11 +663,14 @@ function sgHitFoe(f, dmg, lines) {
   if (f.hp <= 0) lines.push(`✨ ${esc(sgFoeName(f))} is defeated!`);
 }
 function sgFight(h, f) {
-  sgAsk(`⚔️ ${esc(h.name)} attacks ${esc(sgFoeName(f))}! Pick the meaning:`, (grade, fast) => {
+  sgAsk(`⚔️ ${esc(h.name)} attacks ${esc(sgFoeName(f))}! Pick the meaning:`, (grade, fast, q) => {
     const lines = [], m = SG_MONSTERS[f.key];
+    if (q?.timeout) { lines.push(`⏱️ Too slow! ${esc(h.name)} misses, and the enemy strikes first!`); return sgSay(lines, () => { sg.bt.hero = sgS().party.length; sgFoesTurn(); }); }
     if (grade === 'wrong') { lines.push(`${esc(h.name)} swings… and misses!`); return sgSay(lines, sgNextHero); }
-    const atk = sgStat(h, 'atk'), dmg = fast ? Math.max(2, Math.round(atk * sgRnd(1.4, 1.7))) : Math.max(1, Math.round((atk - m.def / 2) * sgRnd(0.85, 1.15)));
-    if (fast) lines.push('⚡ A critical hit!');
+    const sp = sgSpeed(q || {}), atk = sgStat(h, 'atk');
+    const base = sp.crit ? atk * sgRnd(1.4, 1.7) : Math.max(1, (atk - m.def / 2) * sgRnd(0.85, 1.15));
+    const dmg = Math.max(sp.crit ? 2 : 1, Math.round(base * (sp.crit ? 1 : sp.mult)));
+    if (sp.crit) lines.push('⚡ Lightning fast! A critical hit!'); else if (sp.pct >= 5) lines.push(`💨 Quick answer: +${sp.pct}% damage!`);
     sgHitFoe(f, dmg, lines); sgSay(lines, sgNextHero);
   });
 }
@@ -535,8 +680,8 @@ function sgSpellMenu(h) {
 const sgHealAmt = (h, sp) => Math.round((sp.power + sgStat(h, 'mag') * 1.0) * sgRnd(0.9, 1.1));
 function sgCastStart(h, k) {
   const sp = SG_SPELLS[k], s = sgS(), go2 = target => sgAskSpell(`✨ ${esc(h.name)} casts <b>${sp.name}</b>! Spell this word:`, grade => sgCast(h, k, target, grade));
-  if (sp.kind === 'hit' || sp.kind === 'power') return sgPickFoe(f => go2(f), () => sgSpellMenu(h));
-  if (sp.kind === 'heal' || sp.kind === 'revive') return sgMenu(`${sp.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: sp.kind === 'revive' ? t.hp > 0 : t.hp <= 0, fn: () => go2(t) })), () => sgSpellMenu(h));
+  if (sp.kind === 'hit' || sp.kind === 'power' || sp.kind === 'steal') return sgPickFoe(f => go2(f), () => sgSpellMenu(h));
+  if (sp.kind === 'heal' || sp.kind === 'revive' || sp.kind === 'cure') return sgMenu(`${sp.name} on…`, s.party.map(t => ({ label: sgHeroLine(t), disabled: sp.kind === 'revive' ? t.hp > 0 : sp.kind === 'cure' ? t.hp <= 0 || !(t.st?.poison || t.st?.curse) : t.hp <= 0, fn: () => go2(t) })), () => sgSpellMenu(h));
   go2(null);
 }
 function sgCast(h, k, target, grade) {
@@ -545,39 +690,61 @@ function sgCast(h, k, target, grade) {
   h.mp -= sp.mp;
   const mult = grade === 'close' ? 0.6 : 1;
   if (grade === 'close') lines.push('≈ Almost right: the spell works at partial power.');
+  if (sp.fx) lines.push(`${sgFx(sp.fx, sp.name)}${SG_HEROES[h.key].icon} ${esc(h.name)} uses <b>${sp.name}</b>!`);
+  if (sp.kind === 'allatk') for (const f of sgLiveFoes()) { const m = SG_MONSTERS[f.key]; sgHitFoe(f, Math.max(2, Math.round((sgStat(h, 'atk') * sp.mult - m.def / 2) * sgRnd(0.85, 1.1) * mult)), lines); }
+  if (sp.kind === 'steal') { const t = target.hp > 0 ? target : sgLiveFoes()[0], m = SG_MONSTERS[t.key];
+    if (t.stolen || !m.gold) lines.push(`${esc(sgFoeName(t))} has nothing left to steal!`); else { t.stolen = 1; const gold = Math.max(1, Math.round(m.gold * sgRnd(0.8, 1.6) * mult)); sgS().gold += gold; lines.push(`🪙 ${esc(h.name)} lifts <b>${gold} gold</b> from ${esc(sgFoeName(t))}!`); } }
+  if (sp.kind === 'cure') { target.st = {}; lines.push(`✨ ${esc(target.name)} is cured of poison and curses!`); }
+  if (sp.kind === 'cureAll') { for (const a of sgAlive()) a.st = {}; lines.push('✨ Every poison and curse on the party is lifted!'); }
   if (sp.kind === 'power') { const t = target.hp > 0 ? target : sgLiveFoes()[0]; const m = SG_MONSTERS[t.key]; sgHitFoe(t, Math.max(2, Math.round((sgStat(h, 'atk') * sp.mult - m.def / 2) * sgRnd(0.9, 1.1) * mult)), lines); }
   if (sp.kind === 'hit') { const t = target.hp > 0 ? target : sgLiveFoes()[0]; sgHitFoe(t, Math.max(2, Math.round((sp.power + sgStat(h, 'mag') * 0.8) * sgRnd(0.9, 1.1) * mult)), lines); }
   if (sp.kind === 'all') for (const f of sgLiveFoes()) sgHitFoe(f, Math.max(2, Math.round((sp.power + sgStat(h, 'mag') * 0.6) * sgRnd(0.85, 1.1) * mult)), lines);
   if (sp.kind === 'heal') { const bf = target.hp; target.hp = Math.min(sgMax(target, 'hp'), target.hp + Math.round(sgHealAmt(h, sp) * mult)); lines.push(`💚 ${esc(target.name)} recovers ${target.hp - bf} HP!`); }
   if (sp.kind === 'healAll') for (const a of sgAlive()) { const bf = a.hp; a.hp = Math.min(sgMax(a, 'hp'), a.hp + Math.round(sgHealAmt(h, sp) * mult)); lines.push(`💚 ${esc(a.name)} recovers ${a.hp - bf} HP!`); }
-  if (sp.kind === 'revive') { target.hp = Math.ceil(sgMax(target, 'hp') * 0.5 * mult); lines.push(`🔥 ${esc(target.name)} is back on their feet!`); }
+  if (sp.kind === 'revive') { target.hp = Math.ceil(sgMax(target, 'hp') * 0.5 * mult); target.st = {}; lines.push(`🔥 ${esc(target.name)} is back on their feet!`); }
   if (sp.kind === 'ward') { b.ward = sp.turns + 1; lines.push('🛡️ A shining shield covers the whole party!'); }
   sg.flash = 6; sgSay(lines, sgNextHero);
 }
 function sgRun() { if (Math.random() < 0.65) { sg.bt = null; sgMusicSync(); return sgSay('You got away safely! 💨'); } sgSay('You couldn’t get away!', () => { sg.bt.hero = sgS().party.length; sgFoesTurn(); }); }
 function sgFoesTurn() {
-  const b = sg.bt, lines = [];
+  const b = sg.bt, lines = [], party = sgS().party;
+  const soften = (dmg, v) => { const vi = party.indexOf(v); if (b.defend[vi]) dmg = Math.ceil(dmg / 2); if (b.ward) dmg = Math.ceil(dmg / 2); return Math.max(1, dmg); };
+  const hurt = (v, dmg) => { v.hp = Math.max(0, v.hp - dmg); const fell = v.hp <= 0; sgFall(v); return fell ? ` 💤 ${esc(v.name)} falls!` : ''; };
+  const ail = (v, st, chance) => { if (!st || v.hp <= 0 || v.st?.[st] || Math.random() >= chance) return; (v.st ||= {})[st] = 1; lines.push(st === 'poison' ? `☠️ ${esc(v.name)} is poisoned!` : `🌑 ${esc(v.name)} is cursed! Their strength fades…`); };
+  const special = (f, sp) => {
+    const who = esc(sgFoeName(f)), targets = sgAlive();
+    lines.push(`${sgFx(sp.fx, sp.name)}👾 ${who} uses <b>${sp.name}</b>!`);
+    if (sp.mpAll) { for (const v of targets) { const n = Math.min(v.mp, sp.mpAll); v.mp -= n; } lines.push('The party’s magic drains away! (−MP)'); return; }
+    for (const v of sp.all ? targets : [targets[Math.floor(Math.random() * targets.length)]]) {
+      const atk = SG_MONSTERS[f.key].atk * (b.rage && SG_MONSTERS[f.key].final ? 1.25 : 1);
+      const raw = sp.mult ? (atk * sp.mult - sgStat(v, 'def') / 2) * sgRnd(0.85, 1.15) : sp.power * sgRnd(0.9, 1.25) * (b.rage && SG_MONSTERS[f.key].final ? 1.15 : 1);
+      const dmg = soften(Math.round(raw), v);
+      lines.push(`${esc(v.name)} takes ${dmg} damage!${hurt(v, dmg)}`);
+      ail(v, sp.st, sp.stChance ?? 0.5);
+    }
+  };
   for (const f of sgLiveFoes()) {
-    const m = SG_MONSTERS[f.key], targets = sgAlive(); if (!targets.length) break;
-    const t = targets[Math.floor(Math.random() * targets.length)], ti = sgS().party.indexOf(t);
-    const soften = dmg => { if (b.defend[ti]) dmg = Math.ceil(dmg / 2); if (b.ward) dmg = Math.ceil(dmg / 2); return Math.max(1, dmg); };
-    if (m.cast && Math.random() < m.cast.chance) {
-      lines.push(`👾 ${esc(sgFoeName(f))} uses <b>${m.cast.name}</b>!`);
-      for (const v of m.cast.all ? targets : [t]) { const vi = sgS().party.indexOf(v); let dmg = Math.round(m.cast.power * sgRnd(0.9, 1.25)); if (b.defend[vi]) dmg = Math.ceil(dmg / 2); if (b.ward) dmg = Math.ceil(dmg / 2); v.hp = Math.max(0, v.hp - dmg); lines.push(`${esc(v.name)} takes ${dmg} damage!${v.hp <= 0 ? ` 💤 ${esc(v.name)} falls!` : ''}`); }
-    } else if (m.drain && Math.random() < m.drain && t.mp > 0) {
-      const n = Math.min(t.mp, 3 + Math.floor(Math.random() * 3)); t.mp -= n; lines.push(`👾 ${esc(sgFoeName(f))} whispers… ${esc(t.name)} loses ${n} MP!`);
-    } else {
-      const heavy = m.heavy && Math.random() < m.heavy.chance, raw = (m.atk * (heavy ? m.heavy.mult : 1) - sgStat(t, 'def') / 2) * sgRnd(0.85, 1.15);
-      const dmg = soften(Math.round(raw));
-      t.hp = Math.max(0, t.hp - dmg);
-      lines.push(heavy ? `👾 ${esc(sgFoeName(f))} uses <b>${m.heavy.name}</b>! ${esc(t.name)} takes ${dmg} damage!` : `👾 ${esc(sgFoeName(f))} attacks! ${esc(t.name)} takes ${dmg} damage!`);
-      if (t.hp <= 0) lines.push(`💤 ${esc(t.name)} falls!`);
+    const m = SG_MONSTERS[f.key];
+    if (m.final && !b.rage && f.hp <= f.max / 2) { b.rage = 1; lines.push(`${sgFx('void', 'Rage')}👾 The Unwriter’s robe of pages tears open. Black ink pours out!`, 'The Unwriter: ENOUGH! I will write you out of the story myself!', '⚠️ The Unwriter is enraged: he hits harder now!'); }
+    for (let act = 0; act < (m.acts || 1); act++) {
+      const targets = sgAlive(); if (!targets.length) break;
+      const t = targets[Math.floor(Math.random() * targets.length)];
+      if (m.final && b.rage && m.rage && Math.random() < 0.22) { special(f, m.rage); continue; }
+      if (m.specials && Math.random() < 0.45) { special(f, m.specials[Math.floor(Math.random() * m.specials.length)]); continue; }
+      if (m.cast && Math.random() < m.cast.chance) { special(f, { stChance: 0.5, ...m.cast }); continue; }
+      if (m.drain && Math.random() < m.drain && t.mp > 0) { const n = Math.min(t.mp, 3 + Math.floor(Math.random() * (m.final ? 8 : 3))); t.mp -= n; lines.push(`👾 ${esc(sgFoeName(f))} whispers… ${esc(t.name)} loses ${n} MP!`); continue; }
+      const heavy = m.heavy && Math.random() < m.heavy.chance, atk = m.atk * (b.rage && m.final ? 1.25 : 1), raw = (atk * (heavy ? m.heavy.mult : 1) - sgStat(t, 'def') / 2) * sgRnd(0.85, 1.15);
+      const dmg = soften(Math.round(raw), t);
+      lines.push(heavy ? `${sgFx(m.heavy.fx || 'slash', m.heavy.name)}👾 ${esc(sgFoeName(f))} uses <b>${m.heavy.name}</b>! ${esc(t.name)} takes ${dmg} damage!${hurt(t, dmg)}` : `👾 ${esc(sgFoeName(f))} attacks! ${esc(t.name)} takes ${dmg} damage!${hurt(t, dmg)}`);
+      ail(t, 'poison', m.poison || 0); ail(t, 'curse', m.curse || 0);
     }
   }
+  // poison stings at the end of the round
+  for (const v of sgAlive()) if (v.st?.poison) { const dmg = Math.max(1, Math.round(sgMax(v, 'hp') * 0.07)); lines.push(`☠️ The poison stings ${esc(v.name)}: −${dmg} HP.${hurt(v, dmg)}`); }
   sg.shake = 10; trSound('bump');
   sgSay(lines.length ? lines : ['…'], () => {
     if (!sgAlive().length) return sgLose();
-    b.round++; b.hero = 0; b.defend = {}; if (b.ward > 0) { b.ward--; if (!b.ward) return sgSay('The shining shield fades.', sgHeroTurn); }
+    b.round++; b.hero = 0; b.defend = {}; b.cursed = {}; if (b.ward > 0) { b.ward--; if (!b.ward) return sgSay('The shining shield fades.', sgHeroTurn); }
     sgHeroTurn();
   });
 }
@@ -589,14 +756,20 @@ function sgWin() {
   if (Math.random() < 0.12 && !b.boss) { s.bag.herb = (s.bag.herb || 0) + 1; lines.push('🌿 A monster dropped a Herb!'); }
   sgGiveXp(lines, share);
   sgJingle('sg_fanfare');
-  const boss = b.boss, story = b.story; sg.bt = null; sgSaveNow(true);
-  sgSay(lines, () => { sgMusicSync(); if (boss) sgSay(SG_STORY[(story || 'erased') + 'Win'] || SG_STORY.bossWin); });
+  const boss = b.boss, story = b.story, meet = !boss && !b.fixed && SG_ROAD_MEET[s.map]; sg.bt = null; sgSaveNow(true);
+  sgSay(lines, () => { sgMusicSync();
+    if (boss) return sgSay(SG_STORY[(story || 'erased') + 'Win'] || SG_STORY.bossWin);
+    if (meet && !s.met[meet[0]] && Math.random() < 0.3) sgSay(SG_STORY[meet[1]](esc(s.name)), () => sgMenu(`Let ${SG_NAMES[meet[0]]} join you?`, [
+      { label: `${SG_HEROES[meet[0]].icon} Yes, welcome!`, fn: () => sgSay(`${SG_HEROES[meet[0]].icon} <b>${SG_NAMES[meet[0]]} the ${SG_HEROES[meet[0]].cls}</b> joined the party!`, () => sgJoin(meet[0])) },
+      { label: 'Not now', fn: () => sgSay(`${SG_NAMES[meet[0]]}: Then perhaps we’ll meet again. Or find me at a tavern.`) }], null));
+  });
 }
+const SG_ROAD_MEET = { seravel: ['monk', 'roadMonk'], eastsea: ['paladin', 'roadPaladin'] };
 function sgLose() {
   const s = sgS(); sg.bt = null;
   const lost = Math.floor(s.gold / 2); s.gold -= lost;
   sgSay(['The party has fallen…', `…You wake up at the inn in ${SG_MAPS[s.home || 'town'].name}. You lost ${lost} gold.`], () => {
-    for (const h of s.party) { h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); }
+    for (const h of s.party) { h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); h.st = {}; }
     const t = SG_MAPS[s.home || 'town']; sgWarp(s.home || 'town', t.home.x, t.home.y, 'down');
   });
 }
@@ -629,11 +802,12 @@ const sgMapSong = () => sgS()?.boat ? 'sg_sea' : SG_MAPS[sgS()?.map]?.song || 's
 function sgMusicSync() {
   if (!sg || !sgS()) return;
   if (trMusic.song?.once) return;
-  const want = sg.bt ? (sg.bt.boss ? 'sg_boss' : 'sg_battle') : sgMapSong();
+  const want = sg.bt ? sgBattleSong() : sgMapSong();
   if (trMusic.name !== want || (!trMusic.song && trMusic.on())) trMusic.play(want);
 }
+const sgBattleSong = () => sg?.bt?.final ? 'sg_final' : sg?.bt?.boss ? 'sg_boss' : 'sg_battle';
 function sgBattleMusic() { if (!trMusic.on()) return; trMusic.after = null; trMusic.song = null; trMusic.name = null; sgMusicSync(); }
-function sgJingle(name) { if (trMusic.on()) trMusic.jingle(name, sg?.bt ? (sg.bt.boss ? 'sg_boss' : 'sg_battle') : sgMapSong()); }
+function sgJingle(name) { if (trMusic.on()) trMusic.jingle(name, sg?.bt ? sgBattleSong() : sgMapSong()); }
 
 /* ---------- Art ---------- */
 const sgCache = {};
@@ -645,7 +819,9 @@ function sgTileArt(ch, theme) {
   return sgCache['t' + theme + ch] ||= sgCanvas(16, 16, g => {
     const R = (x, y, w, h, c) => { g.fillStyle = SGC[c] || c; g.fillRect(x, y, w, h); };
     const grass = () => { R(0, 0, 16, 16, 'grass'); R(3, 4, 1, 2, 'grass2'); R(11, 9, 1, 2, 'grass2'); R(7, 13, 1, 2, 'grass2'); R(13, 2, 1, 1, 'grassL'); };
-    const arc = theme === 'archive', CF = arc ? '#3f6f78' : 'cave', CD = arc ? '#1d3a42' : 'caveD', CL = arc ? '#6fa3ab' : 'caveL';
+    const arc = theme === 'archive', CP = { archive: ['#3f6f78', '#1d3a42', '#6fa3ab'], ember: ['#6a2a14', '#2a0a04', '#a8481c'], tower: ['#3a3450', '#16121f', '#5e5880'] }[theme] || ['cave', 'caveD', 'caveL'], [CF, CD, CL] = CP;
+    const floor = () => { R(0, 0, 16, 16, '#c8955a'); for (let y = 3; y < 16; y += 4) R(0, y, 16, 1, '#a87440'); R(5, 0, 1, 3, '#a87440'); R(11, 4, 1, 3, '#a87440'); R(3, 8, 1, 3, '#a87440'); R(13, 12, 1, 3, '#a87440'); };
+    const base = () => theme === 'desert' ? sand() : grass();
     const caveFloor = () => { R(0, 0, 16, 16, CF); R(3, 5, 2, 1, CL); R(11, 11, 2, 1, CL); R(8, 2, 1, 1, CD); if (arc) { R(0, 7, 16, 1, CD); R(7, 0, 1, 7, CD); R(3, 8, 1, 8, CD); } };
     const sand = () => { R(0, 0, 16, 16, '#e6c77a'); R(3, 4, 3, 1, '#d4b062'); R(10, 10, 3, 1, '#d4b062'); R(12, 3, 1, 1, '#f3dca0'); R(5, 12, 1, 1, '#f3dca0'); };
     switch (ch) {
@@ -674,13 +850,27 @@ function sgTileArt(ch, theme) {
       case 'Y': if (theme === 'desert') sand(); else grass(); g.fillStyle = theme === 'desert' ? '#9a6a3a' : SGC.mountD; g.beginPath(); g.moveTo(0, 16); g.lineTo(8, 0); g.lineTo(16, 16); g.fill(); R(4, 7, 8, 9, 'sand'); R(5, 6, 6, 1, 'sand'); R(6, 9, 1, 1, 'sandD'); R(9, 12, 1, 1, 'sandD'); break;
       case 'u': sand(); R(2, 8, 5, 6, 'cream'); R(1, 6, 7, 3, '#c0763a'); R(9, 9, 5, 5, 'cream'); R(8, 7, 7, 3, '#c0763a'); R(4, 11, 1, 3, 'woodD'); R(11, 11, 1, 3, 'woodD'); R(12, 1, 1, 6, 'trunk'); R(10, 0, 5, 2, '#2e8b4a'); break;
       case 'Z': sand(); R(2, 4, 12, 12, '#f5eef8'); R(1, 3, 14, 2, 'gold'); R(4, 6, 2, 10, '#d7bde2'); R(10, 6, 2, 10, '#d7bde2'); R(6, 9, 4, 7, 'ink'); R(7, 0, 2, 3, 'gold'); R(7, 10, 2, 2, 'gold'); break;
-      case 'X': if (arc) { R(0, 0, 16, 16, '#162b30'); for (let y = 1; y < 16; y += 5) { R(0, y + 3, 16, 1, '#4a3420'); for (let x = 1, i = 0; x < 15; x += 2, i++) R(x, y, 1, 3, ['#c0392b', '#2e86c1', '#f4c542', '#27ae60', '#8e44ad'][(i + y) % 5]); } break; }
+      case 'z': base(); R(4, 13, 8, 3, 'stoneD'); R(5, 4, 6, 10, 'stone'); R(5, 4, 1, 10, 'white'); R(10, 4, 1, 10, 'stoneD'); R(4, 2, 8, 3, 'stoneD'); R(6, 0, 4, 2, 'gold'); R(7, 7, 2, 4, 'gold'); R(6, 8, 4, 1, 'gold'); break;
+      case 'I': grass(); R(3, 1, 10, 15, '#2a1a40'); R(2, 0, 2, 3, '#2a1a40'); R(7, 0, 2, 3, '#2a1a40'); R(12, 0, 2, 3, '#2a1a40'); R(4, 2, 1, 13, '#4a3a6a'); R(6, 10, 4, 6, 'ink'); R(7, 4, 2, 3, '#c39bd3'); break;
+      case 'g': R(0, 0, 16, 16, '#2e7d32'); for (let y = 2; y < 16; y += 4) R(0, y, 16, 1, '#1b5e20'); for (let y = 0; y < 16; y += 4) for (let x = (y / 4) % 2 ? 0 : 4; x < 16; x += 8) R(x, y, 1, 3, '#1b5e20'); R(6, 9, 4, 5, 'gold'); R(7, 10, 2, 3, 'cream'); R(10, 10, 1, 2, 'gold'); break;
+      case 'N': R(0, 0, 16, 16, '#5d6d7e'); for (let y = 2; y < 16; y += 4) R(0, y, 16, 1, '#34495e'); R(7, 2, 2, 12, 'gold'); R(4, 5, 8, 2, 'gold'); break;
+      case '_': floor(); break;
+      case 'O': R(0, 0, 16, 16, '#6b4226'); for (let x = 3; x < 16; x += 4) R(x, 0, 1, 16, '#4a2c17'); R(0, 15, 16, 1, '#3a2010'); R(1, 5, 1, 1, '#2a1a10'); R(9, 11, 1, 1, '#2a1a10'); break;
+      case '=': floor(); R(0, 3, 16, 13, '#6b4226'); R(0, 3, 16, 4, '#a87440'); R(0, 6, 16, 1, '#4a2c17'); R(3, 0, 3, 4, 'gold'); R(4, 1, 1, 2, 'cream'); R(10, 1, 3, 3, '#c0392b'); break;
+      case 't': floor(); R(2, 4, 12, 8, '#6b4226'); R(3, 5, 10, 5, '#8b5a2b'); R(4, 12, 2, 3, 'woodD'); R(10, 12, 2, 3, 'woodD'); R(7, 3, 2, 3, 'gold'); R(7, 2, 2, 1, '#ff9a3a'); break;
+      case 'b': floor(); R(3, 2, 10, 13, '#8b5a2b'); R(3, 5, 10, 1, '#3a2a14'); R(3, 11, 10, 1, '#3a2a14'); R(4, 2, 8, 2, '#a87440'); R(12, 3, 1, 11, '#5e3a1a'); break;
+      case 'p': floor(); R(0, 3, 16, 4, '#5e3a1a'); R(0, 7, 16, 4, '#8b5a2b'); R(1, 11, 2, 3, '#3a2010'); R(13, 11, 2, 3, '#3a2010'); break;
+      case 'A': floor(); R(1, 6, 14, 10, 'white'); R(1, 6, 14, 2, 'gold'); R(1, 14, 14, 2, '#d7d7cf'); R(3, 1, 2, 5, 'gold'); R(11, 1, 2, 5, 'gold'); R(3, 0, 2, 1, '#ff9a3a'); R(11, 0, 2, 1, '#ff9a3a'); break;
+      case 'G': R(0, 0, 16, 16, 'stone'); R(0, 15, 16, 1, 'stoneD'); R(4, 1, 8, 13, 'ink'); R(5, 2, 3, 5, '#c0392b'); R(8, 2, 3, 5, '#2e86c1'); R(5, 7, 3, 6, '#f4c542'); R(8, 7, 3, 6, '#27ae60'); R(7, 2, 2, 11, 'ink'); break;
+      case 'X': if (theme === 'ember') { R(0, 0, 16, 16, '#2a0a04'); R(1, 1, 6, 5, '#4a1a0a'); R(9, 3, 6, 6, '#4a1a0a'); R(3, 9, 7, 6, '#4a1a0a'); R(6, 6, 4, 1, '#ff7a1a'); R(9, 6, 1, 3, '#ff7a1a'); R(2, 13, 3, 1, '#ffb066'); break; }
+        if (theme === 'tower') { R(0, 0, 16, 16, '#16121f'); for (let y = 0; y < 16; y += 4) { R(0, y, 16, 1, '#2a2440'); for (let x = (y / 4) % 2 ? 4 : 0; x < 16; x += 8) R(x, y, 1, 4, '#2a2440'); } R(6, 6, 2, 2, '#5b2a6e'); break; }
+        if (arc) { R(0, 0, 16, 16, '#162b30'); for (let y = 1; y < 16; y += 5) { R(0, y + 3, 16, 1, '#4a3420'); for (let x = 1, i = 0; x < 15; x += 2, i++) R(x, y, 1, 3, ['#c0392b', '#2e86c1', '#f4c542', '#27ae60', '#8e44ad'][(i + y) % 5]); } break; }
         R(0, 0, 16, 16, 'caveD'); R(1, 1, 6, 5, 'cave'); R(9, 3, 6, 6, 'cave'); R(3, 9, 7, 6, 'cave'); R(2, 2, 3, 1, 'caveL'); R(10, 4, 3, 1, 'caveL'); R(4, 10, 3, 1, 'caveL'); break;
       case 'C': caveFloor(); break;
       case 'c': caveFloor(); R(4, 9, 2, 2, 'caveD'); R(11, 4, 2, 2, 'caveD'); R(4, 9, 1, 1, 'caveL'); break;
       case '<': caveFloor(); R(2, 2, 12, 12, CL); R(4, 4, 8, 8, 'sand'); R(6, 6, 4, 4, 'white'); break;
       case '>': caveFloor(); for (let i = 0; i < 4; i++) R(2 + i, 3 + i * 3, 12 - i * 2, 3, i % 2 ? CD : 'ink'); break;
-      default: R(0, 0, 16, 16, theme === 'cave' || arc ? CD : 'grass');
+      default: R(0, 0, 16, 16, ['cave', 'ember', 'tower'].includes(theme) || arc ? CD : theme === 'tavern' ? '#6b4226' : theme === 'church' ? SGC.stone : 'grass');
     }
   });
 }
@@ -693,6 +883,9 @@ const SG_LOOKS = {
   elder: { A: TR_ARCH.elder, colors: { 0: '#f2c29a', 1: '#e5e5e5', 2: '#6c5b7b', 3: '#2a2030' } },
   queen: { A: { hair: 'long', shirt: 1, body: 'dress', cape: 1 }, colors: { 0: '#e8b48a', 1: '#7fd6d0', 2: '#1f618d', 3: '#2a1a10' }, crown: true },
   sailor: { A: TR_ARCH.sailor || TR_ARCH.man, colors: { 0: '#e8b48a', 1: '#ffffff', 2: '#2e86c1', 3: '#1a1a2a' } },
+  priest: { A: { hair: 'short', shirt: 1, body: 'dress' }, colors: { 0: '#f2c29a', 1: '#f6f6f0', 2: '#d4ac0d', 3: '#3a3a3a' } },
+  barkeep: { A: TR_ARCH.shop || TR_ARCH.man, colors: { 0: '#f2c29a', 1: '#f6f6f0', 2: '#8b5a2b', 3: '#2a1a10' } },
+  archmage: { A: { hair: 'long', shirt: 1, body: 'dress', cape: 1 }, colors: { 0: '#f2c29a', 1: '#8e44ad', 2: '#f4c542', 3: '#e5e5e5' }, crown: false },
 };
 const sgShipArt = dir => sgCache['ship' + dir] ||= sgCanvas(16, 18, g => {
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); }, f = dir === 'right';
@@ -783,6 +976,9 @@ function sgMonsterArt(key) {
       case 'serpent': for (let i = 0; i <= 20; i++) { const t = i / 20, x = 4 + t * 22, y = 26 - Math.sin(t * Math.PI * 1.5) * 9 - t * 6; ell(x, y, 4.2 - t * 0.8 + (i > 16 ? 1.6 : 0), 4.2 - t * 0.8 + (i > 16 ? 1.6 : 0), 2); }
         ell(26, 9, 5.5, 4.5, 2); poly([[24, 12], [31, 13], [26, 15]], 1); poly([[23, 5], [21, 0], [26, 4]], 4); poly([[28, 5], [30, 0], [30, 5]], 4); for (let i = 3; i <= 17; i += 4) ell(4 + i * 1.1, 24 - Math.sin(i / 20 * Math.PI * 1.5) * 9 - i * 0.3, 1.5, 1.5, 4);
         eye(25, 8, 1.8); P(29, 13, 5); P(27, 13, 5); break;
+      case 'sorcerer': rect(1, 3, 4, 5, 5); rect(27, 2, 4, 5, 5); rect(25, 26, 4, 4, 5); rect(2, 24, 3, 4, 5); line(2, 5, 4, 5, 0); line(28, 4, 30, 4, 0);
+        poly([[16, 3], [4, 31], [28, 31]], 2); poly([[9, 14], [1, 24], [6, 26], [12, 19]], 1); poly([[23, 14], [31, 22], [27, 25], [20, 19]], 1); ell(16, 10, 6.5, 7, 1); ell(16, 11, 4, 4.5, 0);
+        P(14, 11, 6); P(18, 11, 6); P(14, 12, 6); P(18, 12, 6); rect(15, 18, 2, 13, 4); rect(9, 30, 14, 1, 4); rect(21, 17, 8, 6, 5); line(25, 17, 25, 22, 0); line(22, 19, 24, 19, 0); line(26, 19, 28, 19, 0); line(3, 9, 7, 22, 4, 1); poly([[2, 6], [5, 6], [3, 10]], 5); break;
       case 'knight': poly([[16, 4], [4, 30], [28, 30]], 4); rect(9, 13, 14, 15, 2); ell(16, 8, 6, 6.5, 2); rect(11, 7, 10, 5, 5); rect(11, 9, 10, 1, 3); rect(15, 1, 2, 4, 4);
         poly([[1, 14], [8, 14], [8, 23], [4.5, 27], [1, 23]], 3); ell(4.5, 19, 1.5, 2, 5); line(26, 4, 26, 26, 3, 2); rect(23, 21, 7, 2, 1); rect(10, 28, 4, 3, 1); rect(18, 28, 4, 3, 1); rect(11, 17, 10, 1, 1); break;
     }
@@ -799,11 +995,15 @@ function sgMonsterArt(key) {
 const SG_W = 160, SG_H = 144, SG_SCALE = 4;
 function sgDraw() {
   const cv = $('#sgCanvas'); if (!cv || !sg) return;
-  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+  const out = cv.getContext('2d'); out.imageSmoothingEnabled = false;
+  const retro = sgPalette()[0] !== 'full', off = retro ? (sg.off ||= Object.assign(document.createElement('canvas'), { width: SG_W, height: SG_H })) : null, g = retro ? off.getContext('2d') : out;
+  g.imageSmoothingEnabled = false;
   const sx = sg.shake > 0 ? Math.round(Math.sin(sg.shake * 2.3) * 2) : 0; if (sg.shake > 0) sg.shake--;
-  g.setTransform(SG_SCALE, 0, 0, SG_SCALE, sx * SG_SCALE, 0);
+  if (retro) g.setTransform(1, 0, 0, 1, sx, 0); else g.setTransform(SG_SCALE, 0, 0, SG_SCALE, sx * SG_SCALE, 0);
   if (sg.bt) sgDrawBattle(g); else sgDrawWorld(g);
   if (sg.flash > 0) { g.fillStyle = '#ffffff'; g.globalAlpha = sg.flash / 20; g.fillRect(0, 0, SG_W, SG_H); g.globalAlpha = 1; sg.flash--; }
+  if (sg.poisonFlash > 0 && !sg.bt) { g.fillStyle = '#8e44ad'; g.globalAlpha = sg.poisonFlash / 14; g.fillRect(0, 0, SG_W, SG_H); g.globalAlpha = 1; sg.poisonFlash--; }
+  if (retro) { sgQuantize(off); out.setTransform(1, 0, 0, 1, 0, 0); out.drawImage(off, 0, 0, SG_W * SG_SCALE, SG_H * SG_SCALE); }
 }
 function sgDrawWorld(g) {
   const s = sgS(), m = SG_MAPS[s.map], W = m.rows[0].length, H = m.rows.length;
@@ -838,7 +1038,7 @@ function sgDrawWorld(g) {
   for (let i = party.length - 1; i >= 1; i--) { const t = sg.trail[i - 1]; if (!t || s.boat || sgTile(s.map, t.x, t.y) === 'W') continue; g.drawImage(sgPersonArt(party[i].key, t.dir, step), ox(t.x), oy(t.y) - 2); }
   if (s.boat || (sg.moving && sgTile(s.map, sg.moving.tx, sg.moving.ty) === 'W' && s.flags.ship)) g.drawImage(sgShipArt(s.dir === 'right' ? 'right' : 'left'), Math.round(px * 16 - camX), Math.round(py * 16 - camY) - 2 + Math.round(Math.sin(sg.frame / 10)));
   else g.drawImage(sgPersonArt(party[0].key, s.dir, step), Math.round(px * 16 - camX), Math.round(py * 16 - camY) - 2);
-  if (sg.banner && sg.frame < sg.banner.until && !sg.ui) sgWin2(g, 4, 4, Math.min(152, sgTextW(g, sg.banner.text) + 14), 16, () => sgText(g, sg.banner.text, 11, 8));
+  if (sg.banner && sg.frame < sg.banner.until && !sg.ui) { const bt = gtLine(sg.banner.text, sgLang(), sgNames()); sgWin2(g, 4, 4, Math.min(152, sgTextW(g, bt) + 14), 16, () => sgText(g, bt, 11, 8)); }
 }
 const sgTextW = (g, t) => { g.font = 'bold 7px monospace'; return Math.ceil(g.measureText(t).width); };
 const sgText = (g, t, x, y, c = '#ffffff') => { g.font = 'bold 7px monospace'; g.textBaseline = 'top'; g.fillStyle = c; g.fillText(t, x, y); };
@@ -850,7 +1050,7 @@ function sgWin2(g, x, y, w, h, inner) {   // classic window: dark blue, white ro
 }
 function sgDrawBattle(g) {
   const b = sg.bt, s = sgS(), th = s.boat ? 'sea' : SG_MAPS[s.map].theme;
-  const BG = { cave: ['#2a1d12', '#4a3420', '#5d432a'], archive: ['#10262b', '#2f5a62', '#4f8a93'], desert: ['#e8955a', '#d9b46a', '#f0cf8a'], sea: ['#2a6fb8', '#1f4f99', '#6fb0f5'] }[th] || ['#1d4f8a', '#3d8b45', '#5fb55f'];
+  const BG = { ember: ['#3a0a00', '#7a2a0a', '#b8541c'], tower: ['#0a0614', '#2a1a40', '#4a3a6a'], cave: ['#2a1d12', '#4a3420', '#5d432a'], archive: ['#10262b', '#2f5a62', '#4f8a93'], desert: ['#e8955a', '#d9b46a', '#f0cf8a'], sea: ['#2a6fb8', '#1f4f99', '#6fb0f5'] }[th] || ['#1d4f8a', '#3d8b45', '#5fb55f'];
   g.fillStyle = '#000'; g.fillRect(0, 0, SG_W, SG_H);
   g.fillStyle = BG[0]; g.fillRect(0, 30, SG_W, 44); g.fillStyle = BG[1]; g.fillRect(0, 74, SG_W, 26);
   g.fillStyle = BG[2]; for (let x = 0; x < SG_W; x += 12) g.fillRect(x + ((x / 12) % 2) * 4, 76, 6, 1);
@@ -863,6 +1063,7 @@ function sgDrawBattle(g) {
       const c = h.hp <= 0 ? '#e74c3c' : h.hp < sgMax(h, 'hp') / 4 ? '#f39c12' : '#ffffff';
       sgText(g, h.name.slice(0, w > 60 ? 9 : 6), x + 4, 4, active ? '#f4c542' : c); sgText(g, `H${String(h.hp).padStart(3)}`, x + 4, 12, c); sgText(g, `M${String(h.mp).padStart(3)}`, x + 4, 20, c);
       sgText(g, `L${h.lv}`, x + w - 18, 20, '#aab7ff');
+      let bx = x + w - 10; for (const [k, ch, col] of [['poison', 'P', '#8e44ad'], ['curse', 'C', '#3a1a5a']]) if (h.hp > 0 && h.st?.[k]) { g.fillStyle = col; g.fillRect(bx, 11, 7, 9); g.fillStyle = '#ffffff'; g.fillRect(bx, 11, 7, 1); sgText(g, ch, bx + 1, 12); bx -= 8; }
     });
   });
   // monsters
@@ -876,6 +1077,38 @@ function sgDrawBattle(g) {
     g.drawImage(sgMonsterArt(f.key), x, Math.max(30, y), size, size); g.globalAlpha = 1;
   });
   if (b.ward) sgText(g, '🛡', 150, 34);
+  if (sg.fx) sgDrawFx(g);
+}
+/* special attacks show up on screen: a big name banner and an effect */
+function sgDrawFx(g) {
+  const f = sg.fx, t = f.t++; if (t > 64) { sg.fx = null; return; } if (t === 0 && sgLang()) f.name = gtLine(f.name, sgLang(), sgNames());
+  const k = f.kind, fade = t < 8 ? t / 8 : t > 48 ? Math.max(0, (64 - t) / 16) : 1, cx = 80, cy = 62;
+  g.save(); g.globalAlpha = fade;
+  if (k === 'fire') for (let i = 0; i < 18; i++) { const x = (i * 37 + t * 2) % 160, y = 100 - ((i * 23 + t * 3) % 70), r = 2 + (i % 3); g.fillStyle = i % 3 ? '#ff7a1a' : '#ffd34d'; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  else if (k === 'ice') for (let i = 0; i < 16; i++) { const x = (i * 41 + 7) % 160, y = 30 + ((i * 17 + t * 2) % 72); g.fillStyle = i % 2 ? '#ffffff' : '#a8e6ff'; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x + 3, y); g.lineTo(x, y + 4); g.lineTo(x - 3, y); g.fill(); }
+  else if (k === 'bolt') { if (t % 6 < 3) { g.fillStyle = 'rgba(255,255,200,.35)'; g.fillRect(0, 30, 160, 72); } g.strokeStyle = '#ffe04d'; g.lineWidth = 2; for (let j = 0; j < 3; j++) { let x = 40 + j * 40 + ((t * 7 + j * 13) % 9) - 4, y = 30; g.beginPath(); g.moveTo(x, y); while (y < 96) { y += 8; x += ((t + y + j * 5) % 3 - 1) * 6; g.lineTo(x, y); } g.stroke(); } }
+  else if (k === 'dark' || k === 'void') { g.fillStyle = k === 'void' ? 'rgba(0,0,0,.55)' : 'rgba(40,10,70,.5)'; g.fillRect(0, 30, 160, 72); g.strokeStyle = k === 'void' ? '#ffffff' : '#c39bd3'; g.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const r = ((t * 1.6 + i * 20) % 60) + 4; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); } if (k === 'void') { g.fillStyle = '#000000'; g.beginPath(); g.arc(cx, cy, Math.min(18, t / 2), 0, 7); g.fill(); } }
+  else if (k === 'wave') for (let i = 0; i < 6; i++) { g.fillStyle = i % 2 ? '#2f6fd0' : '#7ab8f5'; for (let x = 0; x < 160; x += 4) g.fillRect(x, 34 + i * 11 + Math.sin((x + t * 6 + i * 20) / 12) * 4, 4, 3); }
+  else if (k === 'slash') { g.strokeStyle = '#ffffff'; g.lineWidth = 2; for (let i = 0; i < 3; i++) { const p = Math.min(1, Math.max(0, (t - i * 6) / 10)); if (!p) continue; g.beginPath(); g.moveTo(30 + i * 30, 34); g.lineTo(30 + i * 30 + 60 * p, 34 + 60 * p); g.stroke(); } }
+  else if (k === 'holy') for (let i = 0; i < 6; i++) { const x = 12 + i * 27, w = 6 + Math.sin((t + i * 9) / 5) * 3; g.fillStyle = 'rgba(255,230,120,.55)'; g.fillRect(x - w / 2, 30, w, 72); g.fillStyle = '#ffffff'; g.fillRect(x - 1, 30, 2, 72); }
+  else if (k === 'heal') for (let i = 0; i < 12; i++) { const x = (i * 29 + 11) % 160, y = 100 - ((i * 19 + t * 2) % 70); g.fillStyle = '#5fe08a'; g.fillRect(x - 1, y - 4, 3, 9); g.fillRect(x - 4, y - 1, 9, 3); }
+  g.restore();
+  if (f.name && t < 56) { g.font = 'bold 9px monospace'; const w = Math.min(156, Math.ceil(g.measureText(f.name).width) + 14); sgWin2(g, 80 - w / 2, 32, w, 15, () => { g.font = 'bold 9px monospace'; g.textBaseline = 'top'; g.fillStyle = '#f4c542'; g.textAlign = 'center'; g.fillText(f.name, 80, 35); g.textAlign = 'left'; }); }
+}
+/* 🖍️ screen colors: full color, or every pixel squeezed into a 4-color handheld palette */
+const SG_PALETTES = [['full', '🌈 Full color', ['#f8f8f0', '#79c45a', '#5aa8f0', '#f08070']], ...TR_PALETTES.filter(p => p[0] !== 'full').map(p => [p[0], p[1], p[2]])];
+const sgPalette = () => SG_PALETTES.find(p => p[0] === S.settings?.sgPalette) || SG_PALETTES[0];
+function sgPaletteMenu() {
+  const cur = sgPalette()[0];
+  sgMenu('🖍️ Screen colors · the whole screen changes', SG_PALETTES.map(([k, label, c]) => ({ label: `${k === cur ? '✅ ' : ''}${trSwatch(c)} ${label}`, fn: () => { S.settings.sgPalette = k; save(); sgPaletteMenu(); } })), () => sgOptions(0), { sel: SG_PALETTES.findIndex(p => p[0] === cur), big: true });
+}
+function sgQuantize(cv) {
+  const pal = sgPalette(); if (pal[0] === 'full') return;
+  if (sgQuantize.sig !== pal[0]) { sgQuantize.sig = pal[0]; sgQuantize.rgb = pal[2].map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); }
+  const P = sgQuantize.rgb, g = cv.getContext('2d'), im = g.getImageData(0, 0, cv.width, cv.height), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114, c = P[l > 178 ? 0 : l > 112 ? 1 : l > 52 ? 2 : 3]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  g.putImageData(im, 0, 0);
 }
 
 /* ---------- Main loop ---------- */
@@ -968,7 +1201,7 @@ views.sagaTitle = () => {
   const d = deckById(view.deckId); if (!d) { view = { name: 'home' }; return views.home(); }
   const slots = sgSlots(), fmt = ms => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${m % 60} min`; };
   const card = k => { const s = slots[k]; return `<div class="tr-slot ${S.sagaSlot === k && s ? 'cur' : ''}"><div class="tr-slot-h"><b>Slot ${k.toUpperCase()}</b>${s?.savedAt ? `<span class="muted small">${esc(new Date(s.savedAt).toLocaleDateString([], { dateStyle: 'medium' }))}</span>` : ''}</div>
-    ${s ? `<div><b>${esc(s.name)}</b> · 📍 ${esc(SG_MAPS[s.map]?.name || '')}</div><div class="muted small">💰 ${s.gold} gold · ⏱️ ${fmt(s.playMs || 0)}${s.flags?.oracle ? ' · 🌅 Part two complete' : s.flags?.shard2 ? ' · 💎 2 shards' : s.flags?.kingDone ? ' · 💎 Part one complete' : s.flags?.shard ? ' · 💎 1 shard' : ''}</div>
+    ${s ? `<div><b>${esc(s.name)}</b> · 📍 ${esc(SG_MAPS[s.map]?.name || '')}</div><div class="muted small">💰 ${s.gold} gold · ⏱️ ${fmt(s.playMs || 0)}${s.flags?.lexicon ? ' · 🏆 Saga complete!' : s.flags?.crystal ? ' · 💠 Voice Crystal' : s.flags?.isles ? ' · 🏝️ Part three' : s.flags?.oracle ? ' · 🌅 Part two complete' : s.flags?.shard2 ? ' · 💎 2 shards' : s.flags?.kingDone ? ' · 💎 Part one complete' : s.flags?.shard ? ' · 💎 1 shard' : ''}</div>
         <div class="row" style="gap:4px">${s.party.map(h => `<span class="sg-chip">${SG_HEROES[h.key].icon} ${esc(h.name)} Lv${h.lv}</span>`).join('')}</div>
         <div class="row" style="gap:6px"><button type="button" class="btn primary" data-act="sgContinue" data-slot="${k}" data-id="${d.id}">▶ Continue</button><button type="button" class="btn sm ghost" style="color:var(--again)" data-act="sgDelSlot" data-slot="${k}">Delete</button></div>`
       : `<div class="muted small">Empty</div><button type="button" class="btn" data-act="sgNewSlot" data-slot="${k}">＋ New saga here</button>`}</div>`; };

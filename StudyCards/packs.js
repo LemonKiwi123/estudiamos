@@ -245,9 +245,50 @@ function wordCardHtml(id, lang, { size = 'md', back = false, missing = false, co
     <div class="wc-foot"><span class="wc-stars">${'★'.repeat(R.stars)}</span>${copies > 1 ? `<span class="wc-copies">×${copies}${shiny ? ' ✨' : ''}</span>` : ''}</div>
   </div>`;
 }
+/* The unopened pack: a big, detailed version of the Packs icon in the menu (foil pouch, crimped edges, gold star card) */
+const PACK_BODY = (() => {   // pouch outline with crimped (zig-zag) top and bottom edges, in a 240×340 box
+  const L = 12, R = 228, top = 22, bot = 318, tooth = 10, n = 18, w = (R - L) / n;
+  let d = `M${L} ${top}`;
+  for (let i = 0; i < n; i++) d += ` L${(L + w * (i + .5)).toFixed(1)} ${top - tooth} L${(L + w * (i + 1)).toFixed(1)} ${top}`;
+  d += ` L${R} ${bot}`;
+  for (let i = n - 1; i >= 0; i--) d += ` L${(L + w * (i + .5)).toFixed(1)} ${bot + tooth} L${(L + w * i).toFixed(1)} ${bot}`;
+  return d + ' Z';
+})();
+const starPath = (cx, cy, R, r = R * .45, pts = 5) => { let d = ''; for (let i = 0; i < pts * 2; i++) { const a = -Math.PI / 2 + i * Math.PI / pts, rr = i % 2 ? r : R; d += `${i ? 'L' : 'M'}${(cx + rr * Math.cos(a)).toFixed(1)} ${(cy + rr * Math.sin(a)).toFixed(1)} `; } return d + 'Z'; };
+const sparkle = (x, y, s) => `M${x} ${y - s} Q${x} ${y} ${x + s} ${y} Q${x} ${y} ${x} ${y + s} Q${x} ${y} ${x - s} ${y} Q${x} ${y} ${x} ${y - s}Z`;
+const PACK_SVG = `<svg class="pack-svg" viewBox="0 0 240 340" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="pkFoil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9a6bff"/><stop offset=".48" stop-color="#3b54e8"/><stop offset="1" stop-color="#18a0c8"/></linearGradient>
+    <linearGradient id="pkHolo" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff7ad9" stop-opacity="0"/><stop offset=".3" stop-color="#ff7ad9" stop-opacity=".32"/><stop offset=".5" stop-color="#7cf3ff" stop-opacity=".32"/><stop offset=".7" stop-color="#fff38a" stop-opacity=".32"/><stop offset="1" stop-color="#fff38a" stop-opacity="0"/></linearGradient>
+    <linearGradient id="pkCard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset=".55" stop-color="#ffcf3a"/><stop offset="1" stop-color="#f5a623"/></linearGradient>
+    <radialGradient id="pkGlow" cx=".5" cy=".46" r=".5"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <clipPath id="pkClip"><path d="${PACK_BODY}"/></clipPath>
+  </defs>
+  <path d="${PACK_BODY}" fill="url(#pkFoil)"/>
+  <g clip-path="url(#pkClip)">
+    <ellipse cx="120" cy="165" rx="110" ry="120" fill="url(#pkGlow)"/>
+    <g fill="#fff" opacity=".28">${[[40, 90, 5], [196, 98, 4], [56, 238, 4], [204, 226, 6], [30, 160, 3], [214, 168, 3], [88, 76, 3], [160, 252, 3]].map(([x, y, r]) => `<path d="${sparkle(x, y, r)}"/>`).join('')}</g>
+    <polygon points="138,0 176,0 74,340 36,340" fill="#fff" opacity=".16"/><polygon points="188,0 200,0 98,340 86,340" fill="#fff" opacity=".1"/>
+    <rect x="0" y="0" width="240" height="64" fill="#0b0f3a" opacity=".26"/><rect x="0" y="276" width="240" height="64" fill="#0b0f3a" opacity=".26"/>
+    <rect x="0" y="64" width="240" height="2.5" fill="#fff" opacity=".4"/><rect x="0" y="273.5" width="240" height="2.5" fill="#fff" opacity=".4"/>
+    <rect x="0" y="24" width="240" height="2" fill="#fff" opacity=".3"/><rect x="0" y="314" width="240" height="2" fill="#fff" opacity=".3"/>
+    <rect class="pk-holo" x="-240" y="0" width="240" height="340" fill="url(#pkHolo)"/>
+  </g>
+  <text x="120" y="52" text-anchor="middle" fill="#fff" font-family="'Segoe UI',system-ui,sans-serif" font-weight="900" font-size="22" letter-spacing="3">ESTUDIAMOS</text>
+  <text x="120" y="304" text-anchor="middle" fill="#fff" font-family="'Segoe UI',system-ui,sans-serif" font-weight="900" font-size="19" letter-spacing="5" opacity=".95">WORD PACK</text>
+  <g transform="translate(0 -7) rotate(-9 120 160)">
+    <rect x="74" y="94" width="96" height="134" rx="12" fill="#0b0f3a" opacity=".28" transform="translate(5 6)"/>
+    <rect x="74" y="94" width="96" height="134" rx="12" fill="#fff"/>
+    <rect x="83" y="103" width="78" height="116" rx="8" fill="url(#pkCard)"/>
+    <path d="${starPath(122, 160, 33)}" fill="#fff" stroke="#e8a317" stroke-width="2.5" stroke-linejoin="round"/>
+    <path d="${starPath(96, 118, 7)}" fill="#fff" opacity=".85"/><path d="${starPath(148, 204, 7)}" fill="#fff" opacity=".85"/>
+    <rect x="83" y="103" width="78" height="22" rx="8" fill="#fff" opacity=".22"/>
+  </g>
+  <path d="${PACK_BODY}" fill="none" stroke="#1d2160" stroke-opacity=".55" stroke-width="3" stroke-linejoin="round"/>
+</svg>`;
 function packArt(lang, big = true) {
   const L = PACK_LANGS.find(l => l[0] === lang);
-  return `<div class="pack ${big ? 'big' : ''}"><div class="pack-shine"></div><div class="pack-top">Estudiamos</div>${mascot(big ? 110 : 60, 'party')}<div class="pack-name">Word Pack</div><div class="pack-lang">${esc(L?.[1] || lang)}</div><div class="pack-zig"></div></div>`;
+  return `<div class="pack ${big ? 'big' : ''}">${PACK_SVG}<div class="pack-lang">${esc(L?.[1] || lang)}</div></div>`;
 }
 const fmtLeft = ms => { const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60; return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(ss).padStart(2, '0')}s`; };
 

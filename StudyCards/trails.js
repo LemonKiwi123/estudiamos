@@ -484,6 +484,7 @@ function startTrails(deckId) {
   tr = { deckId, d: deckById(deckId), pool: runnerPool(deckId), queue: [], ui: null, bt: null, moving: null, held: null, cool: 4, frame: 0, np: {}, tick: Date.now(),
     session: { start: Date.now(), results: [], nuts: 0, wins: 0 }, loop: 0, ended: false, flash: 0, banner: null };
   go({ name: 'trails' });
+  setTimeout(() => { if (tr && !tr.bt) trRivalCheck(); }, 600);
 }
 const trLead = () => trS().team.find(m => m.hp > 0);
 
@@ -561,7 +562,35 @@ function trB() {
   else if (u.type === 'text') trA();
   else if (u.type === 'rebind') { tr.ui = null; trControlsMenu(); }
 }
-function trBox() {
+const trLang = () => gtWant(tr?.d?.frontLang);
+function trNames() {
+  const s = trS(), npcNames = [];
+  for (const m of Object.values(TR_MAPS)) for (const n of m.npcs || []) { if (n.name) npcNames.push(n.name); if (n.t?.name) npcNames.push(n.t.name); }
+  return [s?.name, ...Object.values(TR_SPECIES).map(x => x.name), ...Object.values(TR_MOVES).map(x => x.name), ...Object.values(TR_ITEMS).map(x => x.name), ...Object.values(TR_KEY_ITEMS).map(x => x.name),
+    ...Object.values(TR_MAPS).map(m => m.name), ...npcNames, 'Rio', 'Professor Rowan', 'Director Vex'].filter(Boolean);
+}
+function trBox() { trBoxRaw(); const l = trLang(), q = tr?.ui?.q; if (l) gtBox($('#trBox'), l, trNames().concat(q ? [q.answer, q.given] : [])); }
+function trLangMenu() {
+  const b = gtBase(tr.d?.frontLang), ok = !!GT_BOOKS[b], on = !!trLang();
+  trMenu('🌐 Game language', [{ label: `${!on ? '✅ ' : ''}English`, fn: () => { S.settings.gameLang = 'en'; save(); trLangMenu(); } },
+    { label: `${on ? '✅ ' : ''}${ok ? GT_LANG_NAMES[b] : (langName(tr.d?.frontLang) || 'Your language')}`, sub: ok ? 'Menus, battles and talk in the language you are learning. Names stay the same.' : 'Not ready yet for this deck’s language. Spanish decks can use it.', disabled: !ok,
+      fn: () => { S.settings.gameLang = 'target'; save(); trLangMenu(); } }], () => trMainMenu());
+}
+/* 📂 load another slot without leaving the game */
+function trLoadMenu() {
+  const slots = trSlots(), cur = S.trailsSlot || 'a';
+  trMenu('📂 Load game · your adventure here is saved first', ['a', 'b', 'c'].map(k => { const v = slots[k]; return {
+    label: `Slot ${k.toUpperCase()}${k === cur ? ' · playing now' : ''}`, sub: v ? `${esc(v.name)} · 📍 ${esc(TR_MAPS[v.map]?.name || '')} · 🏅 ${trSeals(v)} · ${(v.team || []).length} Wordlings${v.savedAt ? ` · saved ${new Date(v.savedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}` : ''}` : 'Empty',
+    disabled: !v || k === cur, fn: () => trLoadSlot(k) }; }), () => trMainMenu());
+}
+function trLoadSlot(k) {
+  trSaveNow(true);
+  const old = tr; if (old.loop) cancelAnimationFrame(old.loop); old.loop = 0;
+  S.trailsSlot = k; save();
+  startTrails(old.deckId); tr.session = old.session;
+  setTimeout(() => tr && !tr.ui && trSay(`📂 Loaded slot ${k.toUpperCase()}. Welcome back, ${esc(trS().name)}!`), 350);
+}
+function trBoxRaw() {
   const el = $('#trBox'); if (!el || !tr) return;
   const u = tr.ui;
   if (u?.type !== 'map') gameMapClose();
@@ -606,6 +635,7 @@ function trStep() {
     tr.moving = { fx: s.x, fy: s.y, tx: nx + dx, ty: ny + dy, t: 0, hop: true }; trSound('hop'); return;
   }
   if (!trCanWalk(s.map, nx, ny)) return;
+  if (tr.rivalShow && tr.rivalShow.x === nx && tr.rivalShow.y === ny) return;
   tr.moving = { fx: s.x, fy: s.y, tx: nx, ty: ny, t: 0 };
 }
 function trOpenings(m, side) {
@@ -629,6 +659,7 @@ function trArrive() {
     if (opp === 'right') return trWarp(m.exits[side], TW - 2, c, 'left');
     return trWarp(m.exits[side], 1, c, 'right');
   }
+  if (trRivalNear()) return;
   for (const n of trNpcs(s.map)) if (n.trainer && !n.noSight && !s.beaten[n.id] && trSees(n, s.x, s.y)) return trTrainerSpots(n);
   const t = trTile(s.map, s.x, s.y);
   if (s.repel > 0 && --s.repel === 0) { trSaveNow(true); const more = ['wordcharm', 'bigcharm'].find(k => s.bag[k]);
@@ -874,6 +905,8 @@ function trMainMenu() {
     { label: '🎒 Bag', fn: () => trBagMenu(false) },
     { label: '📖 Spirit Log', sub: s.key.log ? `${Object.keys(s.caught).length} caught · ${Object.keys(s.seen).length} seen of ${TR_DEX.length}` : 'Professor Rowan will give you one.', disabled: !s.key.log, fn: () => trLog() },
     { label: '🏅 Badge case', sub: `${trSeals(s)} of ${TR_BADGE_COUNT} won`, fn: () => trSealsMenu() },
+    { label: '📂 Load game', sub: 'Switch to another save slot.', fn: () => trLoadMenu() },
+    { label: `🌐 Game language: ${gtLangLabel(tr.d?.frontLang)}`, sub: 'Play in the language you are learning.', fn: () => trLangMenu() },
     { label: '💾 Save game', sub: s.savedAt ? `Last saved ${new Date(s.savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : '', fn: () => trSaveNow() },
     { label: '🗣️ Voices', sub: 'Pick the voice for each language and how fast it talks.', fn: () => trVoiceMenu() },
     { label: '🗺️ Map', sub: 'See the whole route, or a close-up of this area.', fn: () => trMapOpen('world') },
@@ -1250,14 +1283,83 @@ function trRioTalk(n) {
     { label: 'Maybe later', fn: () => trSay('Rio: Anytime!') }], () => {});
   return trSay(['Rio: I’ll see you out there!']);
 }
-/* Rio shows up as you reach new places */
+/* Rio waits for you on the route. Walk close and he runs up to battle; afterwards he heads off toward the next town. */
+function trRivalPending(s) {
+  if (!s?.flags.starter || typeof TR_RIVAL === 'undefined') return null;
+  return TR_RIVAL.find(x => x.map === s.map && !s.beaten[x.id] && trSeals(s) >= x.seals && trSeals(s) <= x.seals + 1 && !TR_RIVAL.some(y => y.seals > x.seals && s.beaten[y.id])) || null;
+}
+/* the shortest walk between two spots (or to any spot in a list), on open ground */
+function trRivalPath(map, from, goals, avoid) {
+  const m = TR_MAPS[map], W = m.rows[0].length, H = m.rows.length, key = (x, y) => x + ',' + y, goal = new Set(goals.map(([x, y]) => key(x, y)));
+  const prev = new Map([[key(...from), null]]), q = [from];
+  while (q.length) {
+    const [x, y] = q.shift(); if (goal.has(key(x, y))) { const path = []; let k = key(x, y); while (k) { path.unshift(k.split(',').map(Number)); k = prev.get(k); } return path; }
+    for (const [dx, dy] of [[0, -1], [1, 0], [-1, 0], [0, 1]]) { const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || prev.has(k) || !TR_WALKABLE.has(m.rows[ny][nx]) || (trNpcAt(map, nx, ny) && !goal.has(k)) || avoid?.(nx, ny)) continue;
+      prev.set(k, key(x, y)); q.push([nx, ny]); }
+  }
+  return null;
+}
+/* the edge of the map that leads on (the one farthest from where you came in) */
+function trRivalExit(s) {
+  const m = TR_MAPS[s.map], W = m.rows[0].length, H = m.rows.length; let best = null;
+  for (const side of Object.keys(m.exits || {})) {
+    const tiles = trOpenings(m, side).map(c => side === 'top' ? [c, 0] : side === 'bottom' ? [c, H - 1] : side === 'left' ? [0, c] : [W - 1, c]);
+    if (!tiles.length) continue; const d = Math.min(...tiles.map(([x, y]) => Math.abs(x - s.x) + Math.abs(y - s.y)));
+    if (!best || d > best.d) best = { d, tiles };
+  }
+  return best?.tiles || [];
+}
 function trRivalCheck() {
-  const s = trS(); if (!s?.flags.starter || tr.bt || tr.ui || typeof TR_RIVAL === 'undefined') return;
-  const r = TR_RIVAL.find(x => x.map === s.map && !s.beaten[x.id] && trSeals(s) >= x.seals && trSeals(s) <= x.seals + 1 && !TR_RIVAL.some(y => y.seals > x.seals && s.beaten[y.id]));
-  if (!r) return;
-  const spots = [[0, -1], [0, 1], [-1, 0], [1, 0]].map(([dx, dy]) => [s.x + dx, s.y + dy]).filter(([x, y]) => TR_WALKABLE.has(trTile(s.map, x, y)) && !trNpcAt(s.map, x, y));
-  const [rx, ry] = spots[0] || [s.x, s.y - 1]; tr.rivalShow = { x: rx, y: ry, dir: rx < s.x ? 'right' : rx > s.x ? 'left' : ry < s.y ? 'down' : 'up' }; s.dir = TR_BACK[tr.rivalShow.dir]; tr.held = null;
-  trSay(['❗ Rio: ' + esc(r.intro[0]), ...r.intro.slice(1).map(l => 'Rio: ' + esc(l))], () => trTrainerBattle(r.id, { name: 'Rival Rio', team: trRioTeam(r.team), reward: 150 + 120 * r.seals, nuts: 3, intro: [], win: r.win, then: () => { tr.rivalShow = null; } }));
+  const s = trS(); if (!tr || tr.bt) return;
+  const r = trRivalPending(s); if (!r) { tr.rivalWait = null; return; }
+  const path = trRivalPath(s.map, [s.x, s.y], trRivalExit(s)) || [];
+  const at = path[Math.min(Math.max(4, Math.floor(path.length / 3)), path.length - 2)] || path[path.length - 1];
+  if (!at || (at[0] === s.x && at[1] === s.y)) return;
+  const before = path[path.indexOf(at) - 1] || [s.x, s.y];
+  tr.rivalWait = { id: r.id, x: at[0], y: at[1], dir: before[0] < at[0] ? 'left' : before[0] > at[0] ? 'right' : before[1] < at[1] ? 'up' : 'down' };
+  tr.rivalShow = { ...tr.rivalWait };
+}
+/* called after every step: close enough, and Rio runs up */
+function trRivalNear() {
+  const s = trS(), w = tr.rivalWait; if (!w || tr.bt || tr.scene || w.map && w.map !== s.map) return false;
+  if (Math.abs(w.x - s.x) + Math.abs(w.y - s.y) > 3) return false;
+  const r = TR_RIVAL.find(x => x.id === w.id); if (!r || s.beaten[r.id]) { tr.rivalWait = null; return false; }
+  tr.scene = true; tr.held = null;
+  const near = [[0, -1], [1, 0], [-1, 0], [0, 1]].map(([dx, dy]) => [s.x + dx, s.y + dy]).filter(([x, y]) => TR_WALKABLE.has(trTile(s.map, x, y)) && !trNpcAt(s.map, x, y));
+  const path = trRivalPath(s.map, [w.x, w.y], near, (x, y) => x === s.x && y === s.y) || [[w.x, w.y]];
+  tr.rivalShow = { x: w.x, y: w.y, dir: w.dir, bang: true }; s.dir = TR_BACK[w.dir] || s.dir; trSound('bump');
+  setTimeout(() => trRivalWalk(path, () => {
+    const at = path[path.length - 1], dir = at[0] < s.x ? 'right' : at[0] > s.x ? 'left' : at[1] < s.y ? 'down' : 'up';
+    tr.rivalShow = { x: at[0], y: at[1], dir }; s.dir = TR_BACK[dir]; tr.rivalWait = null; tr.scene = false;
+    trSay(['❗ Rio: ' + esc(r.intro[0]), ...r.intro.slice(1).map(l => 'Rio: ' + esc(l))], () => trTrainerBattle(r.id, { name: 'Rival Rio', team: trRioTeam(r.team), reward: 150 + 120 * r.seals, nuts: 3, intro: [], win: r.win,
+      then: won => { if (won) trRivalLeave(); else tr.rivalShow = null; } }));
+  }), 500);
+  return true;
+}
+function trRivalWalk(path, done, ms = 190) {
+  let i = 0;
+  const step = () => {
+    if (!tr) return;
+    if (++i >= path.length) return done();
+    const [x0, y0] = path[i - 1], [x, y] = path[i];
+    tr.rivalShow = { x, y, dir: x > x0 ? 'right' : x < x0 ? 'left' : y > y0 ? 'down' : 'up', step: i % 2 };
+    setTimeout(step, ms);
+  };
+  if (path.length < 2) return done();
+  setTimeout(step, ms);
+}
+/* after the battle Rio waves and runs off toward the next town */
+function trRivalLeave() {
+  const s = trS(), from = tr.rivalShow ? [tr.rivalShow.x, tr.rivalShow.y] : null; if (!from) return;
+  const path = trRivalPath(s.map, from, trRivalExit(s), (x, y) => x === s.x && y === s.y);
+  const next = TR_MAPS[TR_MAPS[s.map].exits?.[Object.keys(TR_MAPS[s.map].exits || {}).find(k => path && trOpenings(TR_MAPS[s.map], k).length && (k === 'top' ? path.at(-1)[1] === 0 : k === 'bottom' ? path.at(-1)[1] === TR_MAPS[s.map].rows.length - 1 : k === 'left' ? path.at(-1)[0] === 0 : path.at(-1)[0] === TR_MAPS[s.map].rows[0].length - 1))]];
+  tr.rivalShow.bang = false;
+  trSay(`Rio: I’m heading on to ${next ? esc(next.name) : 'the next town'}! Catch you later! 👋`, () => {
+    if (!path) { tr.rivalShow = null; return; }
+    tr.scene = true;
+    trRivalWalk(path, () => { tr.rivalShow = null; tr.scene = false; }, 150);
+  });
 }
 /* rematches after the main story: same trainers, higher levels, no prizes */
 const trRematchLv = lv => Math.min(85, Math.round(45 + lv * 0.9));
@@ -1427,7 +1529,7 @@ function trEndBattle(lines, won, award) {
   const then = tr.bt?.t?.then, legend = tr.bt?.legend;
   if (legend && !won) { tr.legendGone ||= {}; }
   if (legend && won && !trS().caught[TR_MAPS[trS().map].npcs.find(n => n.id === legend)?.legend]) { (tr.legendGone ||= {})[legend] = 1; lines.push('The legendary Wordling flies off into the distance… It might come back if you leave and return.'); }
-  const finish = () => { tr.bt = null; tr.cool = 3; tr.np = {}; tr.rivalShow = null; trSaveNow(true); trBox(); trHud(); trMusicSync(); trLearnPending(() => { if (then) then(won); }); };
+  const keepRio = tr.rivalShow; const finish = () => { tr.bt = null; tr.cool = 3; tr.np = {}; tr.rivalShow = won ? keepRio : null; trSaveNow(true); trBox(); trHud(); trMusicSync(); trLearnPending(() => { if (then) then(won); }); };
   trSay(lines, award ? () => { tr.bt = null; trShowBadge(award, finish, true); } : finish);
 }
 /* Big badge on the screen: when you win it, or when you look at it in the badge case */
@@ -1506,7 +1608,8 @@ function trDrawWorld(g) {
   if (m.school) { const left = TR_STARTERS.filter(k => k !== s.flags.starter && k !== s.flags.rivalSp && !(k === s.flags.profSp && s.beaten.profFinal));
     TR_STARTERS.forEach((k, i) => { if (!left.includes(k) && s.flags.starter) return; const X = Math.round((4 + i) * 16 - camX), Y = Math.round(3 * 16 - camY); g.drawImage(trBlockArt(TR_SPECIES[k].type, tr.peek?.sp === k ? 1 : 0), X + 1, Y); }); }
   if (tr.profShow) g.drawImage(trPersonArt(tr.profShow.arch, tr.profShow.dir, tr.profShow.step || 0), Math.round(tr.profShow.x * 16 - camX), Math.round(tr.profShow.y * 16 - camY) - 2);
-  if (tr.rivalShow) g.drawImage(trPersonArt('rival', tr.rivalShow.dir, 0), Math.round(tr.rivalShow.x * 16 - camX), Math.round(tr.rivalShow.y * 16 - camY) - 2);
+  if (tr.rivalShow) { const R = tr.rivalShow, X = Math.round(R.x * 16 - camX), Y = Math.round(R.y * 16 - camY); g.drawImage(trPersonArt('rival', R.dir, R.step || 0), X, Y - 2);
+    if (R.bang) { g.fillStyle = TR_PAL[0]; g.fillRect(X + 4, Y - 14, 8, 11); g.fillStyle = TR_PAL[3]; g.fillRect(X + 7, Y - 12, 2, 5); g.fillRect(X + 7, Y - 6, 2, 2); } }
   const sx = Math.round(px * 16 - camX), sy = Math.round(py * 16 - camY), lift = tr.moving?.hop ? Math.round(Math.sin(tr.moving.t * Math.PI) * 9) : 0;
   if (lift) { g.fillStyle = TR_PAL[3]; g.globalAlpha = 0.35; g.beginPath(); g.ellipse(sx + 8, sy + 15, 6 - lift / 4, 2, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
   g.drawImage(trPersonArt('player', s.dir, step, s.riding), sx, sy - 2 - lift);

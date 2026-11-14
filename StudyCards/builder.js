@@ -77,7 +77,15 @@ const ES_VERB = [['comer', ['como', 'comes', 'come', 'comemos', 'comen'], 'tr', 
   ['vivir', ['vivo', 'vives', 'vive', 'vivimos', 'viven'], 'in', null, 0, 'live', 'lives', 'a'],
   ['ir', ['voy', 'vas', 'va', 'vamos', 'van'], 'ir', null, 1, 'go', 'goes', 'a'],
   ['ser', ['soy', 'eres', 'es', 'somos', 'son'], 'ser', null, 1, 'be', 'is', 'a'],
-  ['estar', ['estoy', 'estás', 'está', 'estamos', 'están'], 'estar', null, 1, 'be', 'is', 'a']];
+  ['estar', ['estoy', 'estás', 'está', 'estamos', 'están'], 'estar', null, 1, 'be', 'is', 'a'],
+  // "-se" verbs: the 9th item (1) means they need me / te / se / nos right before them ("me levanto")
+  ['levantarse', ['levanto', 'levantas', 'levanta', 'levantamos', 'levantan'], 'in', null, 0, 'get up', 'gets up', 'a', 1],
+  ['acostarse', ['acuesto', 'acuestas', 'acuesta', 'acostamos', 'acuestan'], 'in', null, 0, 'go to bed', 'goes to bed', 'p', 1],
+  ['ducharse', ['ducho', 'duchas', 'ducha', 'duchamos', 'duchan'], 'in', null, 0, 'shower', 'showers', 'p', 1],
+  ['despertarse', ['despierto', 'despiertas', 'despierta', 'despertamos', 'despiertan'], 'in', null, 0, 'wake up', 'wakes up', 'a', 1],
+  ['sentarse', ['siento', 'sientas', 'sienta', 'sentamos', 'sientan'], 'in', null, 0, 'sit down', 'sits down', 'a', 1],
+  ['vestirse', ['visto', 'vistes', 'viste', 'vestimos', 'visten'], 'in', null, 0, 'get dressed', 'gets dressed', 'p', 1],
+  ['lavarse', ['lavo', 'lavas', 'lava', 'lavamos', 'lavan'], 'in', null, 0, 'wash up', 'washes up', 'p', 1]];
 const ES_OPENABLE = ['puerta', 'ventana', 'libro', 'revista', 'tienda', 'oficina', 'restaurante', 'biblioteca', 'periódico', 'carta', 'regalo'];
 //            word       English    where it goes: edge = start or end · pre = right before the verb · post = right after the verb · end = at the end
 const ES_ADV = [['hoy', 'today', 'edge'], ['mañana', 'tomorrow', 'edge'], ['ahora', 'now', 'edge'], ['siempre', 'always', 'pre'], ['nunca', 'never', 'pre'],
@@ -103,6 +111,8 @@ const esPrep = w => chip({ k: 'prep', w, en: ES_PREP.find(p => p[0] === w)[1] })
 const esConj = w => chip({ k: 'conj', w, en: ES_CONJ.find(c => c[0] === w)[1] });
 const esAdv = w => { const a = ES_ADV.find(x => x[0] === w); return chip({ k: 'adv', w, en: a[1], pos: a[2] }); };
 const esNeg = () => chip({ k: 'neg', w: 'no', en: 'not' });
+const ES_REFL = [['me', 'myself'], ['te', 'yourself'], ['se', 'himself, herself'], ['nos', 'ourselves'], ['se', 'themselves']];   // by verb form: yo, tú, él, nosotros, ellos
+const esRefl = f => chip({ k: 'refl', w: ES_REFL[f][0], f, en: ES_REFL[f][1] });
 const esMuy = () => chip({ k: 'int', w: 'muy', en: 'very' });
 const esWord = (k, w, extra) => chip({ k, w, ...extra });   // kept for older callers
 
@@ -177,7 +187,16 @@ function esCheck(T) {
     else if (['det', 'noun', 'adj', 'int'].includes(peek()?.k)) { const s = NPs('subj'); if (isErr(s)) return s; C.subj = s.coord ? s : { np: s, per: 3, num: s.num, g: s.g }; }
     while (peek()?.k === 'adv' && peek().pos === 'pre') C.lead.push(T[i++]);
     if (peek()?.k === 'neg' && C.lead.some(a => a.pos === 'pre')) { const a = C.lead.find(x => x.pos === 'pre'); return err(a.w === 'nunca' ? '“nunca” already means “never”, so don’t add “no”: “nunca como”.' : `“no” comes first: “no ${a.w} como”.`); }
-    if (peek()?.k === 'neg') { C.neg = true; i++; if (peek()?.k === 'adv' && peek().pos === 'pre') C.lead.push(T[i++]); if (peek()?.k !== 'verb') return err('“no” goes right before the verb: “no como”.', i - 1); }
+    if (peek()?.k === 'neg') { C.neg = true; i++; if (peek()?.k === 'adv' && peek().pos === 'pre') C.lead.push(T[i++]); if (peek()?.k !== 'verb' && peek()?.k !== 'refl') return err('“no” goes right before the verb: “no como”.', i - 1); }
+    // me / te / se / nos: only right before a "-se" verb ("me levanto", "no me levanto", "siempre me levanto")
+    let refl = null, reflAt = -1;
+    if (peek()?.k === 'refl') {
+      reflAt = i; refl = T[i++];
+      if (peek()?.k === 'neg') return err(`“no” goes before “${refl.w}”: “no ${refl.w} …”.`, i);
+      if (peek()?.k === 'adv' && peek().pos === 'pre') return err(`“${peek().w}” goes before “${refl.w}”: “${peek().w} ${refl.w} …”.`, i);
+      if (peek()?.k === 'refl') return err(`Only one “me / te / se / nos” before the verb.`, i);
+      if (peek()?.k !== 'verb') return err(`“${refl.w}” goes right before a verb, like “${refl.w} levanto”.`, reflAt);
+    }
     const v = peek(), sText = C.subj ? (C.subj.pron ? C.subj.pron.w : npText(C.subj.coord ? C.subj : C.subj.np)) : '';
     if (!v) return err(C.subj ? 'Now add a verb (an action word like “come” or “es”).' : 'Every sentence needs a verb.');
     if (v.k !== 'verb') {
@@ -186,6 +205,10 @@ function esCheck(T) {
       return err(`After ${C.subj ? `“${sText}”` : 'that'} the next word should be a verb. “${v.w}” isn’t a verb.`);
     }
     i++; C.verb = v;
+    if (v.e[8] && !refl) return err(`“${v.e[0]}” needs “${ES_REFL[v.f][0]}” right before the verb: “${ES_REFL[v.f][0]} ${v.w}”.`, i - 1);
+    if (refl && !v.e[8]) return err(`“${refl.w}” only goes with verbs like “levantarse”. Take it out: just “${v.w}”.`, reflAt);
+    if (refl && refl.w !== ES_REFL[v.f][0]) return err(`“${refl.w}” doesn’t match “${v.w}”. Use “${ES_REFL[v.f][0]} ${v.w}”.`, reflAt);
+    C.refl = refl;
     const sPer = C.subj ? C.subj.per : ES_FORM[v.f][0], sNum = C.subj ? C.subj.num : ES_FORM[v.f][1], sG = C.subj ? C.subj.g : 'x';
     if (C.subj) { const want = esFormIdx(sPer, sNum); if (want !== v.f) return err(`“${v.w}” doesn’t match the subject “${sText}”. Use “${v.e[1][want]}”.`, i - 1); }
     // does it make sense? things can't eat or run, and animals can't read or talk
@@ -356,6 +379,7 @@ function esGenerate(pref) {
     const f = esFormIdx(per, num), gg = g === 'x' ? R(['m', 'f']) : g;
     if (coin(0.12)) out.push(esAdv(R(['siempre', 'nunca'])));
     else if (coin(0.18)) out.push(esNeg());
+    if (verb[8]) { out.push(esRefl(f)); const wrong = [0, 1, 2, 3].filter(x => ES_REFL[x][0] !== ES_REFL[f][0]); extra.push(esRefl(R(wrong))); }
     out.push(esVerb(verb, f)); extra.push(esVerb(verb, (f + 1 + Math.floor(Math.random() * 4)) % 5));
     if (kind === 'ser') {
       if (coin(0.75)) { if (coin(0.25)) out.push(esMuy()); const a = adjFor('ser', subjCat); out.push(esAdj(a, gg, num)); extra.push(esAdj(a, gg === 'm' ? 'f' : 'm', num === 's' ? 'p' : 's'), esVerb(ES_VERB.find(v => v[0] === 'estar'), f)); }
@@ -579,7 +603,7 @@ const BLD_TYPES = {
   pron: ['pronoun', 'who does it: yo, ella, we…'], noun: ['noun', 'a person, place or thing'], verb: ['verb', 'an action or a state: como, es…'],
   adj: ['adjective', 'describes a noun: grande, roja…'], det: ['determiner', 'comes before a noun: el, una, mi, este…'], prep: ['preposition', 'links words: en, con, para, de…'],
   conj: ['conjunction', 'joins two parts: y, pero, o'], adv: ['adverb', 'how, when or where: hoy, siempre, no, muy…'] };
-const bldType = c => ({ neg: 'adv', int: 'adv', be: 'verb', dont: 'verb', not: 'adv', pa: 'prep', al: 'prep' })[c.k] || c.k;
+const bldType = c => ({ neg: 'adv', int: 'adv', be: 'verb', dont: 'verb', not: 'adv', pa: 'prep', al: 'prep', refl: 'pron' })[c.k] || c.k;
 const bldTag = c => { if (c.k === 'det') return c.cls === 'art' || ['the', 'a', 'an'].includes(c.w) ? 'article' : 'determiner'; return BLD_TYPES[bldType(c)]?.[0] || ''; };
 function startBuilder(deckId) {
   const d = deckById(deckId), fl = langBase(d?.frontLang || ''), bl = langBase(d?.backLang || '');
@@ -631,6 +655,7 @@ views.builder = () => {
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="bldTags" ${bld.tags ? 'checked' : ''}> Word types</label>
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="bldMeanings" ${bld.meanings ? 'checked' : ''}> Meanings</label>
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="bldMeter" ${S.settings.bldMeter !== false ? 'checked' : ''}> Hot/cold meter</label>
+      <label class="row muted small" style="gap:6px;font-weight:400" title="When you press New words, keep the sentence you're building and only change the words below"><input type="checkbox" id="bldKeep" ${S.settings.bldKeep !== false ? 'checked' : ''}> Keep my sentence</label>
       <button type="button" class="btn small" data-act="bldWords">📚 Add my deck's words${(S.bldWords || []).length ? ` (${S.bldWords.length})` : ''}</button>
       <select class="inp" id="bldLang" style="margin:0;width:auto">${Object.entries(BLD_LANGS).map(([k, l]) => `<option value="${k}" ${k === bld.lang ? 'selected' : ''}>Build in ${l.name}</option>`).join('')}</select>
     </div>`;
@@ -670,11 +695,44 @@ Object.assign(actions, {
 document.addEventListener('change', e => {
   if (view.name !== 'builder' || !bld) return;
   if (e.target.id === 'bldMeanings') { bld.meanings = S.settings.bldMeanings = e.target.checked; save(); render(); }
+  if (e.target.id === 'bldKeep') { S.settings.bldKeep = e.target.checked; save(); }
   if (e.target.id === 'bldMeter') { S.settings.bldMeter = e.target.checked; save(); render(); }
   if (e.target.id === 'bldTags') { bld.tags = S.settings.bldTags = e.target.checked; save(); render(); }
   if (e.target.id === 'bldLang') { bld.lang = e.target.value; bld.streak = 0; bldRound(); render(); }
 });
 
+/* Present tense of common irregular and stem-changing verbs: yo, tú, él/ella/usted, nosotros, ellos/ustedes.
+   Used when your deck's verbs are added to the Sentence Builder, so they get their real forms (tengo, not "teno"). */
+const ES_IRREG_FORMS = {
+  ser: 'soy eres es somos son', estar: 'estoy estás está estamos están', ir: 'voy vas va vamos van', tener: 'tengo tienes tiene tenemos tienen',
+  hacer: 'hago haces hace hacemos hacen', poder: 'puedo puedes puede podemos pueden', querer: 'quiero quieres quiere queremos quieren',
+  decir: 'digo dices dice decimos dicen', venir: 'vengo vienes viene venimos vienen', poner: 'pongo pones pone ponemos ponen',
+  salir: 'salgo sales sale salimos salen', saber: 'sé sabes sabe sabemos saben', conocer: 'conozco conoces conoce conocemos conocen',
+  dar: 'doy das da damos dan', ver: 'veo ves ve vemos ven', oír: 'oigo oyes oye oímos oyen', traer: 'traigo traes trae traemos traen',
+  caer: 'caigo caes cae caemos caen', haber: 'he has ha hemos han', caber: 'quepo cabes cabe cabemos caben', valer: 'valgo vales vale valemos valen',
+  conducir: 'conduzco conduces conduce conducimos conducen', traducir: 'traduzco traduces traduce traducimos traducen', producir: 'produzco produces produce producimos producen',
+  construir: 'construyo construyes construye construimos construyen', destruir: 'destruyo destruyes destruye destruimos destruyen', incluir: 'incluyo incluyes incluye incluimos incluyen', huir: 'huyo huyes huye huimos huyen',
+  oler: 'huelo hueles huele olemos huelen', reír: 'río ríes ríe reímos ríen', sonreír: 'sonrío sonríes sonríe sonreímos sonríen', freír: 'frío fríes fríe freímos fríen',
+  pedir: 'pido pides pide pedimos piden', servir: 'sirvo sirves sirve servimos sirven', repetir: 'repito repites repite repetimos repiten', medir: 'mido mides mide medimos miden', vestir: 'visto vistes viste vestimos visten',
+  seguir: 'sigo sigues sigue seguimos siguen', conseguir: 'consigo consigues consigue conseguimos consiguen', elegir: 'elijo eliges elige elegimos eligen',
+  sentir: 'siento sientes siente sentimos sienten', preferir: 'prefiero prefieres prefiere preferimos prefieren', mentir: 'miento mientes miente mentimos mienten',
+  dormir: 'duermo duermes duerme dormimos duermen', morir: 'muero mueres muere morimos mueren', jugar: 'juego juegas juega jugamos juegan',
+  pensar: 'pienso piensas piensa pensamos piensan', empezar: 'empiezo empiezas empieza empezamos empiezan', comenzar: 'comienzo comienzas comienza comenzamos comienzan',
+  cerrar: 'cierro cierras cierra cerramos cierran', despertar: 'despierto despiertas despierta despertamos despiertan', sentar: 'siento sientas sienta sentamos sientan',
+  entender: 'entiendo entiendes entiende entendemos entienden', perder: 'pierdo pierdes pierde perdemos pierden', encender: 'enciendo enciendes enciende encendemos encienden', defender: 'defiendo defiendes defiende defendemos defienden',
+  volver: 'vuelvo vuelves vuelve volvemos vuelven', devolver: 'devuelvo devuelves devuelve devolvemos devuelven', resolver: 'resuelvo resuelves resuelve resolvemos resuelven', mover: 'muevo mueves mueve movemos mueven',
+  contar: 'cuento cuentas cuenta contamos cuentan', costar: 'cuesto cuestas cuesta costamos cuestan', encontrar: 'encuentro encuentras encuentra encontramos encuentran',
+  recordar: 'recuerdo recuerdas recuerda recordamos recuerdan', mostrar: 'muestro muestras muestra mostramos muestran', probar: 'pruebo pruebas prueba probamos prueban',
+  soñar: 'sueño sueñas sueña soñamos sueñan', volar: 'vuelo vuelas vuela volamos vuelan', almorzar: 'almuerzo almuerzas almuerza almorzamos almuerzan',
+  colgar: 'cuelgo cuelgas cuelga colgamos cuelgan', acostar: 'acuesto acuestas acuesta acostamos acuestan',
+  acordar: 'acuerdo acuerdas acuerda acordamos acuerdan', divertir: 'divierto diviertes divierte divertimos divierten', despedir: 'despido despides despide despedimos despiden',
+  convertir: 'convierto conviertes convierte convertimos convierten', sugerir: 'sugiero sugieres sugiere sugerimos sugieren', 
+  parecer: 'parezco pareces parece parecemos parecen', ofrecer: 'ofrezco ofreces ofrece ofrecemos ofrecen', crecer: 'crezco creces crece crecemos crecen', nacer: 'nazco naces nace nacemos nacen',
+  merecer: 'merezco mereces merece merecemos merecen', agradecer: 'agradezco agradeces agradece agradecemos agradecen', obedecer: 'obedezco obedeces obedece obedecemos obedecen',
+  aparecer: 'aparezco apareces aparece aparecemos aparecen', desaparecer: 'desaparezco desapareces desaparece desaparecemos desaparecen', reconocer: 'reconozco reconoces reconoce reconocemos reconocen',
+  leer: 'leo lees lee leemos leen', creer: 'creo crees cree creemos creen', andar: 'ando andas anda andamos andan',
+};
+const ES_NO_PERSON_VERBS = /^(llover|nevar|granizar|amanecer|anochecer)$/;   // weather verbs: only "llueve", no yo/tú forms
 /* ---------------- Your own words: add words from your deck to the Sentence Builder ---------------- */
 // The built-in word lists stay as they are; your words are added on top each time the game starts.
 const BLD_BASE = { n: ES_NOUN.length, a: ES_ADJ.length, v: ES_VERB.length, en: EN_NOUN.length, ea: EN_ADJ.length, ev: EN_VERB.length };
@@ -682,7 +740,16 @@ const BLD_KINDS = [['person', 'a person'], ['animal', 'an animal'], ['food', 'fo
 const bldPlEs = w => /[aeiouáéó]$/.test(w) ? w + 's' : /z$/.test(w) ? w.slice(0, -1) + 'ces' : w.replace(/ón$/, 'on').replace(/án$/, 'an').replace(/én$/, 'en').replace(/és$/, 'es').replace(/ín$/, 'in') + 'es';
 const bldPlEn = w => /(s|x|z|ch|sh)$/.test(w) ? w + 'es' : /[^aeiou]y$/.test(w) ? w.slice(0, -1) + 'ies' : w + 's';
 const bld3sEn = w => /(o|s|x|z|ch|sh)$/.test(w) ? w + 'es' : /[^aeiou]y$/.test(w) ? w.slice(0, -1) + 'ies' : w + 's';
-const bldConj = inf => { const e = inf.slice(-2).replace('í', 'i'), st = inf.slice(0, -2);
+// yo, tú, él, nosotros, ellos: the table above first, then the common patterns, then the regular rule
+function bldConj(inf) {
+  if (/(ar|er|ir|ír)se$/.test(inf)) inf = inf.slice(0, -2);   // levantarse → levantar: same forms, with me/te/se/nos in front
+  if (ES_IRREG_FORMS[inf]) return ES_IRREG_FORMS[inf].split(' ');
+  const r = bldConjRegular(inf);
+  if (/[aeiou]cer$|[aeiou]cir$/.test(inf)) r[0] = inf.slice(0, -3) + 'zco';                       // conocer → conozco, lucir → luzco
+  else if (/[^gq]uir$/.test(inf)) { const st = inf.slice(0, -2); return [st + 'yo', st + 'yes', st + 'ye', st + 'imos', st + 'yen']; }   // concluir → concluyo
+  return r;
+}
+const bldConjRegular = inf => { const e = inf.slice(-2).replace('í', 'i'), st = inf.slice(0, -2);
   return e === 'ar' ? [st + 'o', st + 'as', st + 'a', st + 'amos', st + 'an'] : e === 'er' ? [st + 'o', st + 'es', st + 'e', st + 'emos', st + 'en'] : [st + 'o', st + 'es', st + 'e', st + 'imos', st + 'en']; };
 const bldAdjForms = w => /o$/.test(w) ? [w, w.slice(0, -1) + 'a', w + 's', w.slice(0, -1) + 'as'] : /[aeiou]$/.test(w) ? [w, w, w + 's', w + 's'] : [w, w, bldPlEs(w), bldPlEs(w)];
 const bldGenderGuess = w => /(a|ción|sión|dad|tad|tud|umbre)$/.test(w) ? 'f' : 'm';
@@ -695,28 +762,41 @@ function bldApplyMine() {
     if (!m || !m.w || !m.en || bldKnown(m.w)) continue;
     if (m.k === 'noun') { ES_NOUN.push([m.w, m.pl || null, m.g === 'f' ? 'f' : 'm', m.cat || 'thing', m.en, m.pl ? (m.enPl || bldPlEn(m.en)) : null]); EN_NOUN.push([m.en, m.pl ? (m.enPl || bldPlEn(m.en)) : null, m.cat || 'thing', 0, m.w]); }
     if (m.k === 'verb' && Array.isArray(m.forms) && m.forms.length === 5) { const type = m.obj === 'in' ? 'in' : 'tr', who = m.who === 'a' ? 'a' : 'p', objs = m.obj === 'trp' ? ['person', 'animal'] : ['thing', 'food', 'drink', 'read', 'place'];
-      ES_VERB.push([m.w, m.forms, type, objs, 0, m.en, bld3sEn(m.en), who]); EN_VERB.push([m.en, bld3sEn(m.en), type, objs, 0, m.w, who]); }
+      const refl = /(ar|er|ir|ír)se$/.test(m.w) ? 1 : 0;   // "-se" verbs need me/te/se/nos before them
+      ES_VERB.push([m.w, m.forms, refl && type === 'tr' && !m.objSet ? 'in' : type, objs, 0, m.en, bld3sEn(m.en), who, refl]); EN_VERB.push([m.en, bld3sEn(m.en), refl ? 'in' : type, objs, 0, m.w, who]); }
     if (m.k === 'adj') { const f = bldAdjForms(m.w); ES_ADJ.push([...f, m.en, 'both', 'patflr']); EN_ADJ.push([m.en, 'both', m.w, 'patflr']); }
   }
 }
 const bldClean = s => String(s || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
 function bldSides(d) { const f = langBase(d?.frontLang || ''), b = langBase(d?.backLang || ''); return f === 'es' && b === 'en' ? ['front', 'back'] : b === 'es' && f === 'en' ? ['back', 'front'] : null; }
 // words on this deck's cards that the game doesn't know yet, with a best guess at what kind of word each one is
+/* The deck's word labels (🏷️ Word labels: from the built-in word list or Wiktionary) tell the Sentence Builder what kind of word each card is. */
+const BLD_FROM_LABEL = { noun: 'noun', verb: 'verb', adjective: 'adj' };
+function bldLabelOf(c, side, d) {
+  if (typeof posGuess !== 'function') return '';
+  const lang = side === 'front' ? d?.frontLang : d?.backLang, r = c.pos?.[side];
+  const v = posGuess(c[side], lang) || (r && r.t === (c[side] || '') && r.v?.length ? r.v : null);
+  return v ? v[0] : '';
+}
 function bldCandidates(deckId) {
-  const sides = bldSides(deckById(deckId)); if (!sides) return null;
+  const d = deckById(deckId), sides = bldSides(d); if (!sides) return null;
   const out = [], seen = new Set();
   for (const c of cardsOf(deckId)) {
     let es = bldClean(c[sides[0]]).toLowerCase().replace(/[¡!¿?.,;:]/g, '').trim();
     let enRaw = bldClean(c[sides[1]]).toLowerCase().split(/[,;/]| or /)[0].replace(/[!?.]/g, '').trim();
     const toVerb = /^to\s/.test(enRaw), en = enRaw.replace(/^(to|the|a|an|some)\s+/, '').trim();
-    if (!en || !/^[a-z][a-z' -]*$/.test(en) || en.split(' ').length > 2) continue;
+    if (!en || !/^[a-z][a-z' -]*$/.test(en) || en.split(' ').length > (toVerb ? 3 : 2)) continue;   // "to take a shower" is fine for a verb
     const m = es.match(/^(el|la|un|una)\s+(\p{L}+)$/u);
     const w = m ? m[2] : /^\p{L}+$/u.test(es) ? es : null;
     if (!w || w.length < 2 || seen.has(w) || bldKnown(w)) continue;
     seen.add(w);
     let k = '', g = m ? (/^(la|una)$/.test(m[1]) ? 'f' : 'm') : bldGenderGuess(w);
-    if (m) k = 'noun'; else if (toVerb && /(ar|er|ir|ír)$/.test(w)) k = 'verb';
-    out.push({ w, en, k, g, verbOK: /(ar|er|ir|ír)$/.test(w) });
+    // the deck's word labels (noun, verb, adjective…) come first; otherwise guess from "el/la" and "to …"
+    const lab = BLD_FROM_LABEL[bldLabelOf(c, sides[0], d)] || '';
+    const isVerb = /(ar|er|ir|ír)(se)?$/.test(w);   // levantar or levantarse
+    if (lab && (lab !== 'verb' || isVerb)) k = lab;
+    else if (m) k = 'noun'; else if (toVerb && isVerb) k = 'verb';
+    out.push({ w, en, k, g, verbOK: isVerb, fromLabel: !!lab && k === lab });
   }
   return out;
 }
@@ -743,7 +823,7 @@ function bldWordsDialog() {
       </div>
       <div class="bldw-f f-adj muted small">Forms: ${esc(bldAdjForms(r.w).join(', '))}</div>
     </div>`;
-  const body = `<p class="muted small" style="margin-top:0">These are words on the cards in <b>${esc(d.name)}</b> that the Sentence Builder doesn't know yet. Tell it what kind of word each one is and it will mix them into your sentences. I've made a guess where I could (words with <i>el/la</i> are nouns, and words like <i>“to …”</i> are verbs). Check the verb forms; they're filled in for regular verbs.</p>
+  const body = `<p class="muted small" style="margin-top:0">These are words on the cards in <b>${esc(d.name)}</b> that the Sentence Builder doesn't know yet. Tell it what kind of word each one is and it will mix them into your sentences. I've made a guess where I could (words with <i>el/la</i> are nouns, and words like <i>“to …”</i> are verbs). Verb forms are filled in for you, including common irregular verbs (tengo, pienso, duermo…); check any that look wrong. Verbs ending in “-se” (levantarse) work too: the game adds “me / te / se / nos” before them.</p>
     ${rows.length ? `<div class="bldw-list">${rows.map(row).join('')}</div>` : '<p style="margin:0">Every single word on this deck\'s cards is already in the game (or the cards are longer phrases). 👍</p>'}`;
   openDialog({ title: '📚 Add words from your deck', wide: true, ok: 'Save words', body,
     onOpen: dlg => dlg.querySelector('form').addEventListener('change', e => { if (/^k\d+$/.test(e.target.name)) e.target.closest('.bldw').dataset.k = e.target.value; }),
@@ -904,3 +984,41 @@ function bldShowEnd() {
   // still too long: use a second line rather than scrolling, at a size that's comfortable to read
   line.style.setProperty('--bf', '13px'); line.classList.add('tight', 'wrap');
 }
+
+/* When the Sentence Builder opens, labeled words from the deck are added by themselves, verbs with their real forms
+   (ES_IRREG_FORMS). Verbs ending in -se, and weather verbs, are left out: the game can't check "me / te / se" yet. */
+const BLD_IRREGULAR = /^(ser|estar|ir|tener|hacer|poder|querer|decir|venir|poner|salir|saber|conocer|dar|ver|oír|traer|caer|conducir|traducir|construir|oler|reír|haber|caber|valer|andar|producir|pedir|servir|repetir|seguir|conseguir|elegir|sentir|preferir|mentir|dormir|morir|jugar|pensar|empezar|comenzar|cerrar|despertar|entender|perder|querer|volver|mover|poder|contar|costar|encontrar|recordar|mostrar|probar|soñar|volar|almorzar|acostar|llover|nevar|vestir|medir|reír|sonreír|freír|huir|incluir|destruir|leer|creer|oír|parecer|ofrecer|crecer|nacer|merecer|agradecer|obedecer|aparecer|desaparecer|reconocer)$/;
+function bldAutoAdd(deckId) {
+  let cands; try { cands = bldCandidates(deckId); } catch { return 0; }
+  if (!cands) return 0;
+  const mine = (S.bldWords ||= []), have = new Set(mine.map(m => m.w)); let n = 0;
+  for (const c of cands) {
+    if (!c.fromLabel || !c.k || have.has(c.w)) continue;
+    if (c.k === 'verb' && ES_NO_PERSON_VERBS.test(c.w)) continue;   // weather verbs have no yo/tú forms
+    const e = { w: c.w, en: c.en, k: c.k, deck: deckId, auto: true };
+    if (c.k === 'noun') Object.assign(e, { g: c.g, cat: 'thing', pl: bldPlEs(c.w) });
+    if (c.k === 'verb') Object.assign(e, { forms: bldConj(c.w), obj: /se$/.test(c.w) ? 'in' : 'tr', who: 'p' });
+    mine.push(e); have.add(c.w); n++;
+  }
+  if (n) save();
+  return n;
+}
+{ const openBuilder = startBuilder;
+  startBuilder = function (deckId) {
+    const n = bldAutoAdd(deckId);
+    openBuilder(deckId);
+    if (n) toast(`🏷️ Added ${n} word${n === 1 ? '' : 's'} from this deck's word labels. Check them in 📚 Add my deck's words.`);
+  }; }
+
+/* 🔀 New words with "Keep my sentence" on: the words already in your sentence stay; only the word list below changes.
+   The new list always holds a full sentence of its own (for 💡 Hint), plus look-alike words. */
+function bldNewWords(keep) {
+  const kept = keep ? bld.line.map(id => bld.tray.find(t => t.id === id)).filter(Boolean) : [];
+  bldRound();
+  if (!kept.length) return;
+  const have = new Set(kept.map(c => c.w)), sentenceIds = new Set(bld.example.map(w => w.id));
+  bld.tray = [...kept.map(c => ({ ...c, used: true })), ...bld.tray.filter(c => sentenceIds.has(c.id) || !have.has(c.w))];
+  bld.line = kept.map(c => c.id);
+  bld.msg = '🔀 New words below. Your sentence is still here.';
+}
+Object.assign(actions, { bldNew: () => { if (!bld.done) bld.streak = 0; bldNewWords(!bld.done && S.settings.bldKeep !== false); render(); } });

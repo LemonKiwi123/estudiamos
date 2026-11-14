@@ -302,13 +302,14 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .pack-stage.ready{filter:none;cursor:pointer;animation:packbob 2.2s ease-in-out infinite}
 .pack-stage.ready:hover{transform:scale(1.04) rotate(-2deg)}
 @keyframes packbob{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-8px) rotate(1deg)}}
-.pack{position:relative;width:180px;height:260px;border-radius:16px 16px 12px 12px;background:linear-gradient(155deg,#7b5cff,#3b54e8 45%,#18a0c8);box-shadow:0 14px 30px rgba(59,84,232,.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#fff;overflow:hidden}
-.pack:not(.big){width:110px;height:160px}
-.pack-top{position:absolute;top:10px;font-weight:800;letter-spacing:.05em;font-size:13px;opacity:.9}
-.pack-name{font-weight:800;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.2)}
-.pack-lang{background:rgba(255,255,255,.22);border-radius:99px;padding:2px 10px;font-weight:600;font-size:13px}
-.pack-zig{position:absolute;top:0;left:0;right:0;height:8px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 6px,transparent 6px 12px)}
-.pack-shine{position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.35) 45%,transparent 60%);background-size:250% 100%;animation:holo 2.8s linear infinite}
+.pack{position:relative;width:190px;aspect-ratio:240/340;filter:drop-shadow(0 14px 22px rgba(59,84,232,.38));color:#fff}
+.pack:not(.big){width:116px}
+.pack-svg{display:block;width:100%;height:100%;overflow:visible}
+.pack-svg .pk-holo{animation:pkholo 3.2s linear infinite}
+@keyframes pkholo{0%{transform:translateX(0)}100%{transform:translateX(480px)}}
+@media (prefers-reduced-motion:reduce){ .pack-svg .pk-holo{animation:none} }
+.pack-lang{position:absolute;left:50%;top:72.5%;transform:translateX(-50%);white-space:nowrap;background:rgba(11,15,58,.45);border:1.5px solid rgba(255,255,255,.55);border-radius:99px;padding:2px 12px;font-weight:700;font-size:13px;letter-spacing:.02em;backdrop-filter:blur(2px)}
+.pack:not(.big) .pack-lang{font-size:10px;padding:1px 8px}
 .pack-count{position:absolute;top:-8px;right:-10px;background:var(--again);color:#fff;font-weight:800;border-radius:99px;padding:3px 9px;font-size:13px}
 .rarity-row{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;margin-top:10px}
 .card-row{display:flex;gap:10px;flex-wrap:wrap}
@@ -429,6 +430,13 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .popmenu button:hover{background:var(--surface2)}
 .popmenu button.danger{color:var(--again)}
 .folder{margin-top:16px;border-radius:16px;padding:4px 0}
+/* folders inside folders: indented, with a line in the parent's color */
+.folder-subs{margin:8px 0 0 14px;padding-left:12px;border-left:3px solid color-mix(in srgb,var(--fc,var(--muted)) 35%,transparent)}
+.folder.sub{margin-top:10px}
+.folder.sub .folder-head b{font-size:15px}
+.fv-path{margin-bottom:10px}.fv-path a{cursor:pointer}
+.fv-subs{margin:12px 0 0;padding:0;border:0}
+@media (max-width:640px){ .folder-subs{margin-left:6px;padding-left:8px} }
 .folder-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:color-mix(in srgb,var(--fc,var(--muted)) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--fc,var(--muted)) 35%,var(--border))}
 .folder.loose .folder-head{--fc:var(--muted)}
 .folder-head b{font-size:16px}
@@ -438,6 +446,9 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .folder-empty{padding:16px;border:2px dashed var(--border);border-radius:12px;color:var(--muted);text-align:center;margin-top:10px;font-size:14px}
 .deck-grid.empty-drop{display:block}
 .drop-on{outline:3px dashed var(--accent);outline-offset:3px;border-radius:14px}
+.drop-no{outline:3px dashed var(--again);outline-offset:3px;border-radius:14px;cursor:no-drop}
+section.folder.dragging{opacity:.5}
+.folder-head[draggable=true]{cursor:grab}
 .folder-pick{max-height:200px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-top:6px;display:flex;flex-direction:column;gap:6px}
 .warn-box{background:var(--bad-bg);border:1px solid color-mix(in srgb,var(--again) 40%,transparent);border-radius:12px;padding:10px 14px;font-size:14px}
 #undoToast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);z-index:60;display:flex;align-items:center;gap:12px;background:var(--text);color:var(--bg);padding:8px 10px 8px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:.2s;overflow:hidden}
@@ -559,6 +570,18 @@ table.cards tr.sel-on td{background:color-mix(in srgb,var(--accent) 9%,transpare
 .tour-dots i{width:7px;height:7px;border-radius:50%;background:var(--border)}
 .tour-dots i.on{background:var(--accent);width:18px;border-radius:4px}
 .tour-btns{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+/* Progress: by part of speech */
+.pos-rows{display:grid;gap:12px;margin-top:10px}
+.pos-row{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:12px;align-items:center}
+@media (max-width:640px){ .pos-row{grid-template-columns:1fr;gap:4px} }
+.pos-work{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,#f2a516 14%,var(--surface));margin-top:8px}
+.pos-work.ok{background:color-mix(in srgb,var(--good) 12%,var(--surface))}
+.pos-work-i{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* drag a file onto the page to import (anki.js) */
+#dropImport{position:fixed;inset:0;z-index:3500;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 18%,rgba(15,23,42,.35));pointer-events:none}
+#dropImport .di-box{background:var(--surface);border:3px dashed var(--accent);border-radius:20px;padding:28px 40px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.25);display:grid;gap:6px}
+#dropImport .di-ico{font-size:44px;line-height:1}
+#dropImport b{font-size:20px}
 .pos-tags{display:inline-flex;gap:4px;margin-left:8px;vertical-align:middle;flex-wrap:wrap}
 .pos-tag{display:inline-block;font:700 11px/1.5 system-ui,sans-serif;letter-spacing:.02em;text-transform:lowercase;padding:1px 8px;border-radius:999px;background:#e6e8ee;color:#374151;white-space:nowrap}
 .pos-noun{background:#dbeafe;color:#1e40af}.pos-verb{background:#fee2e2;color:#991b1b}.pos-adj{background:#dcfce7;color:#166534}.pos-adv{background:#e2e8f0;color:#334155}
@@ -1072,6 +1095,28 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .map-x{border:2px solid currentColor;background:none;color:inherit;border-radius:6px;font:inherit;font-weight:800;padding:2px 9px;cursor:pointer;margin-left:4px}
 /* ---------- Lexicon Saga windows (classic dark-blue boxes with white borders) ---------- */
 .sg-screen{background:#000}
+.ng-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ng-modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-top:6px}
+.ng-mode{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;text-align:left;padding:10px 12px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);cursor:pointer;font:inherit}
+.ng-mode span{grid-row:span 2;font-size:24px;align-self:center}.ng-mode small{color:var(--muted)}
+.ng-mode.on{border-color:var(--accent);background:var(--accent-soft)}
+.ng-chip{display:inline-block;margin:2px 4px;padding:1px 8px;border-radius:99px;background:var(--surface2)}
+.ng-sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin:10px 0}
+.ng-sheet.abc{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+.ng-cell{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text);cursor:pointer;font:inherit}
+.ng-cell b{font-size:18px}.ng-cell span{font-size:13px;text-align:center}.ng-cell small{color:var(--again);font-size:11px}
+.ng-review{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;text-align:center}
+.ng-card{max-width:620px;margin:10px auto;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
+.ng-prompt{display:flex;flex-direction:column;align-items:center;gap:8px;min-height:90px;justify-content:center}
+.ng-big{font-size:64px;font-weight:800;line-height:1.1}.ng-big.word{font-size:34px}
+.ng-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.ng-opt{padding:14px 10px;border:2px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-family:inherit;font-weight:600;font-size:20px;line-height:1.25;cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:center}
+.ng-opt kbd{font-size:11px;opacity:.6}
+.ng-opt.right{border-color:var(--good);background:var(--ok-bg)}.ng-opt.wrong{border-color:var(--again);background:var(--bad-bg)}.ng-opt.dim{opacity:.45}
+.ng-verdict{font-size:18px}.ng-verdict.ok{color:var(--good)}.ng-verdict.no{color:var(--again)}
+.ng-typeform{display:flex;gap:8px;width:100%}.ng-typeform input{flex:1;font-size:20px;padding:10px 12px;border-radius:10px;border:2px solid var(--border);background:var(--surface);color:var(--text)}
+.ng-spell{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}.ng-spell i{font-style:normal;font-weight:800;font-size:22px;padding:2px 8px;border-radius:6px;background:var(--surface2)}
+@media (max-width:520px){ .ng-big{font-size:52px} .ng-opt{font-size:17px} }
 .sg-box{position:absolute;left:5px;right:5px;bottom:5px;max-height:calc(100% - 10px);overflow-y:auto;background:#0a1450;color:#fff;border:3px solid #fff;border-radius:8px;box-shadow:0 0 0 2px #0a1450;padding:9px 11px;font:600 15px/1.4 ui-monospace,Consolas,monospace;display:none}
 .sg-box.open{display:block}
 .sg-box.big{top:5px}
@@ -2069,7 +2114,8 @@ views.home = () => {
     <div class="row-between"><h2>${view.favOnly ? '⭐ Favorite decks' : 'Your decks'}</h2><div class="row">
       ${typeof favDecks === 'function' && S.decks.length ? `<button type="button" class="btn${view.favOnly ? ' primary' : ''}" data-act="showFavs" aria-pressed="${!!view.favOnly}" title="${view.favOnly ? 'Show all decks' : 'Show only your favorite decks'}">★ Favorites (${favDecks().length})</button>` : ''}
       ${typeof deckViewToggle === 'function' && S.decks.length ? deckViewToggle() : ''}
-      <button type="button" class="btn" data-act="importFile" title="Anki .apkg / .colpkg, Noji .ofc, CSV or text">Import file…</button>
+      <button type="button" class="btn" data-act="importFile" title="Anki .apkg / .colpkg, Noji .ofc, CSV or text. You can also drag a file onto this page.">Import file…</button>
+      <button type="button" class="btn" data-act="numGame" title="Practice numbers and the alphabet in your target language. No deck needed.">🔢 Numbers &amp; ABC</button>
       <button type="button" class="btn" data-act="newFolder">📁 New folder</button>
       <button type="button" class="btn primary" data-act="newDeck">+ New deck</button></div></div>
     ${S.decks.length && view.favOnly && typeof favHomeList === 'function' ? favHomeList(now, deckCard) : S.decks.length ? (typeof homeListMode === 'function' && homeListMode() ? `<div class="deck-list">${deckSections(d => deckRow(d, now))}</div>`
@@ -2558,11 +2604,15 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="spinspell.js"></script>
 <script src="wordtown.js"></script>
 <script src="trmusic.js"></script>
+<script src="gametr.js"></script>
+<script src="gametr-es.js"></script>
 <script src="trails-data.js"></script>
 <script src="trails-dex.js"></script>
 <script src="trails.js"></script>
 <script src="saga-data.js"></script>
+<script src="saga-part3.js"></script>
 <script src="saga.js"></script>
+<script src="numgame.js"></script>
 <script src="bulkedit.js"></script>
 <script src="pos.js"></script>
 <script src="tour.js"></script>

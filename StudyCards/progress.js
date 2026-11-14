@@ -73,6 +73,63 @@ const fmtWhen = t => {
 const scoreColor = s => s >= 80 ? 'var(--good)' : s >= 50 ? 'var(--hard)' : 'var(--again)';
 
 /* ---------- Progress page ---------- */
+/* ---------- By part of speech: how well you know your nouns, verbs, adjectives… and what to work on ----------
+   The kind of word comes from the same word labels as 🏷️ Word labels and the card list (clPos in cardlist.js).
+   "Right in quizzes & games" uses every saved quiz and game answer for those cards. */
+function posStanding() {
+  if (typeof clPos !== 'function' || typeof POS_GROUPS === 'undefined') return null;
+  const answers = new Map();   // cardId -> [right, total]
+  for (const h of S.history || []) for (const it of h.items || []) { if (!it.cardId) continue; const a = answers.get(it.cardId) || [0, 0]; a[1]++; if (it.ok) a[0]++; answers.set(it.cardId, a); }
+  const groups = new Map(); let unlabeled = 0;
+  for (const c of S.cards) {
+    const k = clPos(c); if (!k) { unlabeled++; continue; }
+    const g = groups.get(k) || { k, cards: [], right: 0, asked: 0, lapses: 0 }; g.cards.push(c);
+    const a = answers.get(c.id); if (a) { g.right += a[0]; g.asked += a[1]; }
+    g.lapses += c.lapses || 0; groups.set(k, g);
+  }
+  const rows = POS_GROUPS.map(([k, name, cls]) => { const g = groups.get(k); if (!g) return null;
+    const lv = levelCounts(g.cards), acc = g.asked ? Math.round(g.right / g.asked * 100) : null;
+    const mast = lv.total ? Math.round(lv.mastered / lv.total * 100) : 0;
+    // one number to compare types: mostly how much you've mastered, plus how often you get them right when practicing
+    const score = acc == null ? mast : Math.round(mast * 0.5 + acc * 0.5);
+    return { k, name, cls, cards: g.cards, lv, acc, asked: g.asked, mast, score, lapses: g.lapses };
+  }).filter(Boolean);
+  const weak = rows.filter(r => r.cards.length >= 5 && (r.lv.new < r.lv.total)).sort((a, b) => a.score - b.score).slice(0, 2)
+    .filter(r => r.score < 70);
+  return { rows, weak, unlabeled };
+}
+function posStandingHtml() {
+  const st = posStanding(); if (!st || !st.rows.length) return '';
+  const plural = r => ({ noun: 'Nouns', verb: 'Verbs', adj: 'Adjectives', adv: 'Adverbs', pron: 'Pronouns', det: 'Articles & determiners', prep: 'Prepositions', conj: 'Conjunctions', num: 'Numbers', int: 'Interjections', other: 'Phrases & other' })[r.k] || r.name;
+  const best = [...st.rows].filter(r => r.cards.length >= 5 && r.lv.new < r.lv.total).sort((a, b) => b.score - a.score)[0];
+  return `<section class="panel" style="margin-top:16px">
+    <div class="row-between"><h3>By part of speech</h3><span class="muted small">From your word labels</span></div>
+    ${st.weak.length ? `<div class="pos-work"><b>🎯 Work on:</b> ${st.weak.map(r => `<span class="pos-work-i"><span class="pos-tag ${r.cls}">${esc(plural(r).toLowerCase())}</span>
+        <span class="muted small">${r.mast}% mastered${r.acc != null ? ` · ${r.acc}% right in practice` : ''}</span>
+        <button type="button" class="btn sm" data-act="posPractice" data-k="${r.k}">Practice</button></span>`).join('')}</div>`
+      : best ? `<div class="pos-work ok">🌟 You're doing well across the board. Strongest: <span class="pos-tag ${best.cls}">${esc(plural(best).toLowerCase())}</span></div>` : ''}
+    <div class="pos-rows">${st.rows.map(r => `<div class="pos-row">
+      <div><span class="pos-tag ${r.cls}">${esc(plural(r).toLowerCase())}</span> <span class="muted small">${r.cards.length} card${r.cards.length === 1 ? '' : 's'}</span></div>
+      <div>${levelBar(r.lv)}<div class="muted small" style="margin-top:4px">${r.mast}% mastered · ${r.lv.learning} learning · ${r.lv.new} new${r.acc != null ? ` · <b style="color:${scoreColor(r.acc)}">${r.acc}%</b> right in quizzes &amp; games (${r.asked})` : ''}</div></div>
+    </div>`).join('')}</div>
+    ${st.unlabeled ? `<p class="muted small" style="margin:8px 0 0">${st.unlabeled} card${st.unlabeled === 1 ? ' has' : 's have'} no word label yet (stacked cards, or words not looked up). Turn on 🏷️ Word labels for a deck to include them.</p>` : ''}
+  </section>`;
+}
+/* Practice a weak part of speech: a quiz on those cards from the deck that has the most of them, hardest first */
+function posPractice(k) {
+  const pick = S.cards.filter(c => clPos(c) === k && !c.frozen);
+  if (pick.length < 2) return toast('Not enough cards of that kind yet');
+  const byDeck = new Map(); for (const c of pick) (byDeck.get(c.deckId) || byDeck.set(c.deckId, []).get(c.deckId)).push(c);
+  const [deckId, cards] = [...byDeck.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+  if (cards.length < 2) return toast('Not enough cards of that kind in one deck yet');
+  const answers = new Map(); for (const h of S.history || []) for (const it of h.items || []) if (it.cardId) { const a = answers.get(it.cardId) || [0, 0]; a[1]++; if (it.ok) a[0]++; answers.set(it.cardId, a); }
+  const hard = c => (cardLevel(c) === 'mastered' ? 0 : 2) + (c.lapses || 0) + (answers.has(c.id) ? 1 - answers.get(c.id)[0] / answers.get(c.id)[1] : 0.5);
+  const chosen = cards.sort((a, b) => hard(b) - hard(a)).slice(0, 15).map(c => c.id);
+  toast(`🎯 A quiz on your hardest ${({ noun: 'nouns', verb: 'verbs', adj: 'adjectives', adv: 'adverbs', pron: 'pronouns', det: 'articles & determiners', prep: 'prepositions', conj: 'conjunctions', num: 'numbers', int: 'interjections', other: 'phrases' })[k] || 'cards'} from “${deckById(deckId).name}”`);
+  startQuiz(deckId, { ...(typeof QUIZ_DEFAULTS !== 'undefined' ? QUIZ_DEFAULTS : {}), ...(typeof quizPrefs !== 'undefined' ? quizPrefs : {}), count: 'all' }, chosen);
+}
+Object.assign(actions, { posPractice: el => posPractice(el.dataset.k) });
+
 views.progress = () => {
   const hist = S.history || [], all = levelCounts(S.cards);
   const f = view.filter || {}, shown = hist.filter(h => (!f.deck || h.deckId === f.deck) && (!f.type || h.type === f.type));
@@ -96,6 +153,7 @@ views.progress = () => {
       <div class="row small" style="gap:18px"><span style="color:var(--good)">● Mastered ${all.mastered}</span><span style="color:var(--accent)">● Learning ${all.learning}</span><span class="muted">● New ${all.new}</span>
         <span class="muted">Mastered = remembered for ${MASTERED_DAYS}+ days in Study</span></div>
     </section>
+    ${posStandingHtml()}
     <section class="stats" style="margin-top:16px">
       <div class="stat"><div class="n">${streak()}</div><div class="l">Day streak</div></div>
       <div class="stat"><div class="n">${last7}</div><div class="l">Reviews, last 7 days</div></div>
