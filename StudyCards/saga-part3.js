@@ -16,7 +16,7 @@ Object.assign(SG_HEROES, {
     look: { hair: 'peaked', capC: 1, shirt: 2, pants: 3, cape: 1, badge: 1 }, colors: { 0: '#f2c29a', 1: '#f4e3a2', 2: '#e8e8f0', 3: '#3a3a5a' } },
 });
 Object.assign(SG_NAMES, { ranger: 'Bram', monk: 'Sefa', rogue: 'Wren', paladin: 'Corin' });
-const SG_PARTY_MAX = 4;   // heroes who travel together; the rest wait at the tavern
+const SG_PARTY_MAX = 5;   // heroes who travel together; the rest wait at the tavern
 
 /* spells and skills. New kinds: cure (one ally's poison and curse), cureAll, allatk (weapon hit on every foe), steal (gold) */
 Object.assign(SG_SPELLS, {

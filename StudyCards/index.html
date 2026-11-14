@@ -330,18 +330,20 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 @keyframes glowpulse{50%{box-shadow:0 0 26px #ffd166}}
 .shiny-note{margin-top:6px;font-weight:700;color:var(--hard)}
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:12px;justify-items:center}
-@media (max-width:640px){
-  .gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .gallery-grid .gal-item{width:100%;display:flex;justify-content:center}
-  .gallery-grid .wcard.sm{width:100%;max-width:112px;padding:4px 4px 6px;border-width:2px;border-radius:10px;gap:2px}
-  .gallery-grid .wcard.sm .wc-top{font-size:9px}
-  .gallery-grid .wcard.sm .wc-art{font-size:30px;border-radius:7px}
-  .gallery-grid .wcard.sm .wc-word{font-size:13px;margin-top:2px}
-  .gallery-grid .wcard.sm .wc-reading,.gallery-grid .wcard.sm .wc-en{font-size:10px}
-  .gallery-grid .wcard.sm .wc-foot{font-size:10px}
-  .gallery-grid .wcard.sm .wc-new{top:20px;font-size:9px;padding:1px 5px}
+@media (max-width:640px){   /* phones: 6 tiny cards per row so the whole collection takes little scrolling */
+  .gallery-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+  .gallery-grid .gal-item{width:100%;min-width:0;display:flex;justify-content:center}
+  .gallery-grid .wcard.sm{width:100%;max-width:72px;min-width:0;padding:2px 2px 3px;border-width:1.5px;border-radius:6px;gap:0;box-shadow:none}
+  .gallery-grid .wcard.sm .wc-top{font-size:7px;justify-content:center}
+  .gallery-grid .wcard.sm .wc-rar{display:none}
+  .gallery-grid .wcard.sm .wc-art{font-size:18px;border-radius:4px;aspect-ratio:1/1}
+  .gallery-grid .wcard.sm .wc-word{font-size:9px;margin-top:1px;line-height:1.1;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+  .gallery-grid .wcard.sm .wc-reading,.gallery-grid .wcard.sm .wc-en{font-size:7.5px;line-height:1.1;max-width:100%;overflow-wrap:anywhere;hyphens:auto}
+  .gallery-grid .wcard.sm .wc-foot{font-size:7px}
+  .gallery-grid .wcard.sm .wc-new{top:9px;font-size:6.5px;padding:0 3px}
+  .gallery-grid .wcard.sm .wc-num,.gallery-grid .wcard.sm .wc-stars{font-size:7px;line-height:1.25;letter-spacing:0}
 }
-@media (max-width:360px){ .gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:340px){ .gallery-grid{grid-template-columns:repeat(5,minmax(0,1fr))} }
 .tr-opt.pad-sel,.sg-opt.pad-sel{outline:4px solid #ffd24a;outline-offset:2px;box-shadow:0 0 0 7px rgba(0,0,0,.35)}
 /* ---------- Sentence Builder ---------- */
 .bld-board{gap:12px;align-items:stretch;text-align:left}
@@ -452,6 +454,8 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .folder-icon{font-size:18px}
 .folder-empty{padding:16px;border:2px dashed var(--border);border-radius:12px;color:var(--muted);text-align:center;margin-top:10px;font-size:14px}
 .deck-grid.empty-drop{display:block}
+.quiz-lock{border:2px solid var(--accent-soft);background:color-mix(in srgb,var(--accent) 6%,var(--surface));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.cl-more{display:flex;justify-content:center;padding:14px 0}
 .drop-on{outline:3px dashed var(--accent);outline-offset:3px;border-radius:14px}
 .drop-no{outline:3px dashed var(--again);outline-offset:3px;border-radius:14px;cursor:no-drop}
 section.folder.dragging{opacity:.5}
@@ -1086,6 +1090,32 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .tr-console.gbc .tr-speaker{display:grid;grid-template-columns:repeat(3,6px);gap:6px;transform:none;right:28px;bottom:22px}
 .tr-console.gbc .tr-speaker i{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,.35);box-shadow:inset 1px 1px 1px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35)}
 .tr-console.gbc .tr-led span{color:#b9b9c6}
+/* see-through cases: tinted clear plastic over the circuit board, chips and gold traces inside */
+.tr-console[data-shell=clear]{--s1:#e8eef5;--s2:#b9c6d6;--ink:#1d2733;--lab:#1d2733;--tint:.18}
+.tr-console[data-shell=clearpurple]{--s1:#a77bff;--s2:#5b2bbf;--ink:#22104a;--lab:#f3ecff;--tint:.42}
+.tr-console[data-shell=clearteal]{--s1:#3fe0d8;--s2:#0f8f8a;--ink:#06302e;--lab:#e6fffd;--tint:.38}
+.tr-console[data-shell=clearberry]{--s1:#ff4d6d;--s2:#b0102e;--ink:#3d0410;--lab:#ffe8ec;--tint:.42}
+.tr-console[data-shell=clearblue]{--s1:#5aa2ff;--s2:#1c4fc2;--ink:#0a1d4a;--lab:#e8f1ff;--tint:.42}
+.tr-console[data-shell=clearlime]{--s1:#9cf05a;--s2:#3f9f1a;--ink:#173d05;--lab:#f2ffe6;--tint:.36}
+.tr-console[data-shell=clearorange]{--s1:#ffae4a;--s2:#d9600f;--ink:#3f1a02;--lab:#fff2e3;--tint:.4}
+.tr-console[data-shell=clearsmoke]{--s1:#6b6f7a;--s2:#2a2c33;--ink:#0d0e11;--lab:#eceef3;--tint:.5}
+.tr-console.gbc.clear{background:
+    radial-gradient(120% 55% at 8% 0%,rgba(255,255,255,.62) 0%,rgba(255,255,255,.22) 28%,rgba(255,255,255,0) 52%),
+    linear-gradient(118deg,rgba(255,255,255,0) 26%,rgba(255,255,255,.26) 34%,rgba(255,255,255,0) 44%),
+    radial-gradient(60% 30% at 92% 100%,rgba(255,255,255,.3) 0%,rgba(255,255,255,0) 60%),
+    linear-gradient(116deg,rgba(255,255,255,0) 26%,rgba(255,255,255,.3) 34%,rgba(255,255,255,.18) 42%,rgba(255,255,255,0) 50%) 0 100%/100% 36% no-repeat,
+    linear-gradient(90deg,rgba(255,255,255,.35) 0,rgba(255,255,255,0) 4%,rgba(255,255,255,0) 96%,rgba(255,255,255,.25) 100%),
+    linear-gradient(165deg,color-mix(in srgb,var(--s1) calc(var(--tint) * 100%),transparent),color-mix(in srgb,var(--s2) calc(var(--tint) * 115%),transparent)),
+    linear-gradient(165deg,color-mix(in srgb,var(--s1) 85%,transparent),color-mix(in srgb,var(--s2) 85%,transparent)),
+    url(console-guts.svg) 0 0/100% 100% no-repeat, #cfd5d9;
+  background-blend-mode:normal,normal,normal,normal,normal,normal,color,normal,normal}
+.tr-console.gbc.clear[data-shell=clear]{background-blend-mode:normal,normal,normal,normal,normal,normal,soft-light,normal,normal}
+.tr-console.gbc.clear .tr-bezel{background:linear-gradient(116deg,rgba(255,255,255,0) 6%,rgba(255,255,255,.26) 10%,rgba(255,255,255,.05) 16%,rgba(255,255,255,0) 20%,rgba(255,255,255,0) 74%,rgba(255,255,255,.12) 77%,rgba(255,255,255,0) 80%),radial-gradient(80% 50% at 6% 0%,rgba(255,255,255,.2),rgba(255,255,255,0) 60%),linear-gradient(180deg,#2c2c36,#1d1d24);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4),inset 0 -1px 0 rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35)}
+.tr-console.gbc.clear{box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--s2) 45%,transparent),inset 0 0 16px color-mix(in srgb,var(--s2) 40%,transparent),inset 0 2px 0 rgba(255,255,255,.95),inset 2px 0 0 rgba(255,255,255,.55),inset -2px 0 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.6),inset 0 0 26px rgba(255,255,255,.3),inset 0 -7px 0 rgba(0,0,0,.22),inset 0 -9px 6px rgba(255,255,255,.18),0 14px 32px rgba(0,0,0,.3),0 2px 4px rgba(0,0,0,.15)}
+.tr-console.gbc.clear .tr-brand,.tr-console.gbc.clear .tr-ab span,.tr-console.gbc.clear .tr-mid span{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.tr-console.gbc.clear .tr-ab{background:rgba(0,0,0,.25)}
+.tr-console.gbc.clear .tr-speaker i{background:rgba(0,0,0,.6)}
+
 /* ---------- 🗺️ game maps (Wordling Trails and Lexicon Saga) ---------- */
 .map-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
 .map-tabs{display:flex;gap:4px}
@@ -1987,6 +2017,24 @@ function makeOptions(correct, all) {
   for (const t of shuffle(all)) { const n = norm(t); if (n && !seen.has(n)) { seen.add(n); others.push(t); } if (others.length >= 3) break; }
   return shuffle([correct, ...others]);
 }
+/* 🔒 Locked words: words you struggled with stay in every quiz on this deck until you unlock them (deck setting d.quizLock = card ids) */
+const quizLocked = d => { const ids = new Set(cardsOf(d.id).map(c => c.id)); return (d.quizLock || []).filter(id => ids.has(id)); };
+function quizLockSetupHtml(d) {
+  const lock = quizLocked(d);
+  if (!lock.length) return `<div class="muted small">🔒 Tip: after a quiz you can lock the words you missed, so every quiz keeps retesting them until you unlock them.</div>`;
+  const sample = lock.slice(0, 6).map(id => esc(plainSent(S.cards.find(c => c.id === id)?.front || ''))).join(', ');
+  return `<div class="quiz-lock"><b>🔒 Locked words</b> <span class="muted small">${lock.length} word${lock.length === 1 ? '' : 's'}: ${sample}${lock.length > 6 ? ' and more' : ''}</span>
+      <label class="check" style="margin-top:6px"><input type="checkbox" name="useLock" checked><span><b>Keep retesting my locked words</b><br><span class="muted small">The quiz uses only these ${lock.length} words. Untick it for new words.</span></span></label>
+      <button type="button" class="btn sm ghost" data-act="quizUnlockAll" data-id="${d.id}">🔓 Unlock all</button></div>`;
+}
+function quizLockResultsHtml(d, missed) {
+  const lock = new Set(quizLocked(d)), newMissed = missed.filter(q => !lock.has(q.cardId));
+  const right = quiz.locked ? quiz.questions.filter(q => (q.result === 'ok' || q.result === 'typo') && lock.has(q.cardId)).length : 0;
+  return `${newMissed.length ? `<button type="button" class="btn" data-act="quizLockMissed" title="Keep retesting these in every quiz until you unlock them">🔒 Lock the ${newMissed.length} I missed</button>` : ''}
+    ${lock.size ? `<button type="button" class="btn" data-act="quizLockRetest">🔁 Retest my ${lock.size} locked word${lock.size === 1 ? '' : 's'}</button>` : ''}
+    ${right ? `<button type="button" class="btn ghost" data-act="quizUnlockRight">🔓 Unlock the ${right} I got right</button>` : ''}
+    ${lock.size ? `<button type="button" class="btn ghost" data-act="quizUnlockAll" data-id="${d.id}">🔓 Unlock all (new words)</button>` : ''}`;
+}
 function buildQuiz(deckId, prefs, onlyCards) {
   const d = deckById(deckId), all = cardsOf(deckId);
   let pool = onlyCards ? all.filter(c => onlyCards.includes(c.id)) : all;
@@ -2185,7 +2233,7 @@ views.deck = () => {
     <div id="cardListHead" style="margin-top:26px"></div>
     <div class="row-between" style="margin:10px 0">
       <span class="muted small" id="cardCount"></span>
-      <div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm ghost" data-act="duplicateDeck" data-id="${d.id}" title="Make a copy of this whole deck">📄 Duplicate deck</button><button type="button" class="btn sm ghost" data-act="mergeDeck" data-id="${d.id}">🔗 Merge…</button>${d.merged?.length ? `<button type="button" class="btn sm ghost" data-act="unmergeDeck" data-id="${d.id}">✂️ Unmerge…</button>` : ''}<button type="button" class="btn sm ghost" style="color:var(--again)" data-act="deleteDeck" data-id="${d.id}">Delete deck</button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm ghost" data-act="duplicateDeck" data-id="${d.id}" title="Make a copy of this whole deck">📄 Duplicate deck</button>${typeof deckSelTools === 'function' ? deckSelTools(d) : ''}<button type="button" class="btn sm ghost" data-act="mergeDeck" data-id="${d.id}">🔗 Merge…</button>${d.merged?.length ? `<button type="button" class="btn sm ghost" data-act="unmergeDeck" data-id="${d.id}">✂️ Unmerge…</button>` : ''}<button type="button" class="btn sm ghost" style="color:var(--again)" data-act="deleteDeck" data-id="${d.id}">Delete deck</button></div>
     </div>
     <div id="cardTable"></div>`;
 };
@@ -2201,15 +2249,35 @@ function renderCardTable() {
   const now = Date.now();
   if (typeof bulkSync === 'function') bulkSync();
   const dups = typeof dupInfo === 'function' ? dupInfo(d.id) : new Map();
-  box.innerHTML = `${typeof dupBanner === 'function' ? dupBanner(d) : ''}<div id="bulkBar"></div><table class="cards"><thead><tr><th class="sel"><input type="checkbox" id="selAll" title="Select all shown cards"></th><th class="side">Front</th><th class="side">Back</th><th class="hide-sm col-status">Status</th><th class="act"></th></tr></thead><tbody>
-    ${cs.map(c => `<tr class="${bulkSel?.has(c.id) ? 'sel-on' : ''}${c.frozen ? ' frozen' : ''}${dups.get(c.id)?.kind === 'exact' ? ' dup-row' : ''}">
+  // Big decks: draw the first cards now and the rest as you scroll, so the page never freezes (phones especially)
+  const prev = renderCardTable.st, keep = prev && prev.deckId === d.id && prev.q === q ? prev.n : 0;
+  const st = renderCardTable.st = { deckId: d.id, q, cs, n: Math.min(cs.length, Math.max(CL_CHUNK, keep)), row: null };
+  const row = st.row = c => `<tr class="${bulkSel?.has(c.id) ? 'sel-on' : ''}${c.frozen ? ' frozen' : ''}${dups.get(c.id)?.kind === 'exact' ? ' dup-row' : ''}">
       <td class="sel"><input type="checkbox" class="cardSel" data-id="${c.id}" ${bulkSel?.has(c.id) ? 'checked' : ''} title="Select card"></td>
       <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${sideHtml(c, 'front', d)}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
       <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${sideHtml(c, 'back', d)}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
       <td class="hide-sm">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c, now)}</td>
       <td class="act"><div class="act-stack"><button type="button" class="icon-btn" data-act="editCard" data-id="${c.id}" title="Edit">${ICON.edit}</button><button type="button" class="icon-btn ${c.frozen ? 'on' : ''}" data-act="clFreeze" data-id="${c.id}" title="${c.frozen ? 'Unfreeze: study this card again' : 'Freeze: skip this card when studying'}">❄️</button><button type="button" class="icon-btn" data-act="duplicateCard" data-id="${c.id}" title="Duplicate this card">📄</button><button type="button" class="icon-btn" data-act="deleteCard" data-id="${c.id}" title="Delete">${ICON.trash}</button></div></td>
-    </tr>`).join('')}</tbody></table>`;
+    </tr>`;
+  box.innerHTML = `${typeof dupBanner === 'function' ? dupBanner(d) : ''}<div id="bulkBar"></div><table class="cards"><thead><tr><th class="sel"><input type="checkbox" id="selAll" title="Select all shown cards"></th><th class="side">Front</th><th class="side">Back</th><th class="hide-sm col-status">Status</th><th class="act"></th></tr></thead><tbody>
+    ${cs.slice(0, st.n).map(row).join('')}</tbody></table>${clMoreHtml(st)}`;
+  clWatchMore();
   if (typeof renderBulkBar === 'function') renderBulkBar();
+}
+const CL_CHUNK = 60;
+const clMoreHtml = st => st.n < st.cs.length ? `<div class="cl-more" id="clMore"><button type="button" class="btn" data-act="clMore">Show more cards (${st.cs.length - st.n} left)</button></div>` : '';
+function clShowMore() {
+  const st = renderCardTable.st, tb = $('#cardTable tbody'); if (!st || !tb || st.n >= st.cs.length) return;
+  const next = st.cs.slice(st.n, st.n + CL_CHUNK * 2); st.n += next.length;
+  tb.insertAdjacentHTML('beforeend', next.map(st.row).join(''));
+  $('#clMore')?.remove(); $('#cardTable').insertAdjacentHTML('beforeend', clMoreHtml(st)); clWatchMore();
+  if (typeof renderBulkBar === 'function') renderBulkBar();
+}
+let clObserver = null;
+function clWatchMore() {
+  clObserver?.disconnect(); const m = $('#clMore'); if (!m || !('IntersectionObserver' in window)) return;
+  clObserver = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) setTimeout(clShowMore, 0); }, { rootMargin: '600px 0px' });
+  clObserver.observe(m);
 }
 function addCard() {
   const n = $('#nn'); if (!$('#nf')) return;
@@ -2295,6 +2363,7 @@ views.quizSetup = () => {
         ${['10', '20', '50'].map(x => radio('count', x, x)).join('')}${radio('count', 'all', `All (${n})`)}</div></div>
       <div><b>Which cards</b><div class="seg">
         ${radio('pool', 'all', 'All cards')}${radio('pool', 'learned', 'Cards I’ve studied')}${radio('pool', 'hard', 'Cards I struggle with')}</div></div>
+      ${quizLockSetupHtml(d)}
       ${cardsOf(d.id).some(c => /<img\b/i.test((c.frontHtml || '') + (c.backHtml || ''))) ? `<div><b>Pictures</b><div class="seg">
         ${radio('pics', 'show', '🖼️ Show pictures')}${radio('pics', 'hide', '🚫 Hide pictures')}</div>
         <div class="muted small" style="margin-top:6px">Hide them to test yourself on the words alone. Cards that are only a picture are left out.</div></div>` : ''}
@@ -2373,6 +2442,7 @@ views.quizResults = () => {
       ${typeof friendTip === 'function' ? friendTip('owl', 'quiz', { pct }, { compact: true }) : ''}
       <div class="row" style="justify-content:center;margin-top:8px">
         ${missed.length ? `<button type="button" class="btn primary" data-act="retryMissed">Retry the ${missed.length} I missed</button>` : ''}
+        ${quizLockResultsHtml(d, missed)}
         <button type="button" class="btn" data-act="quizAgain">New quiz</button>
         <button type="button" class="btn" data-act="home">Back to decks</button>
       </div>
@@ -2492,6 +2562,7 @@ const actions = {
   home: () => go({ name: 'home' }),
   settings: () => go({ name: 'settings' }),
   newDeck: () => deckDialog(null),
+  clMore: () => clShowMore(),
   openDeck: el => go({ name: 'deck', deckId: el.dataset.id }),
   deckSettings: el => deckDialog(deckById(el.dataset.id)),
   importCards: el => importDialog(deckById(el.dataset.id)),
@@ -2527,6 +2598,13 @@ const actions = {
   quizNext: () => quizNext(),
   quizStay: () => { if (quiz) { quiz.autoAt = 0; render(); } },
   quitQuiz: () => { const id = quiz.deckId; confirmDlg('Quit quiz?', 'Your progress in this quiz will be lost.', 'Quit', () => go({ name: 'deck', deckId: id })); },
+  quizLockMissed: () => { const d = deckById(quiz.deckId), ids = quiz.questions.filter(q => q.result === 'bad').map(q => q.cardId), set = new Set(d.quizLock || []), before = set.size;
+    ids.forEach(id => set.add(id)); d.quizLock = [...set]; save(); render(); toast(`🔒 ${set.size - before} word${set.size - before === 1 ? '' : 's'} locked. Your next quizzes on this deck will keep retesting them.`); },
+  quizLockRetest: () => { const d = deckById(quiz.deckId), lock = quizLocked(d); if (lock.length < 1) return toast('No locked words'); startQuiz(d.id, { ...quiz.prefs, count: 'all' }, lock); if (quiz) quiz.locked = true; },
+  quizUnlockRight: () => { const d = deckById(quiz.deckId), right = new Set(quiz.questions.filter(q => q.result === 'ok' || q.result === 'typo').map(q => q.cardId)), before = (d.quizLock || []).length;
+    d.quizLock = (d.quizLock || []).filter(id => !right.has(id)); save(); render(); toast(`🔓 Unlocked ${before - d.quizLock.length} word${before - d.quizLock.length === 1 ? '' : 's'} you got right`); },
+  quizUnlockAll: el => { const d = deckById(el?.dataset?.id || quiz?.deckId || view.deckId); if (!d) return; const was = d.quizLock || []; d.quizLock = []; save(); render();
+    undoToast('🔓 Lock off: quizzes pick new words again', () => { d.quizLock = was; save(); render(); toast('Lock is back on'); }); },
   retryMissed: () => startQuiz(quiz.deckId, quiz.prefs, quiz.questions.filter(q => q.result === 'bad').map(q => q.cardId)),
   quizAgain: () => go({ name: 'quizSetup', deckId: quiz.deckId }),
   testVoice: el => {
@@ -2548,7 +2626,9 @@ document.addEventListener('submit', e => {
     e.preventDefault(); const f = e.target;
     quizPrefs = { mode: f.mode.value, dir: f.dir.value, count: f.count.value, pool: f.pool.value, pics: f.pics?.value || quizPrefs.pics || 'show', limit: f.limit?.value || 'off', reveal: f.reveal?.value || 'now' };
     if (S.settings.quizReveal !== quizPrefs.reveal) { S.settings.quizReveal = quizPrefs.reveal; save(); }   // remembered next time
-    startQuiz(view.deckId, quizPrefs);
+    const lock = f.useLock?.checked ? quizLocked(deckById(view.deckId)) : null;
+    if (lock && lock.length) { startQuiz(view.deckId, quizPrefs, lock); if (quiz) quiz.locked = true; }
+    else startQuiz(view.deckId, quizPrefs);
   }
   if (e.target.id === 'typeForm') {
     e.preventDefault(); const v = $('#typeAns').value;
@@ -2630,6 +2710,8 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="trails.js"></script>
 <script src="saga-data.js"></script>
 <script src="saga-part3.js"></script>
+<script src="saga-part4.js"></script>
+<script src="saga-part5.js"></script>
 <script src="saga.js"></script>
 <script src="numgame.js"></script>
 <script src="bulkedit.js"></script>

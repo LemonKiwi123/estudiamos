@@ -517,7 +517,7 @@ function trAsk(title, then) {
   if (S.settings.trAloud ?? (typeof autoplayOn === 'function' && autoplayOn())) setTimeout(() => speak(prompt, q.lang), 150);
 }
 /* Battle answer timer: run out and you lose your turn. Answer fast for more power, slower for less. */
-const TR_TIMER_CHOICES = [[8, '8 seconds (hard)'], [12, '12 seconds'], [20, '20 seconds (relaxed)'], [0, 'Off (no time limit)']];
+const TR_TIMER_CHOICES = [[2, '2 seconds (lightning)'], [8, '8 seconds (hard)'], [12, '12 seconds'], [20, '20 seconds (relaxed)'], [0, 'Off (no time limit)']];
 const trTimeLimit = () => { const v = S.settings?.trTimer; return v === 0 ? 0 : TR_TIMER_CHOICES.some(c => c[0] === v) ? v : 12; };
 function trSpeedMult(secs, limit) {   // x1.5 within 2 seconds, then a little less every moment, down to x0.75 at the end
   const L = limit || 20, t = Math.max(0, secs - 2), span = Math.max(1, L - 2);
@@ -1152,10 +1152,13 @@ function trMapDraw() {
 }
 setInterval(() => { if (tr?.ui?.type === 'map' && view.name === 'trails') trMapDraw(); }, 400);
 /* ---------- Console color (shared by Wordling Trails and Lexicon Saga) ---------- */
-const TR_SHELLS = [['grape', '🍇 Grape'], ['teal', '🩵 Teal'], ['berry', '🍓 Berry'], ['kiwi', '🥝 Kiwi'], ['dandelion', '🌼 Dandelion'], ['ember', '🧡 Ember'], ['ice', '🧊 Ice'], ['classic', '🩶 Classic gray']];
+const TR_SHELLS = [['grape', '🍇 Grape'], ['teal', '🩵 Teal'], ['berry', '🍓 Berry'], ['kiwi', '🥝 Kiwi'], ['dandelion', '🌼 Dandelion'], ['ember', '🧡 Ember'], ['ice', '🧊 Ice'], ['classic', '🩶 Classic gray'],
+  ['clear', '🫧 Clear'], ['clearpurple', '🔮 Clear purple'], ['clearteal', '💎 Clear teal'], ['clearberry', '🍒 Clear red'],
+  ['clearblue', '🫐 Clear blue'], ['clearlime', '🍏 Clear green'], ['clearorange', '🍊 Clear orange'], ['clearsmoke', '🌫️ Clear smoke']];
+const trShellClear = () => trShell().startsWith('clear');   // see-through cases show the circuit board inside
 const trShell = () => TR_SHELLS.some(([k]) => k === S.settings?.trShell) ? S.settings.trShell : 'grape';
-const trShellAttrs = () => `class="tr-console${trShell() === 'classic' ? '' : ' gbc'}" data-shell="${trShell()}"`;
-function trApplyShell() { document.querySelectorAll('.tr-console').forEach(c => { c.classList.toggle('gbc', trShell() !== 'classic'); c.dataset.shell = trShell(); }); }
+const trShellAttrs = () => `class="tr-console${trShell() === 'classic' ? '' : ' gbc'}${trShellClear() ? ' clear' : ''}" data-shell="${trShell()}"`;
+function trApplyShell() { document.querySelectorAll('.tr-console').forEach(c => { c.classList.toggle('gbc', trShell() !== 'classic'); c.classList.toggle('clear', trShellClear()); c.dataset.shell = trShell(); }); }
 /* menuFn(title, items, back, sel) is each game's own menu; back returns to that game's menu */
 function trShellMenu(menuFn, back) {
   const cur = trShell(), items = TR_SHELLS.map(([k, label]) => ({ label: `${k === cur ? '✅ ' : ''}${label}`, fn: () => { S.settings.trShell = k; save(); trApplyShell(); trShellMenu(menuFn, back); } }));

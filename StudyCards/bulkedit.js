@@ -21,9 +21,11 @@ function renderBulkBar() {
     <button type="button" class="btn sm" data-act="bulkPos" title="Show or hide part-of-speech labels (noun, verb…) on the selected cards">🏷️ Word labels</button>
     <button type="button" class="btn sm" data-act="bulkExamples" title="Find a real example sentence + translation for each selected card that doesn’t have one">✨ Add sentences</button>
     <button type="button" class="btn sm" data-act="bulkDup" title="Make a copy of each selected card in this deck">📄 Duplicate cards</button>
+    <button type="button" class="btn sm" data-act="deckFromSel" title="Make a new deck with copies of only these cards">📦 New deck from these</button>
     <button type="button" class="btn sm" data-act="bulkFreeze" data-on="1" title="Skip these cards when studying">❄️ Freeze</button>
     <button type="button" class="btn sm" data-act="bulkFreeze" data-on="0">Unfreeze</button>
     <button type="button" class="btn sm ghost" data-act="bulkClear">Clear selection</button></div>` : '';
+  const fromSel = $('#deckFromSelBtn'); if (fromSel) fromSel.textContent = `📦 New deck from selected${n ? ` (${n})` : ''}`;
   const all = $('#selAll'), shown = [...document.querySelectorAll('.cardSel')];
   if (all) { const k = shown.filter(x => x.checked).length; all.checked = shown.length > 0 && k === shown.length; all.indeterminate = k > 0 && k < shown.length; }
 }
@@ -181,5 +183,5 @@ Object.assign(actions, {
 document.addEventListener('change', e => {
   const t = e.target;
   if (t.classList?.contains('cardSel')) { t.checked ? bulkSel.add(t.dataset.id) : bulkSel.delete(t.dataset.id); t.closest('tr')?.classList.toggle('sel-on', t.checked); renderBulkBar(); }
-  else if (t.id === 'selAll') { document.querySelectorAll('.cardSel').forEach(x => { x.checked = t.checked; t.checked ? bulkSel.add(x.dataset.id) : bulkSel.delete(x.dataset.id); x.closest('tr')?.classList.toggle('sel-on', t.checked); }); renderBulkBar(); }
+  else if (t.id === 'selAll') { for (const c of renderCardTable.st?.cs || []) t.checked ? bulkSel.add(c.id) : bulkSel.delete(c.id); document.querySelectorAll('.cardSel').forEach(x => { x.checked = t.checked; t.checked ? bulkSel.add(x.dataset.id) : bulkSel.delete(x.dataset.id); x.closest('tr')?.classList.toggle('sel-on', t.checked); }); renderBulkBar(); }
 });

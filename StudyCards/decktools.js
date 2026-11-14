@@ -102,3 +102,43 @@ Object.assign(actions, {
   mergeDeck: el => mergeDeckDialog(deckById(el.dataset.id)),
   unmergeDeck: el => unmergeDeckDialog(deckById(el.dataset.id)),
 });
+
+/* ---------- 🏷️ Select cards by their word label, and 📦 make a new deck from just the selected cards ---------- */
+function deckSelTools(d) {
+  const counts = new Map();
+  for (const c of cardsOf(d.id)) { const k = typeof clPos === 'function' ? clPos(c) : ''; if (k) counts.set(k, (counts.get(k) || 0) + 1); }
+  const groups = (typeof POS_GROUPS !== 'undefined' ? POS_GROUPS : []).filter(([k]) => counts.has(k));
+  const pick = groups.length ? `<select class="inp" id="selByPos" style="margin:0;width:auto;padding:4px 8px;font-size:13px" title="Select every card with this word label">
+      <option value="">🏷️ Select by label…</option>${groups.map(([k, name]) => `<option value="${k}">${esc(name)}s (${counts.get(k)})</option>`).join('')}</select>` : '';
+  return `${pick}<button type="button" class="btn sm ghost" id="deckFromSelBtn" data-act="deckFromSel" data-id="${d.id}" title="Make a new deck with copies of only the cards you selected">📦 New deck from selected${bulkSel?.size ? ` (${bulkSel.size})` : ''}</button>`;
+}
+function deckFromSelDialog(d) {
+  if (typeof bulkSync === 'function') bulkSync();
+  const cards = cardsOf(d.id).filter(c => bulkSel.has(c.id));
+  if (!cards.length) return toast('Select some cards first: tick their boxes, or use 🏷️ Select by label');
+  const kinds = [...new Set(cards.map(c => typeof clPos === 'function' ? clPos(c) : '').filter(Boolean))];
+  const label = kinds.length === 1 ? (POS_GROUPS.find(([k]) => k === kinds[0])?.[1] || kinds[0]) + 's' : 'selected';
+  openDialog({
+    title: `New deck from ${cards.length} selected card${cards.length === 1 ? '' : 's'}`, ok: 'Make deck',
+    body: `<label class="field">Name of the new deck<input name="name" maxlength="80" required value="${esc(`${d.name} · ${label}`)}"></label>
+      <label class="check"><input type="radio" name="prog" value="fresh" checked><span><b>Start fresh</b><br><span class="muted small">The cards are new again in the new deck.</span></span></label>
+      <label class="check"><input type="radio" name="prog" value="keep"><span><b>Keep my study progress</b><br><span class="muted small">The new deck remembers what you already know.</span></span></label>
+      <p class="muted small" style="margin:0">Only the cards you selected are copied. “${esc(d.name)}” isn’t changed.</p>`,
+    onOk: f => {
+      const name = f.name.value.trim() || `${d.name} · ${label}`, keep = f.prog.value === 'keep';
+      const copy = { ...dtDeckCopy(d), id: uid(), name, created: Date.now() }; delete copy.merged;
+      const made = cards.map(c => { const x = { ...dtDeckCopy(c), id: uid(), deckId: copy.id, created: Date.now() }; delete x.mergedFrom; delete x.mergedPath; if (!keep) { Object.assign(x, DT_PROGRESS); delete x.frozen; } return x; });
+      S.decks.splice(S.decks.indexOf(d) + 1, 0, copy); S.cards.push(...made); bulkSel.clear(); save();
+      toast(`Made “${name}” with ${made.length} card${made.length === 1 ? '' : 's'} 📦`); go({ name: 'deck', deckId: copy.id });
+    },
+  });
+}
+Object.assign(actions, { deckFromSel: el => deckFromSelDialog(deckById(el.dataset.id || view.deckId)) });
+document.addEventListener('change', e => {
+  if (e.target.id !== 'selByPos' || view.name !== 'deck') return;
+  const k = e.target.value; if (!k) return;
+  if (typeof bulkSync === 'function') bulkSync();
+  bulkSel.clear(); let n = 0; for (const c of cardsOf(view.deckId)) if (clPos(c) === k) { bulkSel.add(c.id); n++; }
+  e.target.value = ''; if (typeof renderCardTable === 'function') renderCardTable(); renderBulkBar();
+  toast(`Selected ${n} ${(POS_GROUPS.find(([g]) => g === k)?.[1] || k)}${n === 1 ? '' : 's'}`);
+});

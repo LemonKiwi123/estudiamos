@@ -1,4 +1,5 @@
 'use strict';
+let clSearchT = 0;
 /* ================= Deck card list: progress bar, sort, filters and frozen cards =================
    A frozen card stays in the deck (and in games) but is skipped by Study and Quick review until it is unfrozen. */
 const CL_SORTS = [['next', 'Next review'], ['newest', 'Newest'], ['oldest', 'Oldest'], ['az', 'A-Z'], ['za', 'Z-A']];
@@ -116,7 +117,7 @@ function clRenderHead() {
   const a = document.activeElement, hadFocus = a?.id === 'cardSearch', pos = hadFocus ? a.selectionStart : 0;
   box.innerHTML = clHeadHtml(d);
   const s = $('#cardSearch');
-  s.addEventListener('input', e => { view.q = e.target.value; renderCardTable(); });
+  s.addEventListener('input', e => { view.q = e.target.value; clearTimeout(clSearchT); clSearchT = setTimeout(renderCardTable, 180); });
   if (hadFocus) { s.focus(); try { s.setSelectionRange(pos, pos); } catch {} }
 }
 
