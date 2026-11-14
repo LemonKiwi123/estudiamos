@@ -364,6 +364,10 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .bld-key-i{display:inline-flex;align-items:center;gap:5px;color:var(--muted);cursor:help}
 .bld-key-i i{width:12px;height:12px;border-radius:4px;background:var(--tc);display:inline-block}
 .bld-line .bld-chip{background:var(--surface)}
+.bld-line .bld-chip.locked{opacity:1;cursor:default;box-shadow:none}
+.bld-line .bld-slot{border-style:dashed;background:transparent;color:var(--tc,var(--muted))}
+.bld-line .bld-slot .w{letter-spacing:.1em;opacity:.7}
+.bld-line .bld-slot.sel{outline:3px solid var(--accent);outline-offset:2px}
 .bld-chip.bad{border-color:var(--again);background:var(--bad-bg);animation:bldshake .35s}
 .bld-gap{display:inline-block;width:44px;height:40px;border:2px dashed var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .bld-chip.hint{outline:3px solid #ffd24a;outline-offset:2px}

@@ -634,8 +634,8 @@ views.builder = () => {
       <div style="flex:1"><b>🧩 Sentence Builder</b> <span class="muted small">· ${esc(L.name)} grammar</span></div>
       <span class="muted small">✅ ${bld.score}${bld.streak > 1 ? ` · 🔥 ${bld.streak} in a row` : ''}</span></div>
     <div class="flash bld-board" style="min-height:0">
-      <div class="muted small">Tap or drag words to build a sentence in ${esc(L.name)}. Drag a word out to take it back. It only counts if it follows the grammar rules.</div>
-      <div class="bld-line ${bld.done ? 'done' : ''}" aria-label="Your sentence">${line.length ? line.map((c, i) => (bld.gap === i ? '<span class="bld-gap" aria-label="empty spot"></span>' : '') + chipH(c, 'line', i)).join('') : '<span class="muted">Your sentence goes here…</span>'}</div>
+      <div class="muted small">${bld.frame ? `Fill each blank with the right ${esc(bldPosNames())}. The other words are already in place. It only counts if it follows the grammar rules.` : `Tap or drag words to build a sentence in ${esc(L.name)}. Drag a word out to take it back. It only counts if it follows the grammar rules.`}</div>
+      <div class="bld-line ${bld.done ? 'done' : ''}" aria-label="Your sentence">${bld.frame ? bldFrameHtml(chipH) : line.length ? line.map((c, i) => (bld.gap === i ? '<span class="bld-gap" aria-label="empty spot"></span>' : '') + chipH(c, 'line', i)).join('') : '<span class="muted">Your sentence goes here…</span>'}</div>
       ${bldHeatHTML(line)}
       ${bld.msg ? `<div class="bld-msg ${bld.done ? 'ok' : bld.gap != null ? 'ex' : 'no'}">${bld.msg}</div>` : ''}
       ${bld.showEx && !bld.done ? `<div class="bld-msg ex">💡 One sentence you could make: <b>${esc(bldSentence(bld.example, bld.lang))}</b>${bld.english ? ` <span class="muted">(${esc(bld.english)})</span>` : ''}</div>` : ''}
@@ -675,17 +675,20 @@ function bldCheckNow() {
 }
 Object.assign(actions, {
   // a word you take out of the sentence leaves a gap; the next word you tap fills that gap
-  bldPick: el => { const c = bld.tray.find(t => t.id === +el.dataset.id); if (!c || c.used || bld.done) return; c.used = true;
+  bldPick: el => { const c = bld.tray.find(t => t.id === +el.dataset.id); if (!c || c.used || bld.done) return; if (bld.frame) return bldFill(c);
+    c.used = true;
     if (bld.gap != null && bld.gap <= bld.line.length) bld.line.splice(bld.gap, 0, c.id); else bld.line.push(c.id);
     bld.gap = null; bld.msg = null; bld.bad = -1; bld.hint = -1; render(); },
-  bldRemove: el => { if (bld.done) return; const id = +el.dataset.id, at = bld.line.indexOf(id); bld.line = bld.line.filter(x => x !== id); const c = bld.tray.find(t => t.id === id); if (c) c.used = false;
+  bldRemove: el => { if (bld.done) return; if (bld.frame) return bldUnfill(+el.dataset.id); const id = +el.dataset.id, at = bld.line.indexOf(id); bld.line = bld.line.filter(x => x !== id); const c = bld.tray.find(t => t.id === id); if (c) c.used = false;
     bld.gap = at < bld.line.length ? at : null; bld.msg = at < bld.line.length ? '✏️ Tap a word below to put it in that spot.' : null; bld.bad = -1; render(); },
-  bldUndo: () => { bld.gap = null; const id = bld.line.pop(); const c = bld.tray.find(t => t.id === id); if (c) c.used = false; bld.msg = null; bld.bad = -1; render(); },
-  bldClear: () => { bld.gap = null; bld.line = []; bld.tray.forEach(c => { c.used = false; }); bld.msg = null; bld.bad = -1; render(); },
+  bldUndo: () => { if (bld.frame) return bldUnfill(bld.filled.at(-1)); bld.gap = null; const id = bld.line.pop(); const c = bld.tray.find(t => t.id === id); if (c) c.used = false; bld.msg = null; bld.bad = -1; render(); },
+  bldClear: () => { if (bld.frame) { [...bld.filled].forEach(id => bldUnfill(id, true)); return render(); } bld.gap = null; bld.line = []; bld.tray.forEach(c => { c.used = false; }); bld.msg = null; bld.bad = -1; render(); },
   bldNew: () => { if (!bld.done) bld.streak = 0; bldRound(); render(); },
   bldCheck: () => bldCheckNow(),
   bldHint: () => {
     // if your sentence so far matches mine, light up my next word; otherwise show my whole sentence
+    if (bld.frame) { const i = bld.frame.findIndex((f, j) => !f.fixed && bld.fill[j] == null), want = bld.example[i], c = want && bld.tray.find(t => !t.used && t.w === want.w);
+      bld.hint = c ? c.id : -1; bld.msg = c ? `💡 Try “${esc(c.w)}” in the ${i === bld.frame.findIndex((f, j) => !f.fixed) ? 'first' : 'next'} blank.` : null; if (!c) bld.showEx = true; bld.fails = Math.max(bld.fails, 1); return render(); }
     const ex = bld.example, line = bld.line.map(id => bld.tray.find(t => t.id === id));
     const prefix = line.every((c, i) => ex[i] && ex[i].w === c.w);
     if (prefix && line.length < ex.length) { const want = ex[line.length], c = bld.tray.find(t => !t.used && t.w === want.w); bld.hint = c ? c.id : -1; bld.msg = c ? `💡 Try “${esc(c.w)}” next.` : null; }
@@ -891,6 +894,7 @@ Object.assign(actions, { bldWords: () => bldWordsDialog() });
     noClick = true; setTimeout(() => { noClick = false; }, 400);
     const { id, from, at } = d; end();
     const c = bld.tray.find(t => t.id === id); if (!c || bld.done) return;
+    if (bld.frame) { if (c.locked) return; const slot = document.elementFromPoint(e.clientX, e.clientY)?.closest('.bld-slot'); if (at != null) { if (from === 'line') bldUnfill(id, true); bldFill(c, slot ? +slot.dataset.i : null); } else if (from === 'line') bldUnfill(id); return; }
     bld.line = bld.line.filter(x => x !== id);
     if (at != null) { c.used = true; bld.line.splice(Math.min(at, bld.line.length), 0, id); }
     else c.used = false;   // dragged out of the sentence: back to the word list
@@ -1060,3 +1064,43 @@ Object.assign(actions, {
     bldNewWords(!bld.done && S.settings.bldKeep !== false); render();
   },
 });
+
+/* ✏️ Fill-in mode: when you practice only some word types, the other words of the sentence are put in place and locked,
+   and you fill the blanks from a word list that has only the types you picked (just nouns, just verbs…). */
+const bldPosNames = () => { const s = bldPosSel() || []; const n = s.map(k => BLD_TYPES[k][0] + 's'); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n.at(-1) : n[0] || 'words'; };
+function bldFrameLine() { bld.line = bld.frame.map((f, i) => f.fixed ?? bld.fill[i]).filter(x => x != null); }
+function bldFill(c, at) {
+  let i = at != null && bld.frame[at] && !bld.frame[at].fixed ? at : bld.slotSel != null && bld.fill[bld.slotSel] == null ? bld.slotSel : bld.frame.findIndex((f, j) => !f.fixed && bld.fill[j] == null);
+  if (i < 0) { bld.msg = '✏️ Every blank is full. Tap a word in the sentence to take it out first.'; return render(); }
+  if (bld.fill[i] != null) bldUnfill(bld.fill[i], true);
+  bld.fill[i] = c.id; c.used = true; bld.filled.push(c.id); bld.slotSel = null; bldFrameLine();
+  Object.assign(bld, { msg: null, bad: -1, hint: -1 }); render();
+}
+function bldUnfill(id, quiet) {
+  const i = bld.fill.indexOf(id); if (id == null || i < 0) return quiet ? null : render();
+  bld.fill[i] = null; bld.filled = bld.filled.filter(x => x !== id); const c = bld.tray.find(t => t.id === id); if (c) c.used = false;
+  bld.slotSel = i; bldFrameLine(); Object.assign(bld, { msg: null, bad: -1, hint: -1 }); if (!quiet) render();
+}
+function bldFrameHtml(chipH) {
+  return bld.frame.map((f, i) => {
+    if (f.fixed != null) { const c = bld.tray.find(t => t.id === f.fixed); return chipH(c, 'line', bld.line.indexOf(c.id)).replace('<button type="button" class="bld-chip', '<button type="button" disabled class="bld-chip locked'); }
+    const id = bld.fill[i]; if (id != null) return chipH(bld.tray.find(t => t.id === id), 'line', bld.line.indexOf(id));
+    return `<button type="button" class="bld-chip bld-slot t-${f.type}${bld.slotSel === i ? ' sel' : ''}" data-act="bldSlot" data-i="${i}" ${bld.done ? 'disabled' : ''} aria-label="Blank: ${esc(BLD_TYPES[f.type][0])}">${bld.tags ? `<span class="t">${esc(BLD_TYPES[f.type][0])}</span>` : ''}<span class="w">＿＿</span></button>`;
+  }).join('');
+}
+const bldRoundPicked = bldRound;
+bldRound = function () {
+  bld.frame = null;
+  const sel = bldPosSel(); if (!sel) return bldRoundPicked();
+  // a sentence that has at least one of the picked types (try a few)
+  let tries = 0; do { bldRoundPicked(); } while (++tries < 120 && !bld.example.some(w => sel.includes(bldType(w))));
+  if (!bld.example.some(w => sel.includes(bldType(w)))) return;   // none found: plain round
+  const ids = new Set(bld.example.map(w => w.id));
+  bld.frame = bld.example.map(w => sel.includes(bldType(w)) ? { type: bldType(w) } : { fixed: w.id });
+  bld.tray.forEach(t => { if (ids.has(t.id) && !sel.includes(bldType(t))) { t.used = true; t.locked = true; } });
+  bld.tray = bld.tray.filter(t => t.locked || sel.includes(bldType(t)));   // the word list: only the picked types
+  Object.assign(bld, { fill: bld.frame.map(() => null), filled: [], slotSel: null }); bldFrameLine();
+};
+const bldNewWordsBase = bldNewWords;
+bldNewWords = keep => bldPosSel() ? bldRound() : bldNewWordsBase(keep);
+Object.assign(actions, { bldSlot: el => { if (!bld?.frame || bld.done) return; bld.slotSel = +el.dataset.i; bld.msg = '✏️ Now tap a word below to put it in that blank.'; render(); } });
