@@ -259,7 +259,7 @@ function trSpriteGrid(A, face, step, ride) {
     case 'short': hair(3); if (down) { P(3, 4 + sh, 3); P(12, 4 + sh, 3); } if (side) Rc(9, 4 + sh, 4, 3, 3); if (back) hair(8); break;
     case 'tuft': hair(3); if (down) { P(3, 4 + sh, 3); P(12, 4 + sh, 3); } if (side) Rc(10, 4 + sh, 3, 2, 3); if (back) hair(7); break;   // a rounded mop
     case 'long': { const hc = A.hairC ?? 3; hair(3, hc); if (down) { Rc(3, 4 + sh, 2, 7, hc); Rc(11, 4 + sh, 2, 7, hc); } if (side) Rc(8, 4 + sh, 5, 7, hc); if (back) { hair(8, hc); Rc(4, 9, 8, 2, hc); } break; }
-    case 'bun': hair(3, 1); Rc(6, 0, 4, 2, 1); if (down) { P(3, 4, 1); P(12, 4, 1); } if (side) Rc(9, 4, 4, 2, 1); if (back) hair(6, 1); break;
+    case 'bun': hair(3, 1); Rc(6, 1, 4, 1, 1); if (down) { P(3, 4, 1); P(12, 4, 1); } if (side) { Rc(9, 4, 4, 2, 1); Rc(12, 2, 2, 3, 1); } if (back) { hair(6, 1); Rc(6, 2, 4, 3, 2); Rc(7, 1, 2, 1, 2); } break;   // a round bun at the back, not on top
     case 'bald': if (!back) { Rc(3, 4, 1, 2, 1); Rc(12, 4, 1, 2, 1); } if (side) Rc(10, 4, 3, 3, 1); if (back) Rc(3, 4, 10, 3, 1); break;
     case 'cap': hair(3, A.capC); if (down) { Rc(3, 4, 10, 1, 3); P(7, 2, 0); P(8, 2, 0); } if (side) { Rc(1, 4, 7, 1, 3); Rc(10, 4, 3, 2, 3); } if (back) { hair(4, A.capC); Rc(4, 5, 8, 3, 3); } break;
     case 'peaked': hair(3, A.capC); P(2, 3, A.capC); P(13, 3, A.capC); if (down) { Rc(3, 4, 10, 1, 3); P(7, 2, 1); P(8, 2, 1); } if (side) Rc(1, 4, 6, 1, 3); if (back) { hair(4, A.capC); Rc(4, 5, 8, 3, 3); } break;
@@ -267,7 +267,7 @@ function trSpriteGrid(A, face, step, ride) {
     case 'sailorcap': hair(2, 0); Rc(4, 3, 8, 1, 3); P(7, 1, 0); P(8, 1, 0); if (side) Rc(10, 4, 3, 2, 3); if (back) Rc(3, 4, 10, 4, 3); break;
     case 'bandana': hair(3, 1); if (side) { Rc(10, 4, 3, 2, 3); P(13, 3, 1); P(13, 4, 1); } if (back) { hair(7); Rc(5, 2, 6, 2, 1); P(7, 4, 1); P(8, 4, 1); } break;
     case 'hood': headRows(2, 8, 2); if (down) { Rc(5, 4, 6, 4, 0); Rc(5, 7, 6, 1, 3); } if (side) { Rc(3, 4, 4, 4, 0); Rc(3, 7, 4, 1, 3); } break;   // a smooth, round hood
-    case 'slick': hair(3); if (down) { Rc(3, 4, 1, 3, 3); Rc(12, 4, 1, 3, 3); P(8, 2, 1); } if (side) Rc(8, 4, 5, 3, 3); if (back) hair(8); break;
+    case 'slick': hair(3); if (down) { Rc(3, 4, 1, 3, 3); Rc(12, 4, 1, 3, 3); } if (side) Rc(8, 4, 5, 3, 3); if (back) hair(8); break;
     case 'spiky': hair(3); if (down) { Rc(3, 4, 1, 2, 3); Rc(12, 4, 1, 2, 3); P(5, 4, 3); P(10, 4, 3); } if (side) Rc(9, 4, 4, 3, 3); if (back) hair(8); break;   // full, rounded hair with bangs (no spikes)
   }
   if (A.beard && !back) down ? (Rc(5, 7, 6, 2, 1), Rc(6, 6, 4, 1, 1), Rc(6, 9, 4, 1, 1)) : (Rc(3, 7, 4, 2, 1), P(4, 9, 1));

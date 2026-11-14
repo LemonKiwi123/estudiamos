@@ -938,8 +938,9 @@ function sgClassGear(g, key, dir) {
   const face = dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'side', flip = dir === 'right';
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(flip ? 16 - x - w : x, y, w, h); };
   const O = '#141420';
+  const dome = (c, sides = 3) => { R(6, 1, 4, 1, c); R(5, 2, 6, 1, c); R(4, 3, 8, 1, c); if (sides) { R(3, 4, 1, sides, c); R(12, 4, 1, sides, c); } };   // follows the round head
   if (key === 'ranger') {
-    R(3, 0, 10, 3, '#2e6b2e'); R(2, 2, 2, 5, '#2e6b2e'); R(12, 2, 2, 5, '#2e6b2e'); R(7, 0, 2, 1, '#4f9a3c');   // green hood
+    dome('#2e6b2e'); R(7, 1, 2, 1, '#4f9a3c');   // green hood
     if (face === 'up') { R(9, 5, 3, 8, '#6b4226'); R(9, 4, 1, 2, '#f6f6f0'); R(11, 4, 1, 2, '#f6f6f0'); R(10, 3, 1, 2, '#c0392b'); }   // quiver of arrows
     else if (face === 'down') { R(13, 4, 1, 1, '#8b5a2b'); R(14, 5, 1, 7, '#8b5a2b'); R(13, 12, 1, 1, '#8b5a2b'); R(13, 5, 1, 7, '#e8e8e8'); }   // bow in the right hand
     else { R(1, 4, 1, 1, '#8b5a2b'); R(0, 5, 1, 7, '#8b5a2b'); R(1, 12, 1, 1, '#8b5a2b'); R(1, 5, 1, 7, '#e8e8e8'); R(10, 6, 2, 6, '#6b4226'); R(10, 5, 1, 1, '#f6f6f0'); }
@@ -949,12 +950,12 @@ function sgClassGear(g, key, dir) {
     if (face !== 'up') { for (let i = 0; i < 4; i++) R(5 + i * 2, 9, 1, 1, '#5e3a1a'); R(7, 10, 2, 1, '#5e3a1a'); }   // prayer beads
     R(4, 13, 8, 1, '#c0392b');   // sash
   } else if (key === 'rogue') {
-    R(3, 0, 10, 3, '#2c2c3e'); R(2, 2, 2, 6, '#2c2c3e'); R(12, 2, 2, 6, '#2c2c3e');   // dark hood
+    dome('#2c2c3e', 4);   // dark hood
     if (face === 'down') { R(5, 7, 6, 2, '#2c2c3e'); R(13, 9, 1, 4, '#dfe5ee'); R(13, 13, 1, 1, '#f4c542'); R(2, 9, 1, 4, '#dfe5ee'); R(2, 13, 1, 1, '#f4c542'); }   // face mask, two daggers
     else if (face === 'side') { R(3, 7, 4, 2, '#2c2c3e'); R(1, 9, 1, 4, '#dfe5ee'); R(1, 13, 1, 1, '#f4c542'); }
     else { R(4, 3, 8, 6, '#2c2c3e'); R(6, 9, 4, 1, '#8e2c3a'); }   // hood from behind, belt
   } else if (key === 'paladin') {
-    R(4, 0, 8, 4, '#dfe5ee'); R(4, 0, 8, 1, '#8e9aae'); R(7, 0, 2, 1, '#f4c542'); if (face !== 'up') R(5, 3, 6, 1, O);   // silver helm with a gold crest
+    dome('#dfe5ee', 2); R(6, 1, 4, 1, '#8e9aae'); R(7, 0, 2, 2, '#f4c542');   // round silver helm with a small gold crest
     if (face === 'down') { R(1, 8, 4, 6, '#f6f6f0'); R(1, 8, 4, 1, '#f4c542'); R(2, 9, 2, 4, '#f6f6f0'); R(2, 10, 2, 1, '#f4c542'); R(2.5, 9, 1, 4, '#f4c542'); R(13, 5, 1, 7, '#dfe5ee'); R(12, 11, 3, 1, '#f4c542'); }
     else if (face === 'side') { R(0, 8, 3, 6, '#f6f6f0'); R(1, 9, 1, 4, '#f4c542'); R(0, 10, 3, 1, '#f4c542'); }
     else { R(5, 7, 6, 7, '#f6f6f0'); R(7, 8, 2, 5, '#f4c542'); R(6, 9, 4, 1, '#f4c542'); }   // cape with a gold cross
