@@ -1424,6 +1424,18 @@ nav .ni{display:none}
 <input type="file" id="fileInput" hidden>
 
 <script>
+/* In the Android app the web view has no speech voices of its own: speak through the phone's text-to-speech instead */
+if (window.AndroidTTS && !('speechSynthesis' in window)) {
+  window.SpeechSynthesisUtterance = function (text) { this.text = text; this.lang = ''; this.rate = 1; this.voice = null; };
+  window.speechSynthesis = { speaking: false, addEventListener() {}, removeEventListener() {},
+    getVoices() { let v = []; try { v = JSON.parse(AndroidTTS.voices()); } catch {}
+      return v.length ? v : ['es-ES', 'es-MX', 'en-US', 'en-GB', 'fr-FR', 'de-DE', 'it-IT', 'pt-BR', 'pt-PT', 'ja-JP', 'ko-KR', 'zh-CN', 'ru-RU', 'nl-NL', 'pl-PL', 'tr-TR', 'ar-SA', 'hi-IN']
+        .map(l => ({ name: `Phone voice (${l})`, lang: l, voiceURI: 'android:' + l, localService: true })); },
+    speak(u) { AndroidTTS.speak(String(u.text || ''), (u.voice && u.voice.lang) || u.lang || '', +u.rate || 1); },
+    cancel() { AndroidTTS.stop(); }, pause() {}, resume() {} };
+}
+</script>
+<script>
 'use strict';
 /* ================= Utilities ================= */
 const $ = s => document.querySelector(s);

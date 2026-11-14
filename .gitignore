@@ -9,9 +9,12 @@
 !/docs/
 !/StudyCards/
 !/Release tools/
+!/Android app/
 
 # never these, even inside the allowed folders
 PRIVATE-signing-key.pem
+PRIVATE-android-key.*
+/Android app/build/
 *.pem.bak
 /Release tools/notes/
 /StudyCards/release-manifest.json
