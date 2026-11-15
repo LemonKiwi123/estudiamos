@@ -359,7 +359,12 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .bld-pos{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin-top:10px}
 .bld-pos-b{--tc:var(--accent);border:2px solid var(--tc);background:transparent;color:var(--tc);border-radius:99px;padding:3px 11px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .bld-pos-b.on{background:var(--tc);color:#fff}
-.t-noun{--tc:#2f6fd6}.t-verb{--tc:#d23b3b}.t-adj{--tc:#1f9a52}.t-pron{--tc:#8a4fd8}.t-det{--tc:#c98a00}.t-prep{--tc:#0f9b8e}.t-conj{--tc:#d6337f}.t-adv{--tc:#5b6b80}
+.t-noun{--tc:#2f6fd6}.t-verb{--tc:#d23b3b}.t-adj{--tc:#1f9a52}.t-pron{--tc:#8a4fd8}.t-det{--tc:#c98a00}.t-prep{--tc:#0f9b8e}.t-conj{--tc:#d6337f}.t-adv{--tc:#5b6b80}.t-part{--tc:#e8590c}
+.starter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:8px 10px;border:1px dashed var(--border);border-radius:10px}
+.gt-report{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin:8px auto 0;text-align:center}
+.gt-lines{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;margin:6px 0 10px;padding:2px}
+.gt-line{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);border-radius:10px;cursor:pointer}.gt-line:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.gt-line span{display:flex;flex-direction:column;gap:2px}.gt-line small{font-size:12px}
 .bld-chip[class*=" t-"]{border-color:color-mix(in srgb,var(--tc) 55%,var(--border));box-shadow:0 2px 0 color-mix(in srgb,var(--tc) 45%,var(--border))}
 .bld-chip .t{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--tc);border-radius:999px;padding:1px 7px;margin-bottom:2px;line-height:1.4}
 .bld-key{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin:14px 0 0;font-size:13px}
@@ -1781,7 +1786,7 @@ function deckDialog(deck) {
   const d = deck || { name: '', frontLang: 'es-ES', backLang: 'en-US', newPerDay: 20, direction: 'front' };
   openDialog({
     title: deck ? 'Deck settings' : 'New deck', ok: deck ? 'Save' : 'Create deck',
-    body: `
+    body: `${!deck && typeof startersHtml === 'function' ? startersHtml() : ''}
       <div class="grid2">
         <label class="field">Deck name<input name="name" required maxlength="80" value="${esc(d.name)}" placeholder="e.g. French verbs"></label>
         <label class="field">Folder<select name="folder">${typeof folderOptions === 'function' ? folderOptions(d.folderId) : ''}</select></label>
@@ -2743,6 +2748,9 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="trmusic.js"></script>
 <script src="gametr.js"></script>
 <script src="gametr-es.js"></script>
+<script src="gametr-fr.js"></script>
+<script src="gametr-ja.js"></script>
+<script src="gametr-more.js"></script>
 <script src="trails-data.js"></script>
 <script src="trails-dex.js"></script>
 <script src="trails.js"></script>
@@ -2764,6 +2772,9 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="scan.js"></script>
 <script src="gamepad.js"></script>
 <script src="builder.js"></script>
+<script src="builder-fr.js"></script>
+<script src="builder-ja.js"></script>
+<script src="starters.js"></script>
 <script src="cardlist.js"></script>
 <script src="decktools.js"></script>
 <script src="layout.js"></script>

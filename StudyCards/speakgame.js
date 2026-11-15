@@ -11,7 +11,17 @@ const SK_ARTICLES = {
 let sk = null;
 const skLang = d => String(d?.frontLang || '').split('-')[0].toLowerCase();
 /* the same words written two ways match: no accents, capitals, punctuation or leading article */
+/* Japanese: no spaces or punctuation, katakana and hiragana count as the same, and common words written in kanji
+   (from the Sentence Builder's word list) are turned back into kana, because the recognizer often answers in kanji */
+let skJaMap = null;
+function skNormJa(text) {
+  if (!skJaMap) { skJaMap = []; for (const L of [typeof JA_NOUN !== 'undefined' && JA_NOUN, typeof JA_ADJ !== 'undefined' && JA_ADJ, typeof JA_PRON !== 'undefined' && JA_PRON]) for (const x of L || []) if (x[1] && x[1] !== x[0]) skJaMap.push([x[1], x[0]]); skJaMap.sort((a, b) => b[0].length - a[0].length); }
+  let t = String(text || '').normalize('NFKC').replace(/[\s。、．，！？!?.,「」『』（）()・…〜~"“”]/g, '');
+  for (const [kanji, kana] of skJaMap) if (t.includes(kanji)) t = t.split(kanji).join(kana);
+  return t.replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));   // katakana → hiragana
+}
 function skNorm(text, lang) {
+  if (lang === 'ja') return skNormJa(text);
   let t = String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[¿¡!?.,;:"“”«»()\[\]{}…]/g, ' ').replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
   for (const a of (SK_ARTICLES[lang] || []).slice().sort((x, y) => y.length - x.length)) {
     const art = a.normalize('NFD').replace(/[̀-ͯ]/g, '');
@@ -26,6 +36,10 @@ function skLev(a, b) {
 }
 /* every way the card can be said: "perro / can" -> ["perro", "can"]; notes in brackets are left out */
 function skAnswers(card, lang) {
+  if (lang === 'ja') {   // 犬（いぬ）: the word and its reading in brackets both count
+    const f = plainSent(card.front), inside = [...f.matchAll(/[（(]([^）)]*)[）)]/g)].map(m => m[1]);
+    return [...new Set([f.replace(/[（(][^）)]*[）)]/g, ' '), ...inside].flatMap(x => x.split(/[\/,;|、・]/)).map(x => skNorm(x, lang)).filter(Boolean))];
+  }
   const raw = plainSent(card.front).replace(/\([^)]*\)/g, ' ');
   return [...new Set(raw.split(/[\/,;|]|\bor\b/).map(x => skNorm(x, lang)).filter(Boolean))];
 }
@@ -37,9 +51,9 @@ function skMatch(heard, card, lang) {
     const said = skNorm(h, lang); if (!said) continue;
     for (const a of answers) {
       if (said === a) return { ok: true, close: false, heard: h };
-      if ((' ' + said + ' ').includes(' ' + a + ' ')) return { ok: true, close: false, heard: h };
-      const slip = Math.max(1, Math.floor(a.length / 6));
-      if (a.length >= 6 && skLev(said, a) <= slip && !best.ok) best = { ok: true, close: true, heard: h };
+      if (lang === 'ja' ? a.length >= 2 && said.includes(a) : (' ' + said + ' ').includes(' ' + a + ' ')) return { ok: true, close: false, heard: h };
+      const slip = Math.max(1, Math.floor(a.length / 6)), longEnough = lang === 'ja' ? a.length >= 4 : a.length >= 6;   // Japanese words are short in kana
+      if (longEnough && skLev(said, a) <= slip && !best.ok) best = { ok: true, close: true, heard: h };
     }
   }
   return best;

@@ -1,11 +1,11 @@
 'use strict';
 /* Keeps a copy of the app on the device so it opens with no connection (needs https or localhost).
    Always tries the PC first so updates arrive; falls back to the saved copy when the PC can't be reached. */
-const CACHE = 'estudiar-app-v212';
+const CACHE = 'estudiar-app-v220';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-256.png', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'estudiar.ico', 'console-guts.svg',
   'mascot.js', 'rich.js', 'profiles.js', 'quick.js', 'progress.js', 'streak.js', 'rewards.js', 'runner.js', 'themes.js', 'friends.js', 'avatar.js',
   'packs.js', 'dictionary.js', 'folders.js', 'sentences.js', 'tower.js', 'showdown.js', 'millionaire.js', 'calendar.js', 'priceparty.js', 'spinspell.js',
-  'wordtown.js', 'trmusic.js', 'gametr.js', 'gametr-es.js', 'trails-data.js', 'trails-dex.js', 'trails.js', 'saga-data.js', 'saga-part3.js', 'saga-part4.js', 'saga-part5.js', 'saga-part6.js', 'saga.js', 'numgame.js', 'speakgame.js', 'bulkedit.js', 'pos.js', 'tour.js', 'phoneguide.js', 'updates.js', 'community.js', 'favs.js', 'scan.js', 'gamepad.js', 'builder.js', 'cardlist.js', 'decktools.js', 'layout.js', 'mobile.js', 'qr.js', 'syncmerge.js', 'sync.js', 'games.js', 'anki.js', 'lib/fzstd.js', 'lib/sql-wasm.js', 'lib/sql-wasm-binary.js'];
+  'wordtown.js', 'trmusic.js', 'gametr.js', 'gametr-es.js', 'gametr-fr.js', 'gametr-ja.js', 'gametr-more.js', 'trails-data.js', 'trails-dex.js', 'trails.js', 'saga-data.js', 'saga-part3.js', 'saga-part4.js', 'saga-part5.js', 'saga-part6.js', 'saga.js', 'numgame.js', 'speakgame.js', 'bulkedit.js', 'pos.js', 'tour.js', 'phoneguide.js', 'updates.js', 'community.js', 'favs.js', 'scan.js', 'gamepad.js', 'builder.js', 'builder-fr.js', 'builder-ja.js', 'starters.js', 'cardlist.js', 'decktools.js', 'layout.js', 'mobile.js', 'qr.js', 'syncmerge.js', 'sync.js', 'games.js', 'anki.js', 'lib/fzstd.js', 'lib/sql-wasm.js', 'lib/sql-wasm-binary.js'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, { cache: 'reload' })).catch(() => {})))).then(() => self.skipWaiting()));
 });

@@ -195,10 +195,7 @@ function sgNames() {
 }
 function sgLangLabel() { return gtLangLabel(sg?.d?.frontLang); }
 function sgLangMenu() {
-  const b = gtBase(sg.d?.frontLang), ok = !!GT_BOOKS[b], on = !!sgLang();
-  sgMenu('🌐 Game language', [{ label: `${!on ? '✅ ' : ''}English`, fn: () => { S.settings.gameLang = 'en'; save(); sgLangMenu(); } },
-    { label: `${on ? '✅ ' : ''}${ok ? GT_LANG_NAMES[b] : (langName(sg.d?.frontLang) || 'Your language')}`, sub: ok ? 'Menus, battles and the story in the language you are learning. Names stay the same.' : 'Not ready yet for this deck’s language. Spanish decks can use it.', disabled: !ok,
-      fn: () => { S.settings.gameLang = 'target'; save(); sgLangMenu(); } }], () => sgOptions(3));
+  sgMenu('🌐 Game language', gtLangItems(sg.d?.frontLang, sgLangMenu), () => sgOptions(3));
 }
 function sgBox() { sgBoxRaw(); const l = sgLang(), q = sg?.ui?.q; if (l) gtBox($('#sgBox'), l, sgNames().concat(q ? [q.answer, q.given] : [])); }
 function sgBoxRaw() {
@@ -944,7 +941,7 @@ function sgTileArt(ch, theme) {
       case 'M': if (OW) { grass(); g.fillStyle = OW.mountD; g.beginPath(); g.moveTo(0, 16); g.lineTo(8, 1); g.lineTo(16, 16); g.fill(); g.fillStyle = OW.mount; g.beginPath(); g.moveTo(3, 16); g.lineTo(8, 4); g.lineTo(13, 16); g.fill(); R(6, 2, 4, 3, OW.cap); break; }
         if (theme === 'desert') { sand(); g.fillStyle = '#9a6a3a'; g.beginPath(); g.moveTo(0, 16); g.lineTo(8, 1); g.lineTo(16, 16); g.fill(); g.fillStyle = '#c8955a'; g.beginPath(); g.moveTo(3, 16); g.lineTo(8, 4); g.lineTo(13, 16); g.fill(); R(6, 3, 4, 2, '#e8c890'); break; }
         grass(); g.fillStyle = SGC.mountD; g.beginPath(); g.moveTo(0, 16); g.lineTo(8, 1); g.lineTo(16, 16); g.fill(); g.fillStyle = SGC.mount; g.beginPath(); g.moveTo(3, 16); g.lineTo(8, 4); g.lineTo(13, 16); g.fill(); R(6, 2, 4, 3, 'snow'); break;
-        R(0, 0, 16, 16, 'water'); R(2, 4, 4, 1, 'waterL'); R(9, 10, 4, 1, 'waterL'); R(12, 3, 2, 1, 'waterL'); break;
+      case 'W': R(0, 0, 16, 16, 'water'); R(2, 4, 4, 1, 'waterL'); R(9, 10, 4, 1, 'waterL'); R(12, 3, 2, 1, 'waterL'); break;
       case 'B': R(0, 0, 16, 16, 'water'); R(1, 0, 14, 16, 'wood'); for (let y = 1; y < 16; y += 4) R(1, y, 14, 1, 'woodD'); R(1, 0, 1, 16, 'woodD'); R(14, 0, 1, 16, 'woodD'); break;
       case 'P': if (OW) { R(0, 0, 16, 16, OW.road); R(3, 3, 2, 1, OW.roadD); R(10, 9, 2, 1, OW.roadD); R(6, 13, 1, 1, OW.roadD); break; }
         R(0, 0, 16, 16, 'sand'); R(3, 3, 2, 1, 'sandD'); R(10, 9, 2, 1, 'sandD'); R(6, 13, 1, 1, 'sandD'); break;
@@ -1432,6 +1429,7 @@ views.saga = () => {
         </div>
       </div>
       <p class="muted small tr-keys">${(() => { const k = trKeys(), f = a => k[a].map(trKeyName).join('/'); return `Move ${f('up')} ${f('left')} ${f('down')} ${f('right')} · A ${f('a')} · B ${f('b')} · Menu ${f('menu')} · 1–6 answer · Enter casts a spell`; })()}</p>
+      ${typeof gtReportBtn === 'function' ? gtReportBtn(sg.d?.frontLang, 'Lexicon Saga') : ''}
     </div>`;
 };
 Object.assign(actions, {

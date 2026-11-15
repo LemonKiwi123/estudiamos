@@ -6,6 +6,7 @@
 const NG_LANGS = {
   es: { name: 'Spanish', flag: '🇪🇸', tts: 'es-ES' }, fr: { name: 'French', flag: '🇫🇷', tts: 'fr-FR' }, de: { name: 'German', flag: '🇩🇪', tts: 'de-DE' },
   it: { name: 'Italian', flag: '🇮🇹', tts: 'it-IT' }, pt: { name: 'Portuguese', flag: '🇧🇷', tts: 'pt-BR' }, en: { name: 'English', flag: '🇬🇧', tts: 'en-GB' },
+  ja: { name: 'Japanese', flag: '🇯🇵', tts: 'ja-JP', kana: true },
 };
 /* ---------- number words, 0 to 1000 ---------- */
 const NG_WORDS = {
@@ -63,6 +64,13 @@ const NG_WORDS = {
     if (n === 1000) return 'mil'; if (n === 100) return 'cem'; if (n < 100) return two(n);
     return h[Math.floor(n / 100)] + (n % 100 ? ' e ' + two(n % 100) : '');
   },
+  ja(n) {   // in kana, written together: にじゅうさん (23), さんびゃく (300), はっぴゃく (800)
+    const u = ['ゼロ', 'いち', 'に', 'さん', 'よん', 'ご', 'ろく', 'なな', 'はち', 'きゅう'];
+    const h = ['', 'ひゃく', 'にひゃく', 'さんびゃく', 'よんひゃく', 'ごひゃく', 'ろっぴゃく', 'ななひゃく', 'はっぴゃく', 'きゅうひゃく'];
+    const two = x => x < 10 ? u[x] : (x >= 20 ? u[Math.floor(x / 10)] : '') + 'じゅう' + (x % 10 ? u[x % 10] : '');
+    if (n === 1000) return 'せん'; if (n < 100) return two(n);
+    return h[Math.floor(n / 100)] + (n % 100 ? two(n % 100) : '');
+  },
 };
 /* ---------- alphabets with the name of each letter ---------- */
 const NG_ABC = {
@@ -71,6 +79,7 @@ const NG_ABC = {
   fr: 'a:a b:bé c:cé d:dé e:e f:effe g:gé h:ache i:i j:ji k:ka l:elle m:emme n:enne o:o p:pé q:qu r:erre s:esse t:té u:u v:vé w:double vé x:ixe y:i grec z:zède',
   de: 'a:a b:be c:ce d:de e:e f:ef g:ge h:ha i:i j:jot k:ka l:el m:em n:en o:o p:pe q:ku r:er s:es t:te u:u v:vau w:we x:ix y:ypsilon z:zett ä:a-Umlaut ö:o-Umlaut ü:u-Umlaut ß:Eszett',
   it: 'a:a b:bi c:ci d:di e:e f:effe g:gi h:acca i:i j:i lunga k:cappa l:elle m:emme n:enne o:o p:pi q:cu r:erre s:esse t:ti u:u v:vu w:doppia vu x:ics y:ipsilon z:zeta',
+  ja: 'あ:a い:i う:u え:e お:o か:ka き:ki く:ku け:ke こ:ko さ:sa し:shi す:su せ:se そ:so た:ta ち:chi つ:tsu て:te と:to な:na に:ni ぬ:nu ね:ne の:no は:ha ひ:hi ふ:fu へ:he ほ:ho ま:ma み:mi む:mu め:me も:mo や:ya ゆ:yu よ:yo ら:ra り:ri る:ru れ:re ろ:ro わ:wa を:wo ん:n',
   pt: 'a:á b:bê c:cê d:dê e:é f:efe g:gê h:agá i:i j:jota k:cá l:ele m:eme n:ene o:ó p:pê q:quê r:erre s:esse t:tê u:u v:vê w:dáblio x:xis y:ípsilon z:zê',
 };
 const ngAbc = l => NG_ABC[l].split(/ (?=\S:)/).reduce((a, p) => { const i = p.indexOf(':'); a.push([p.slice(0, i), p.slice(i + 1)]); return a; }, []);
@@ -101,13 +110,14 @@ function ngQuestion() {
   if (ng.mode === 'abcHear' || ng.mode === 'abcName') {
     const abc = ngAbc(L), pick = abc[Math.floor(Math.random() * abc.length)], others = shuffle(abc.filter(x => x[0] !== pick[0])).slice(0, 3);
     q.letter = pick[0]; q.name = pick[1];
-    q.opts = shuffle([pick, ...others]).map(([l, nm]) => ng.mode === 'abcHear' ? l.toUpperCase() + ' ' + l : nm);
-    q.answer = ng.mode === 'abcHear' ? pick[0].toUpperCase() + ' ' + pick[0] : pick[1];
-    q.say = pick[1];
+    const kana = NG_LANGS[L].kana, show = l => kana ? l : l.toUpperCase() + ' ' + l;
+    q.opts = shuffle([pick, ...others]).map(([l, nm]) => ng.mode === 'abcHear' ? show(l) : nm);
+    q.answer = ng.mode === 'abcHear' ? show(pick[0]) : pick[1];
+    q.say = kana ? pick[0] : pick[1];
   } else if (ng.mode === 'abcSpell') {
     const n = ngPickNum(), w = words(n), opts = ngNear(n).map(words);
     q.n = n; q.answer = w; q.opts = opts; q.spell = [...w.replace(/[\s-]/g, '')];
-    const names = Object.fromEntries(ngAbc(L)); q.say = q.spell.map(ch => names[ch.toLowerCase()] || ch).join(', ');
+    const names = Object.fromEntries(ngAbc(L)); q.say = q.spell.map(ch => NG_LANGS[L].kana ? ch : names[ch.toLowerCase()] || ch).join(', ');
   } else {
     const n = ngPickNum(); q.n = n; q.word = words(n);
     if (ng.mode === 'hear' || ng.mode === 'read') { q.opts = ngNear(n).map(String); q.answer = String(n); }
@@ -165,7 +175,7 @@ views.numgame = () => {
       </div>
       <details class="panel" style="margin-top:14px"><summary><b>📖 Cheat sheet: ${NG_LANGS[L].name}</b></summary>
         <div class="ng-sheet">${[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 30, 40, 50, 60, 70, 80, 90, 100, 200, 500, 1000].map(n => `<button type="button" class="ng-cell" data-act="ngSayIt" data-t="${esc(NG_WORDS[L](n))}"><b>${n}</b><span>${esc(NG_WORDS[L](n))}</span></button>`).join('')}</div>
-        <div class="ng-sheet abc">${ngAbc(L).map(([l, nm]) => `<button type="button" class="ng-cell" data-act="ngSayIt" data-t="${esc(nm)}"><b>${l.toUpperCase()}${l}</b><span>${esc(nm)}</span></button>`).join('')}</div>
+        <div class="ng-sheet abc">${ngAbc(L).map(([l, nm]) => `<button type="button" class="ng-cell" data-act="ngSayIt" data-t="${esc(NG_LANGS[L].kana ? l : nm)}"><b>${NG_LANGS[L].kana ? l : l.toUpperCase() + l}</b><span>${esc(nm)}</span></button>`).join('')}</div>
         <p class="muted small">Tap any box to hear it. Examples: ${sample}</p></details>`;
   }
   if (ng.done) {
@@ -174,7 +184,7 @@ views.numgame = () => {
       <div class="panel stack" style="text-align:center"><div style="font-size:48px">${ng.right >= 9 ? '🏆' : ng.right >= 6 ? '🎉' : '💪'}</div>
         <h2 style="margin:0">${ng.right} / ${ng.total} right</h2>
         <p class="muted" style="margin:0">${NG_LANGS[ng.lang].flag} ${NG_LANGS[ng.lang].name} · ${NG_MODES[ng.mode].label}${ng.newBest ? ' · ⭐ new best!' : ''}${ng.nuts ? ` · +${ng.nuts} 🥜` : ''} · best streak ${ng.best}</p>
-        ${wrong.length ? `<div class="ng-review">${wrong.map(q => `<button type="button" class="ng-cell wrong" data-act="ngSayIt" data-t="${esc(q.say && !q.spell ? q.say : q.answer)}"><b>${q.n != null ? q.n : q.letter ? q.letter.toUpperCase() + q.letter : ''}</b><span>${esc(q.n != null ? NG_WORDS[ng.lang](q.n) : q.name || q.answer)}</span><small>you: ${esc(q.given || '—')}</small></button>`).join('')}</div>` : '<p>Perfect round! ✨</p>'}
+        ${wrong.length ? `<div class="ng-review">${wrong.map(q => `<button type="button" class="ng-cell wrong" data-act="ngSayIt" data-t="${esc(q.say && !q.spell ? q.say : q.answer)}"><b>${q.n != null ? q.n : q.letter ? (NG_LANGS[ng.lang].kana ? q.letter : q.letter.toUpperCase() + q.letter) : ''}</b><span>${esc(q.n != null ? NG_WORDS[ng.lang](q.n) : q.name || q.answer)}</span><small>you: ${esc(q.given || '—')}</small></button>`).join('')}</div>` : '<p>Perfect round! ✨</p>'}
         <div class="row" style="justify-content:center"><button type="button" class="btn primary" data-act="ngStart">Play again</button><button type="button" class="btn" data-act="ngSetup">Change mode</button></div></div>`;
   }
   const q = ng.q, done = q.given != null, M = NG_MODES[ng.mode];
@@ -182,7 +192,7 @@ views.numgame = () => {
   if (ng.mode === 'hear' || ng.mode === 'abcHear') prompt = `<button type="button" class="btn big" data-act="ngReplay">🔊 Play again</button><button type="button" class="btn sm ghost" data-act="ngReplay" data-slow="1">🐢 Slower</button>`;
   else if (ng.mode === 'abcSpell') prompt = `<button type="button" class="btn big" data-act="ngReplay" data-slow="1">🔊 Spell it again</button>${done ? `<div class="ng-spell">${q.spell.map(c => `<i>${esc(c)}</i>`).join('')}</div>` : ''}`;
   else if (ng.mode === 'read') prompt = `<div class="ng-big word">${esc(q.word)}</div>`;
-  else if (ng.mode === 'abcName') prompt = `<div class="ng-big">${q.letter.toUpperCase()} ${q.letter}</div>`;
+  else if (ng.mode === 'abcName') prompt = `<div class="ng-big">${NG_LANGS[ng.lang].kana ? q.letter : q.letter.toUpperCase() + ' ' + q.letter}</div>`;
   else prompt = `<div class="ng-big">${q.n}</div>`;
   const opts = ng.mode === 'type'
     ? `<form class="ng-typeform" id="ngForm"><input id="ngType" autocomplete="off" autocapitalize="off" spellcheck="false" lang="${NG_LANGS[ng.lang].tts}" placeholder="Type it in ${NG_LANGS[ng.lang].name}…" ${done ? 'disabled' : ''} value="${done ? esc(q.given) : ''}"><button type="submit" class="btn primary" ${done ? 'disabled' : ''}>Check</button></form>`

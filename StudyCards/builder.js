@@ -603,7 +603,7 @@ const BLD_TYPES = {
   pron: ['pronoun', 'who does it: yo, ella, we…'], noun: ['noun', 'a person, place or thing'], verb: ['verb', 'an action or a state: como, es…'],
   adj: ['adjective', 'describes a noun: grande, roja…'], det: ['determiner', 'comes before a noun: el, una, mi, este…'], prep: ['preposition', 'links words: en, con, para, de…'],
   conj: ['conjunction', 'joins two parts: y, pero, o'], adv: ['adverb', 'how, when or where: hoy, siempre, no, muy…'] };
-const bldType = c => ({ neg: 'adv', int: 'adv', be: 'verb', dont: 'verb', not: 'adv', pa: 'prep', al: 'prep', refl: 'pron' })[c.k] || c.k;
+const bldType = c => ({ neg: 'adv', int: 'adv', be: 'verb', dont: 'verb', not: 'adv', pa: 'prep', al: 'prep', refl: 'pron', pas: 'adv', cop: 'verb' })[c.k] || c.k;
 const bldTag = c => { if (c.k === 'det') return c.cls === 'art' || ['the', 'a', 'an'].includes(c.w) ? 'article' : 'determiner'; return BLD_TYPES[bldType(c)]?.[0] || ''; };
 function startBuilder(deckId) {
   const d = deckById(deckId), fl = langBase(d?.frontLang || ''), bl = langBase(d?.backLang || '');
@@ -619,8 +619,9 @@ function bldRound() {
   const tray = shuffle([...g.words, ...g.extra]).map(c => ({ ...c, used: false }));
   Object.assign(bld, { heatShown: 0, gap: null, tray, line: [], example: g.words, english: g.english, msg: null, bad: -1, fails: 0, done: false, hint: -1, showEx: false });
 }
-const bldSentence = (words, lang) => { const s = words.map(w => w.w).join(' '); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
-const bldGloss = c => (bld.lang === 'es' ? (c.k === 'verb' ? 'to ' + c.e[5] : c.en) : (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[2] : c.k === 'verb' ? c.e[5] : '')) || (c.e && (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[4] : ''))
+// French l' and j' join the next word with no space
+const bldSentence = (words, lang) => { if (BLD_LANGS[lang]?.noSpaces) return words.map(w => w.w).join('') + '。'; const s = words.reduce((t, w, i) => i && !/'$/.test(words[i - 1].w) ? t + ' ' + w.w : t + w.w, ''); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
+const bldGloss = c => c.gloss || (bld.lang === 'es' || bld.lang === 'fr' ? (c.k === 'verb' ? 'to ' + c.e[5] : c.en) : (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[2] : c.k === 'verb' ? c.e[5] : '')) || (c.e && (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[4] : ''))
   || ({ el: 'the', la: 'the', los: 'the', las: 'the', un: 'a', una: 'a', unos: 'some', unas: 'some', no: 'not', en: 'in', a: '(to)', al: '(to the)' })[c.w] || '';
 
 views.builder = () => {
@@ -664,7 +665,7 @@ views.builder = () => {
 function bldCheckNow() {
   const line = bld.line.map(id => bld.tray.find(t => t.id === id)), r = BLD_LANGS[bld.lang].check(line);
   if (r.ok) {
-    const L = BLD_LANGS[bld.lang], d = deckById(bld.deckId), text = bldSentence(line, bld.lang), meaning = bld.lang === 'es' ? esEnglish(r.P) : null;
+    const L = BLD_LANGS[bld.lang], d = deckById(bld.deckId), text = bldSentence(line, bld.lang), meaning = L.english ? L.english(r.P) : null;
     bld.done = true; bld.bad = -1; bld.score++; bld.streak++; bld.best = Math.max(bld.best, bld.streak);
     const pts = bld.fails ? 2 : 3; if (typeof addPoints === 'function') addPoints(pts);
     bld.msg = `🎉 <b>${esc(text)}</b>${meaning ? `<br><span class="muted">${esc(meaning)}</span>` : ''}<br><span class="small">Correct ${L.name}! +${pts} points</span>`;
@@ -763,16 +764,20 @@ const bldKnown = w => ES_NOUN.slice(0, BLD_BASE.n).some(n => n[0] === w || n[1] 
 function bldApplyMine() {
   ES_NOUN.length = BLD_BASE.n; ES_ADJ.length = BLD_BASE.a; ES_VERB.length = BLD_BASE.v; EN_NOUN.length = BLD_BASE.en; EN_ADJ.length = BLD_BASE.ea; EN_VERB.length = BLD_BASE.ev;
   for (const m of S.bldWords || []) {
-    if (!m || !m.w || !m.en || bldKnown(m.w)) continue;
+    if (!m || (m.lang && m.lang !== 'es') || !m.w || !m.en || bldKnown(m.w)) continue;
     if (m.k === 'noun') { ES_NOUN.push([m.w, m.pl || null, m.g === 'f' ? 'f' : 'm', m.cat || 'thing', m.en, m.pl ? (m.enPl || bldPlEn(m.en)) : null]); EN_NOUN.push([m.en, m.pl ? (m.enPl || bldPlEn(m.en)) : null, m.cat || 'thing', 0, m.w]); }
     if (m.k === 'verb' && Array.isArray(m.forms) && m.forms.length === 5) { const type = m.obj === 'in' ? 'in' : 'tr', who = m.who === 'a' ? 'a' : 'p', objs = m.obj === 'trp' ? ['person', 'animal'] : ['thing', 'food', 'drink', 'read', 'place'];
       const refl = /(ar|er|ir|ír)se$/.test(m.w) ? 1 : 0;   // "-se" verbs need me/te/se/nos before them
       ES_VERB.push([m.w, m.forms, refl && type === 'tr' && !m.objSet ? 'in' : type, objs, 0, m.en, bld3sEn(m.en), who, refl]); EN_VERB.push([m.en, bld3sEn(m.en), refl ? 'in' : type, objs, 0, m.w, who]); }
     if (m.k === 'adj') { const f = bldAdjForms(m.w); ES_ADJ.push([...f, m.en, 'both', 'patflr']); EN_ADJ.push([m.en, 'both', m.w, 'patflr']); }
   }
+  if (typeof frApplyMine === 'function') frApplyMine();
+  if (typeof jaApplyMine === 'function') jaApplyMine();
 }
+const bldMineKey = m => (m.lang || 'es') + ':' + m.w;
 const bldClean = s => String(s || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\[[^\]]*\]|\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
-function bldSides(d) { const f = langBase(d?.frontLang || ''), b = langBase(d?.backLang || ''); return f === 'es' && b === 'en' ? ['front', 'back'] : b === 'es' && f === 'en' ? ['back', 'front'] : null; }
+function bldSides(d) { const f = langBase(d?.frontLang || ''), b = langBase(d?.backLang || ''), ok = l => typeof BLD_MINE !== 'undefined' ? !!BLD_MINE[l] : l === 'es';
+  return ok(f) && b === 'en' ? ['front', 'back', f] : ok(b) && f === 'en' ? ['back', 'front', b] : null; }
 // words on this deck's cards that the game doesn't know yet, with a best guess at what kind of word each one is
 /* The deck's word labels (🏷️ Word labels: from the built-in word list or Wiktionary) tell the Sentence Builder what kind of word each card is. */
 const BLD_FROM_LABEL = { noun: 'noun', verb: 'verb', adjective: 'adj' };
@@ -784,29 +789,29 @@ function bldLabelOf(c, side, d) {
 }
 function bldCandidates(deckId) {
   const d = deckById(deckId), sides = bldSides(d); if (!sides) return null;
-  const out = [], seen = new Set();
+  const out = [], seen = new Set(), L = BLD_MINE[sides[2]];
   for (const c of cardsOf(deckId)) {
-    let es = bldClean(c[sides[0]]).toLowerCase().replace(/[¡!¿?.,;:]/g, '').trim();
+    let es = bldClean(c[sides[0]]).toLowerCase().replace(/[¡!¿?.,;:]/g, '').replace(/’/g, "'").trim();
     let enRaw = bldClean(c[sides[1]]).toLowerCase().split(/[,;/]| or /)[0].replace(/[!?.]/g, '').trim();
     const toVerb = /^to\s/.test(enRaw), en = enRaw.replace(/^(to|the|a|an|some)\s+/, '').trim();
-    if (!en || !/^[a-z][a-z' -]*$/.test(en) || en.split(' ').length > (toVerb ? 3 : 2)) continue;   // "to take a shower" is fine for a verb
-    const m = es.match(/^(el|la|un|una)\s+(\p{L}+)$/u);
-    const w = m ? m[2] : /^\p{L}+$/u.test(es) ? es : null;
-    if (!w || w.length < 2 || seen.has(w) || bldKnown(w)) continue;
+    if (!en || !/^[a-z][a-z' -]*$/.test(en) || en.split(' ').length > (toVerb ? 4 : 2)) continue;   // "to take a shower", "to go for a walk" are fine for a verb
+    const m = L.parse(es), w = m?.w;
+    if (!w || w.length < (sides[2] === 'ja' ? 1 : 2) || seen.has(w) || L.known(w)) continue;   // one kanji (犬) is a whole word
     seen.add(w);
-    let k = '', g = m ? (/^(la|una)$/.test(m[1]) ? 'f' : 'm') : bldGenderGuess(w);
+    let k = '', g = m.g || L.gender(w);
     // the deck's word labels (noun, verb, adjective…) come first; otherwise guess from "el/la" and "to …"
     const lab = BLD_FROM_LABEL[bldLabelOf(c, sides[0], d)] || '';
-    const isVerb = /(ar|er|ir|ír)(se)?$/.test(w);   // levantar or levantarse
+    const isVerb = L.isVerb(w);   // levantar / levantarse, parler / se laver
     if (lab && (lab !== 'verb' || isVerb)) k = lab;
-    else if (m) k = 'noun'; else if (toVerb && isVerb) k = 'verb';
-    out.push({ w, en, k, g, verbOK: isVerb, fromLabel: !!lab && k === lab });
+    else if (m.art) k = 'noun'; else if (toVerb && isVerb) k = 'verb';
+    else if (sides[2] === 'ja' && !toVerb) k = /い$/.test(w) ? 'adj' : 'noun';   // Japanese has no articles: most single words are nouns, and many ending in い are adjectives
+    out.push({ w, en, k, g, verbOK: isVerb, fromLabel: !!lab && k === lab, lang: sides[2], read: m.read || null });
   }
   return out;
 }
 function bldWordsDialog() {
-  const cands = bldCandidates(bld.deckId), mine = S.bldWords || [], d = deckById(bld.deckId);
-  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with Spanish ↔ English decks. Set this deck's front and back languages to Spanish and English in Deck settings, then come back.</p>`, onOk: () => {} }); return; }
+  const cands = bldCandidates(bld.deckId), d = deckById(bld.deckId), lang = bldSides(d)?.[2] || 'es', L = BLD_MINE[lang], mine = (S.bldWords || []).filter(m => (m.lang || 'es') === lang);
+  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with Spanish, French and Japanese decks that have English on the other side. Set this deck's front and back languages in Deck settings (for example French and English), then come back.</p>`, onOk: () => {} }); return; }
   // words you already added (from any deck) come first, with what you picked last time
   const rows = [...mine.filter(m => !cands.some(c => c.w === m.w)).map(m => ({ ...m, saved: true })), ...cands.map(c => ({ ...c, ...(mine.find(m => m.w === c.w) || {}), saved: mine.some(m => m.w === c.w) }))];
   const opt = (v, cur, label) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
@@ -815,33 +820,35 @@ function bldWordsDialog() {
         <input type="hidden" name="w${i}" value="${esc(r.w)}"><input type="hidden" name="en${i}" value="${esc(r.en)}"></div>
       <select class="inp" name="k${i}" aria-label="Kind of word">${opt('', r.k, r.saved ? '✖ Take it out' : 'Don’t use')}${opt('noun', r.k, 'Noun')}${r.verbOK !== false || r.k === 'verb' ? opt('verb', r.k, 'Verb') : ''}${opt('adj', r.k, 'Adjective')}</select>
       <div class="bldw-f f-noun">
-        <select class="inp" name="g${i}" aria-label="Gender">${opt('m', r.g, 'el (masculine)')}${opt('f', r.g, 'la (feminine)')}</select>
+        ${L.noGender ? '' : `<select class="inp" name="g${i}" aria-label="Gender">${opt('m', r.g, L.m)}${opt('f', r.g, L.f)}</select>`}<input type="hidden" name="read${i}" value="${esc(r.read || '')}">
         <select class="inp" name="cat${i}" aria-label="What it is">${BLD_KINDS.map(([v, l]) => opt(v, r.cat || 'thing', 'It is ' + l)).join('')}</select>
-        <label class="row small" style="gap:6px;font-weight:400"><input type="checkbox" name="pl${i}" ${r.k !== 'noun' || r.pl !== null ? 'checked' : ''}> Plural:</label>
-        <input class="inp" name="plw${i}" value="${esc(r.pl || bldPlEs(r.w))}" aria-label="Spanish plural" style="width:9em">
+        ${L.noGender ? '' : `<label class="row small" style="gap:6px;font-weight:400"><input type="checkbox" name="pl${i}" ${r.k !== 'noun' || r.pl !== null ? 'checked' : ''}> Plural:</label>
+        <input class="inp" name="plw${i}" value="${esc(r.pl || L.pl(r.w))}" aria-label="${L.name} plural" style="width:9em">`}
       </div>
       <div class="bldw-f f-verb">
-        <input class="inp" name="forms${i}" value="${esc((r.forms || (r.verbOK !== false ? bldConj(r.w) : [])).join(', '))}" aria-label="yo, tú, él/ella, nosotros, ellos" title="yo, tú, él/ella, nosotros, ellos/ustedes" style="flex:2 1 16em">
+        <input class="inp" name="forms${i}" value="${esc((r.forms || (r.verbOK !== false ? L.conj(r.w) : [])).join(', '))}" aria-label="${L.forms}" title="${L.forms}" style="flex:2 1 16em">
         <select class="inp" name="obj${i}" aria-label="Object">${opt('tr', r.obj || 'tr', 'Takes a thing (“I ___ a song”)')}${opt('trp', r.obj, 'Takes a person (“I ___ my friend”)')}${opt('in', r.obj, 'No object (“I ___”)')}</select>
         <select class="inp" name="who${i}" aria-label="Who does it">${opt('p', r.who || 'p', 'People do it')}${opt('a', r.who, 'People and animals do it')}</select>
       </div>
-      <div class="bldw-f f-adj muted small">Forms: ${esc(bldAdjForms(r.w).join(', '))}</div>
+      <div class="bldw-f f-adj muted small">${L.adjType ? `<select class="inp" name="at${i}" aria-label="Kind of adjective">${opt('i', r.at || L.adjType(r.w), 'い-adjective (おおきい)')}${opt('na', r.at || L.adjType(r.w), 'な-adjective (しずか)')}</select>` : `Forms: ${esc(L.adj(r.w).join(', '))}`}</div>
     </div>`;
-  const body = `<p class="muted small" style="margin-top:0">These are words on the cards in <b>${esc(d.name)}</b> that the Sentence Builder doesn't know yet. Tell it what kind of word each one is and it will mix them into your sentences. I've made a guess where I could (words with <i>el/la</i> are nouns, and words like <i>“to …”</i> are verbs). Verb forms are filled in for you, including common irregular verbs (tengo, pienso, duermo…); check any that look wrong. Verbs ending in “-se” (levantarse) work too: the game adds “me / te / se / nos” before them.</p>
+  const body = `<p class="muted small" style="margin-top:0">These are words on the cards in <b>${esc(d.name)}</b> that the Sentence Builder doesn't know yet. Tell it what kind of word each one is and it will mix them into your sentences. I've made a guess where I could (${L.intro}</p>
     ${rows.length ? `<div class="bldw-list">${rows.map(row).join('')}</div>` : '<p style="margin:0">Every single word on this deck\'s cards is already in the game (or the cards are longer phrases). 👍</p>'}`;
   openDialog({ title: '📚 Add words from your deck', wide: true, ok: 'Save words', body,
     onOpen: dlg => dlg.querySelector('form').addEventListener('change', e => { if (/^k\d+$/.test(e.target.name)) e.target.closest('.bldw').dataset.k = e.target.value; }),
     onOk: form => {
-      const F = n => form.elements[n], keep = new Map((S.bldWords || []).map(m => [m.w, m])); let added = 0, bad = '';
+      const F = n => form.elements[n], keep = new Map((S.bldWords || []).map(m => [bldMineKey(m), m])); let added = 0, bad = '';
       rows.forEach((r, i) => {
         const w = F('w' + i).value, en = F('en' + i).value, k = F('k' + i).value;
-        if (!k) { keep.delete(w); return; }
-        const m = { w, en, k, deck: bld.deckId };
-        if (k === 'noun') Object.assign(m, { g: F('g' + i).value, cat: F('cat' + i).value, pl: F('pl' + i).checked ? F('plw' + i).value.trim().toLowerCase() || null : null });
-        if (k === 'verb') { const forms = F('forms' + i).value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean); if (forms.length !== 5) { bad ||= w; return; } Object.assign(m, { forms, obj: F('obj' + i).value, who: F('who' + i).value }); }
-        if (!keep.has(w)) added++; keep.set(w, m);
+        if (!k) { keep.delete(lang + ':' + w); return; }
+        const m = { w, en, k, deck: bld.deckId, lang };
+        if (F('read' + i)?.value) m.read = F('read' + i).value;
+        if (k === 'noun') Object.assign(m, L.noGender ? { cat: F('cat' + i).value } : { g: F('g' + i).value, cat: F('cat' + i).value, pl: F('pl' + i).checked ? F('plw' + i).value.trim().toLowerCase() || null : null });
+        if (k === 'adj' && F('at' + i)) m.at = F('at' + i).value;
+        if (k === 'verb') { const forms = F('forms' + i).value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean); if (forms.length !== L.nForms) { bad ||= w; return; } Object.assign(m, { forms, obj: F('obj' + i).value, who: F('who' + i).value }); }
+        if (!keep.has(lang + ':' + w)) added++; keep.set(lang + ':' + w, m);
       });
-      if (bad) { toast(`“${bad}” needs 5 verb forms: yo, tú, él/ella, nosotros, ellos`); return false; }
+      if (bad) { toast(`“${bad}” needs ${L.nForms} verb forms: ${L.forms}`); return false; }
       S.bldWords = [...keep.values()]; save(); bldApplyMine(); bldRound(); render();
       toast(added ? `Added ${added} word${added > 1 ? 's' : ''} to the Sentence Builder` : 'Saved');
     } });
@@ -996,14 +1003,16 @@ const BLD_IRREGULAR = /^(ser|estar|ir|tener|hacer|poder|querer|decir|venir|poner
 function bldAutoAdd(deckId) {
   let cands; try { cands = bldCandidates(deckId); } catch { return 0; }
   if (!cands) return 0;
-  const mine = (S.bldWords ||= []), have = new Set(mine.map(m => m.w)); let n = 0;
+  const mine = (S.bldWords ||= []), have = new Set(mine.map(bldMineKey)); let n = 0;
   for (const c of cands) {
-    if (!c.fromLabel || !c.k || have.has(c.w)) continue;
-    if (c.k === 'verb' && ES_NO_PERSON_VERBS.test(c.w)) continue;   // weather verbs have no yo/tú forms
-    const e = { w: c.w, en: c.en, k: c.k, deck: deckId, auto: true };
-    if (c.k === 'noun') Object.assign(e, { g: c.g, cat: 'thing', pl: bldPlEs(c.w) });
-    if (c.k === 'verb') Object.assign(e, { forms: bldConj(c.w), obj: /se$/.test(c.w) ? 'in' : 'tr', who: 'p' });
-    mine.push(e); have.add(c.w); n++;
+    const L = BLD_MINE[c.lang], key = c.lang + ':' + c.w;
+    if (!c.fromLabel || !c.k || have.has(key)) continue;
+    if (c.k === 'verb' && c.lang === 'es' && ES_NO_PERSON_VERBS.test(c.w)) continue;   // weather verbs have no yo/tú forms
+    const e = { w: c.w, en: c.en, k: c.k, deck: deckId, auto: true, lang: c.lang, ...(c.read ? { read: c.read } : {}) };
+    if (c.k === 'noun') Object.assign(e, L.noGender ? { cat: 'thing' } : { g: c.g, cat: 'thing', pl: L.pl(c.w) });
+    if (c.k === 'adj' && L.adjType) e.at = L.adjType(c.w);
+    if (c.k === 'verb') Object.assign(e, { forms: L.conj(c.w), obj: L.refl(c.w) ? 'in' : 'tr', who: 'p' });
+    mine.push(e); have.add(key); n++;
   }
   if (n) save();
   return n;
@@ -1036,7 +1045,7 @@ function bldPosPicker() {
   const sel = bldPosSel(), on = k => !sel || sel.includes(k);
   return `<div class="bld-pos" role="group" aria-label="Parts of speech to practice"><span class="muted small">🎯 Practice:</span>
     <button type="button" class="bld-pos-b all ${sel ? '' : 'on'}" data-act="bldPos" data-k="all" aria-pressed="${!sel}">All</button>
-    ${Object.entries(BLD_TYPES).map(([k, [name]]) => `<button type="button" class="bld-pos-b t-${k} ${sel && on(k) ? 'on' : ''}" data-act="bldPos" data-k="${k}" aria-pressed="${!!(sel && on(k))}">${name}s</button>`).join('')}</div>`;
+    ${Object.entries(BLD_TYPES).filter(([k]) => (BLD_LANGS[bld?.lang]?.types || Object.keys(BLD_TYPES).filter(x => x !== 'part')).includes(k)).map(([k, [name]]) => `<button type="button" class="bld-pos-b t-${k} ${sel && on(k) ? 'on' : ''}" data-act="bldPos" data-k="${k}" aria-pressed="${!!(sel && on(k))}">${name}s</button>`).join('')}</div>`;
 }
 const bldGenOne = () => BLD_LANGS[bld.lang].gen(bld.pref) || BLD_LANGS[bld.lang].gen(new Set());
 const bldRoundAll = bldRound;

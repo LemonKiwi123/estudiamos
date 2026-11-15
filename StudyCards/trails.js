@@ -571,10 +571,7 @@ function trNames() {
 }
 function trBox() { trBoxRaw(); const l = trLang(), q = tr?.ui?.q; if (l) gtBox($('#trBox'), l, trNames().concat(q ? [q.answer, q.given] : [])); }
 function trLangMenu() {
-  const b = gtBase(tr.d?.frontLang), ok = !!GT_BOOKS[b], on = !!trLang();
-  trMenu('🌐 Game language', [{ label: `${!on ? '✅ ' : ''}English`, fn: () => { S.settings.gameLang = 'en'; save(); trLangMenu(); } },
-    { label: `${on ? '✅ ' : ''}${ok ? GT_LANG_NAMES[b] : (langName(tr.d?.frontLang) || 'Your language')}`, sub: ok ? 'Menus, battles and talk in the language you are learning. Names stay the same.' : 'Not ready yet for this deck’s language. Spanish decks can use it.', disabled: !ok,
-      fn: () => { S.settings.gameLang = 'target'; save(); trLangMenu(); } }], () => trMainMenu());
+  trMenu('🌐 Game language', gtLangItems(tr.d?.frontLang, trLangMenu), () => trMainMenu());
 }
 /* 📂 load another slot without leaving the game */
 function trLoadMenu() {
@@ -1812,6 +1809,7 @@ views.trails = () => {
         </div>
       </div>
       <p class="muted small tr-keys">${(() => { const k = trKeys(), f = a => k[a].map(trKeyName).join('/'); return `Move ${f('up')} ${f('left')} ${f('down')} ${f('right')} · A ${f('a')} · B ${f('b')} · Menu ${f('menu')} · Scooter ${f('scoot')} · 1–4 answer`; })()}</p>
+      ${typeof gtReportBtn === 'function' ? gtReportBtn(tr.d?.frontLang, 'Wordling Trails') : ''}
     </div>`;
 };
 document.addEventListener('submit', e => {

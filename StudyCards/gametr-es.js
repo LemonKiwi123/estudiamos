@@ -313,7 +313,7 @@ Object.assign(GT_BOOKS.es.lines, {
   '🆘 I’m stuck': '🆘 Estoy atascado', '⌨️ Controls': '⌨️ Controles', '🚪 Save and leave': '🚪 Guardar y salir', '📂 Load game': '📂 Cargar partida', 'Switch to another save slot.': 'Cambia a otra ranura de guardado.',
   '🌐 Game language: English': '🌐 Idioma del juego: inglés', '🌐 Game language: Español': '🌐 Idioma del juego: español', 'Play in the language you are learning.': 'Juega en el idioma que estás aprendiendo.',
   'Menus, battles and talk in the language you are learning. Names stay the same.': 'Menús, combates y diálogos en el idioma que aprendes. Los nombres no cambian.',
-  '📂 Load game · your adventure here is saved first': '📂 Cargar partida · antes se guarda tu aventura actual', 'Not ready yet for this deck’s language. Spanish decks can use it.': 'Aún no está listo para el idioma de este mazo. Los mazos de español sí pueden usarlo.',
+  '📂 Load game · your adventure here is saved first': '📂 Cargar partida · antes se guarda tu aventura actual', 'Not ready yet for this deck’s language. Spanish, French and Japanese decks can use it.': 'Aún no está listo para el idioma de este mazo. Los mazos de español, francés y japonés pueden usarlo.',
   'Pick the voice for each language and how fast it talks.': 'Elige la voz de cada idioma y lo rápido que habla.', 'See the whole route, or a close-up of this area.': 'Mira toda la ruta o un primer plano de esta zona.',
   'Inside: go back out the door. Outside: move to the nearest open spot.': 'Dentro: vuelve a salir por la puerta. Fuera: ve al sitio libre más cercano.', 'How long you have to answer in battles.': 'Cuánto tiempo tienes para responder en los combates.',
   '{p} · classic green or color palettes.': '{p} · verde clásico o paletas de colores.', '🖍️ Screen colors': '🖍️ Colores de pantalla',
@@ -349,3 +349,4 @@ Object.assign(GT_BOOKS.es.lines, {
   'The computer hums off. Your Wordlings are safe, and every Clinic computer can reach them.': 'El ordenador se apaga. Tus Wordlings están a salvo y cualquier ordenador de Clínica puede llegar a ellos.',
 });
 Object.assign(GT_BOOKS.es.names, { 'Professor Rowan': 'Profesor Rowan', 'Director Vex': 'Directora Vex' });
+Object.assign(GT_BOOKS.es.lines, { '{p} will give you one.': '{p} te dará uno.' });
