@@ -16,6 +16,7 @@ function updBanner() {
 }
 function updBodyHtml() {
   const u = updInfo; if (!u) return '<p class="muted small">Loading…</p>';
+  if (u.store) return `<p>You’re on Estudiamos <b>${esc(u.current || '')}</b> from the Microsoft Store. The Store keeps it up to date for you: new versions install by themselves (or open the Microsoft Store › Library › Get updates).</p>`;
   const when = u.lastCheck ? new Date(u.lastCheck).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'not yet';
   const j = u.job, busy = j && j.stage !== 'failed';
   if (busy) return `<div class="upd-run"><b>${esc(UPD_STAGE[j.stage] || 'Working…')}</b>${j.version ? ` <span class="muted small">(version ${esc(j.version)})</span>` : ''}

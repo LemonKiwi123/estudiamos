@@ -126,13 +126,15 @@ function skListen(lang, h) {
   };
   cap = setTimeout(() => { try { r.stop(); } catch {} setTimeout(wrapUp, 1500); }, SK_WAIT + 5000);
   try { r.start(); } catch { finish(h.error, 'busy'); return { stop() {} }; }
-  meter = skMeter(h.level);
+  meter = skMeter(h.level, r);
   return { stop() { if (finished) return; userStop = true; if (running) { try { r.stop(); } catch { wrapUp(); } setTimeout(wrapUp, 2000); } else wrapUp(); } };
 }
-/* a live sound level for the meter (computers only: on phones a second microphone user can stop the recognizer) */
-function skMeter(onLevel) {
+/* a live sound level for the meter. Computers: measured from the microphone. Phones: a second microphone user can stop
+   the recognizer, so there the meter follows the recognizer itself (listening, sound, speech, words coming in). */
+function skMeter(onLevel, rec) {
   const m = { stopped: false, stop() { this.stopped = true; cancelAnimationFrame(this.raf); this.stream?.getTracks().forEach(t => t.stop()); this.ctx?.close().catch(() => {}); } };
-  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || !navigator.mediaDevices?.getUserMedia || !(window.AudioContext || window.webkitAudioContext)) return m;
+  if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return rec ? skEventMeter(onLevel, rec, m) : m;
+  if (!navigator.mediaDevices?.getUserMedia || !(window.AudioContext || window.webkitAudioContext)) return rec ? skEventMeter(onLevel, rec, m) : m;
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     if (m.stopped) { stream.getTracks().forEach(t => t.stop()); return; }
     m.stream = stream; m.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -146,6 +148,27 @@ function skMeter(onLevel) {
     };
     tick();
   }).catch(() => {});
+  return m;
+}
+function skEventMeter(onLevel, rec, m) {
+  let base = 0, bump = 0, lv = 0;
+  const on = (ev, fn) => rec.addEventListener?.(ev, () => { if (!m.stopped) fn(); });
+  on('audiostart', () => { base = Math.max(base, 0.06); });
+  on('soundstart', () => { base = 0.3; bump = Math.max(bump, 0.45); });
+  on('speechstart', () => { base = 0.45; bump = Math.max(bump, 0.7); });
+  on('result', () => { base = Math.max(base, 0.4); bump = 0.95; });
+  on('speechend', () => { base = 0.06; });
+  on('soundend', () => { base = 0.06; });
+  on('audioend', () => { base = 0; });
+  const tick = () => {
+    if (m.stopped) return clearInterval(m.iv);
+    bump *= 0.85;
+    const target = Math.max(base * (0.75 + Math.random() * 0.5), bump);
+    lv = target > lv ? target : lv * 0.75 + target * 0.25;
+    onLevel(Math.min(1, lv));
+  };
+  m.iv = setInterval(tick, 50); tick();
+  const stop = m.stop.bind(m); m.stop = () => { clearInterval(m.iv); stop(); };
   return m;
 }
 const SK_ERRORS = {

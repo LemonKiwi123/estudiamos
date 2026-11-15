@@ -145,11 +145,13 @@ module.exports = function makeUpdater({ APP, DATA, PORT, readJson, writeJsonAtom
       } catch (e) { job.stage = 'failed'; job.error = String(e.message || e); }
     })();
   }
-  const status = () => ({ current: current(), hasFeed: !!feed(), canVerify: !!pubKey(), windows: process.platform === 'win32', autoCheck: state.autoCheck !== false, lastCheck: state.lastCheck || 0,
+  const STORE = process.env.ESTUDIAR_STORE === '1';   // the Microsoft Store version: the Store installs updates, not this updater
+  const status = () => ({ store: STORE, current: current(), hasFeed: !STORE && !!feed(), canVerify: !!pubKey(), windows: process.platform === 'win32', autoCheck: state.autoCheck !== false, lastCheck: state.lastCheck || 0,
     available: state.available, previous: prevVersion(), job, result });
 
   async function handle(p, req, res, send, readBody) {
-    if (p === '/api/update/status') { maybeAutoCheck(); return send(res, 200, status()); }
+    if (p === '/api/update/status') { if (!STORE) maybeAutoCheck(); return send(res, 200, status()); }
+    if (STORE && p.startsWith('/api/update/') && p !== '/api/update/ack') return send(res, 400, { error: 'This copy of Estudiamos is from the Microsoft Store. The Store installs its updates.' });
     if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
     if (p === '/api/update/check') { try { await check(); return send(res, 200, status()); } catch (e) { return send(res, 200, { ...status(), checkError: String(e.message || e) }); } }
     if (p === '/api/update/install') { const a = state.available; if (!a) return send(res, 400, { error: 'There’s no update to install. Check for updates first.' }); await install(a); return send(res, 200, status()); }
