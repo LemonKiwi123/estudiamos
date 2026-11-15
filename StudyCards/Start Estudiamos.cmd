@@ -4,6 +4,8 @@ rem The first time, it moves your decks and progress from the old copy of the ap
 setlocal EnableDelayedExpansion
 set "app=%~dp0"
 set "data=%~dp0..\EstudiarData"
+rem Work from your home folder, so Windows never thinks the Estudiamos folder is "in use" (then you can move it any time).
+cd /d "%USERPROFILE%"
 set "url=http://localhost:5178"
 set "p=%app%index.html"
 set "p=!p:\=/!"
@@ -12,7 +14,7 @@ set "p=!p: =%%20!"
 where node >nul 2>nul || goto oldway
 
 call :up
-if errorlevel 1 powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath node -ArgumentList '\"%app%server.js\"' -WorkingDirectory '%app%'"
+if errorlevel 1 powershell -NoProfile -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath node -ArgumentList '\"%app%server.js\"' -WorkingDirectory '%USERPROFILE%'"
 for /l %%i in (1,1,25) do (
   call :up
   if not errorlevel 1 goto ready

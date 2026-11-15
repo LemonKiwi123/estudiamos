@@ -21,6 +21,28 @@ Say '======================================' Cyan
 Say "App folder:  $app"
 Say "Data folder: $data"
 
+# ---- 0. A good home for Estudiamos -------------------------------------------
+# Running it from Downloads, the Desktop or a temporary folder works, but it's easy to delete or move by accident.
+$home0 = Split-Path -Parent $app
+$temporary = @([Environment]::GetFolderPath('Desktop'), (Join-Path $env:USERPROFILE 'Downloads'), $env:TEMP) | Where-Object { $_ -and $home0.StartsWith($_, [StringComparison]::OrdinalIgnoreCase) }
+if ($temporary -and -not $Quiet -and -not $DataDir) {
+  $target = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Estudiamos'
+  Say "`nEstudiamos is in $home0." Yellow
+  Say '  It is better kept somewhere permanent, like your Documents folder.'
+  if (Ask "  Copy Estudiamos to $target and set it up there?" $true) {
+    if (Test-Path (Join-Path $target 'StudyCards')) {
+      Say "  There is already an Estudiamos in $target. Run 'Set up Estudiamos.cmd' from there instead, or rename that folder first." Yellow
+      Done 1
+    }
+    New-Item -ItemType Directory -Force $target | Out-Null
+    Copy-Item -Path (Join-Path $home0 '*') -Destination $target -Recurse -Force
+    Say "  OK: copied to $target" Green
+    Say "  You can delete the copy in $home0 after setup finishes." Gray
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $target 'StudyCards\setup.ps1')
+    exit $LASTEXITCODE
+  }
+}
+
 # ---- 1. Node.js -------------------------------------------------------------
 Say "`n[1/6] Checking for Node.js (needed for syncing with your phone)..." White
 $node = Get-Command node -ErrorAction SilentlyContinue
@@ -66,7 +88,7 @@ function MakeLink($path, $vbsArgs, $desc) {
   $l = $sh.CreateShortcut($path)
   $l.TargetPath = "$env:WINDIR\System32\wscript.exe"
   $l.Arguments = $vbsArgs
-  $l.WorkingDirectory = $app
+  $l.WorkingDirectory = $env:USERPROFILE   # not the app folder, so the folder can still be moved
   $l.IconLocation = "$ico,0"
   $l.Description = $desc
   $l.Save()
@@ -170,5 +192,6 @@ if ($tsUrl) {
   Say "     $tsUrl" Green
   Say 'Add that one to your home screen: it works everywhere, and offline too.'
 }
+Say "`nTo move Estudiamos to another folder later: run 'Stop Estudiamos.cmd', move the folder, then run this setup again from the new place." Gray
 Say '======================================' Cyan
 Done 0
