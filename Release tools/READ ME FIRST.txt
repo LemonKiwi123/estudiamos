@@ -37,6 +37,16 @@ USE IT ON YOUR PHONE
   The PC has to be on and awake for the phone to sync.
 
 
+MOVING ESTUDIAMOS TO ANOTHER FOLDER
+  Estudiamos runs a small sync server in the background (Task Manager calls it
+  "Node.js JavaScript Runtime"). To move the Estudiamos folder:
+    1. Double-click "Stop Estudiamos.cmd" (inside the StudyCards folder).
+    2. Move the whole Estudiamos folder (StudyCards and EstudiarData together).
+    3. Double-click "Set up Estudiamos.cmd" in the new place. It fixes the shortcuts.
+  If you run the setup from Downloads or the Desktop, it offers to copy Estudiamos
+  to your Documents folder first.
+
+
 WHERE YOUR CARDS ARE KEPT
   In the "EstudiarData" folder next to the "StudyCards" folder. The setup makes it.
     * Your cards never go to any company's server. They stay on your PC and your phone.
