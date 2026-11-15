@@ -17,7 +17,7 @@ Only when you use these features, and only what is needed:
 | Feature | Service | What is sent |
 |---|---|---|
 | Example sentences ("✨ Suggest a sentence", "Add example sentences") | [Tatoeba](https://tatoeba.org) | The word you are looking up |
-| Word types ("Label words" / parts of speech) | [Wiktionary](https://en.wiktionary.org) | The word you are looking up |
+| Word types ("Label words" / parts of speech), and meanings of words the Sentence Builder doesn't know (🌐 Look up missing words, can be switched off) | [Wiktionary](https://en.wiktionary.org) | The word you are looking up |
 | Speaking games and spoken spells (microphone) | Your browser's speech recognition (Microsoft Edge or Google Chrome) | Your voice, while the microphone button is on, handled by the browser maker under its own privacy policy |
 | Reading words aloud | Your browser's or device's voices | The text being read (online voices only) |
 | Email (only if you set it up yourself) | Your own email provider | The messages you choose to send, from your own account |

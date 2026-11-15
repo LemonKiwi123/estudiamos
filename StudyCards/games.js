@@ -66,7 +66,7 @@ function gameAvail(d) {
     runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} cards)`) : 'Needs at least 3 cards with one line on each side (not stacked like a verb chart)' },
     numbers: { ok: true, info: '🎧 Listening, reading and writing · no cards needed' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
-    builder: { ok: true, info: ['es', 'en', 'fr', 'ja'].includes(langBase(d.frontLang || '')) || ['es', 'en', 'fr', 'ja'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice + 📖 real sentences · uses your deck’s words' : '📝 Grammar practice + 📖 real sentences (Spanish, French, Japanese, English)' },
+    builder: { ok: true, info: '📖 Real sentences, with word types, meanings and a hot/cold meter · your cards’ sentences first' },
     sentence: { ok: sent >= 1 && n >= 2, info: sent ? `${sent} sentence${sent > 1 ? 's' : ''} ready` : 'Add example sentences to your cards first' },
     speak: (() => { const n = skPool(d.id).length, sup = skSupport(); return { ok: n >= 1 && !!d.frontLang && sup.ok, info: !d.frontLang ? 'Set a front language for this deck first' : !sup.ok ? 'Needs Chrome, Edge or Safari on a secure address' : `🎙️ Uses your microphone · ${n} card${n === 1 ? '' : 's'}` }; })(),
     listen: { ok: !!d.frontLang && d.tts !== false && n >= 2, info: d.tts === false ? 'Read aloud is turned off for this deck' : !d.frontLang ? 'Set a front language for this deck first' : lis >= 3 ? `${lis} sentences & phrases` : 'Single words. Add example sentences to hear full sentences.' },
@@ -77,7 +77,7 @@ let game = null;
 const GAMES = {
   match: { emoji: '🧩', title: 'Match words', desc: 'Tap a word, then tap its meaning. Clear the board as fast as you can.' },
   sentence: { emoji: '✏️', title: 'Finish the sentence', desc: 'Pick the missing word in an example sentence.' },
-  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Pick words from a tray to build a sentence. It only counts if it follows the grammar rules: gender, verb endings, word order and more. Or switch to 📖 Real sentences and put real sentences, written by people, back in order. Spanish, French, Japanese or English.' },
+  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Put real sentences, written by people, back together word by word. Each word shows what kind of word it is and what it means, a hot/cold meter shows how close you are, and 🎯 Practice lets you fill in just the nouns, verbs or other kinds of words. Spanish, French and Japanese.' },
   speak: { emoji: '🎙️', title: 'Say it!', desc: 'See what a word means, then say it out loud. Estudiamos listens through your microphone and checks it.' },
   listen: { emoji: '🎧', title: 'Listen & tap', desc: 'Hear a sentence, then tap the words you heard in the right order.' },
   priceparty: { emoji: '🏷️', title: 'Price Party', desc: 'Name the products to win drop chips, then bounce them down the peg board for prizes! 1–2 players.' },
@@ -93,7 +93,7 @@ const GAMES = {
 };
 
 function startGame(type, deckId) {
-  if (type === 'builder') { startBuilder(deckId); return; }
+  if (type === 'builder') { typeof startSentenceBuilder === 'function' ? startSentenceBuilder(deckId) : startBuilder(deckId); return; }
   if (type === 'runner') { startRunner(deckId); return; }
   if (type === 'numbers') { startNumGame(deckId); return; }
   if (type === 'speak') { startSpeak(deckId); return; }
@@ -167,6 +167,7 @@ function matchPick(side, id, el) {
     setTimeout(() => {
       game.lock = false;
       if (game.boards[game.b].every(c => game.matched.has(c.id))) {
+        if (typeof playFanfare === 'function') playFanfare();   // 🎺 board cleared
         if (game.b < game.boards.length - 1) { game.b++; setupBoard(); render(); }
         else { game.time = Date.now() - game.start; recordGame(); go({ name: 'gameResults' }); }
       } else render();
@@ -180,9 +181,10 @@ function matchPick(side, id, el) {
 function gameAnswer(result) {
   const it = gItem(); if (!it || it.result) return;
   it.result = result; render();
-  const d = deckById(game.deckId);
-  if (game.type === 'sentence' && autoplayOn()) speak(plainSent(it.card.example), d.frontLang);
-  if (game.type === 'listen' && it.mode === 'pick' && autoplayOn()) speak(it.card.front, d.frontLang);
+  const d = deckById(game.deckId), wait = result === 'ok' && typeof rightSound === 'function' ? rightSound() : 0;   // 🎺 then read it out
+  const say = (t, l) => setTimeout(() => { if (gItem() === it) speak(t, l); }, wait);
+  if (game.type === 'sentence' && autoplayOn()) say(plainSent(it.card.example), d.frontLang);
+  if (game.type === 'listen' && it.mode === 'pick' && autoplayOn()) say(it.card.front, d.frontLang);
   setTimeout(() => $('#gameNextBtn')?.focus({ preventScroll: true }), 0);
 }
 function gamePick(i) {
@@ -243,6 +245,7 @@ views.game = () => {
         <button type="button" class="btn ghost" data-act="games" data-id="${d.id}">← Games</button>
         <div class="progress"><div style="width:${Math.round(done / game.total * 100)}%"></div></div>
         <span class="timer" id="gTimer">⏱ ${fmtTime(Date.now() - game.start)}</span>
+        ${typeof fanfarePicker === 'function' ? fanfarePicker() : ''}
       </div>
       <div class="row-between"><div class="prompt-label muted">${g.emoji} Match each word with its meaning</div>
         <span class="muted small">Board ${game.b + 1} of ${game.boards.length} · ${game.mistakes} mistake${game.mistakes === 1 ? '' : 's'}</span></div>
@@ -254,6 +257,7 @@ views.game = () => {
       <button type="button" class="btn ghost" data-act="games" data-id="${d.id}">← Games</button>
       <div class="progress"><div style="width:${pct}%"></div></div>
       <span class="muted small" style="font-variant-numeric:tabular-nums">${game.i + 1} / ${total}</span>
+      ${typeof fanfarePicker === 'function' ? fanfarePicker() : ''}
     </div>`;
   const nextBtn = `<button type="button" class="btn primary" id="gameNextBtn" data-act="gameNext">${game.i < total - 1 ? 'Next' : 'See results'} <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">Enter</kbd></button>`;
   const feedback = (extra = '') => !it.result ? '' : `<div class="feedback ${it.result === 'ok' ? 'ok' : 'bad'}">

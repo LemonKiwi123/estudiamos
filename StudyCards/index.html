@@ -113,6 +113,7 @@ main{max-width:920px;margin:0 auto;padding:22px 16px 80px}
 .stack>*+*{margin-top:16px}
 
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px}
+.stats.six{grid-template-columns:repeat(3,1fr)}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
 .stat .n{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
 .stat .l{color:var(--muted);font-size:13px}
@@ -181,6 +182,8 @@ header .inner{position:relative}
 .cl-check{color:var(--accent);font-size:18px}
 .cl-group{display:flex;flex-direction:column;gap:8px}
 .cl-gname{font-size:13px;font-weight:600;color:var(--muted)}
+.cl-exrow{display:flex;flex-direction:column;gap:4px}
+.study-top .fanfare-pick{font-size:13px;padding:4px 6px;max-width:150px}
 .pill.frozen{color:var(--easy)}
 tr.frozen td.txt{opacity:.55}
 .icon-btn.on{background:color-mix(in srgb,var(--easy) 20%,transparent)}
@@ -214,7 +217,9 @@ body.pv-open{overflow:hidden}
 /* Progress page */
 .activity{display:flex;align-items:flex-end;gap:3px;height:120px;margin:14px 0 6px}
 .activity .day{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;background:var(--surface2);border-radius:4px;overflow:hidden}
-.activity .r{background:var(--accent)} .activity .s{background:var(--good)}
+.activity .r{background:var(--accent)} .activity .s{background:var(--good)} .activity .q{background:var(--hard)}
+.trend-pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media (max-width:640px){.trend-pair{grid-template-columns:1fr}}
 .trend{display:flex;align-items:flex-end;gap:4px;height:90px;margin:12px 0 6px}
 .trend .bar{flex:1;border-radius:4px 4px 0 0;min-width:6px}
 .deck-progress .dp-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:16px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
@@ -381,6 +386,7 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .bld-line .bld-slot{border-style:dashed;background:transparent;color:var(--tc,var(--muted))}
 .bld-line .bld-slot .w{letter-spacing:.1em;opacity:.7}
 .bld-line .bld-slot.sel{outline:3px solid var(--accent);outline-offset:2px}
+.bld-line .bld-slot.over{outline:3px solid var(--accent);outline-offset:2px;background:color-mix(in srgb,var(--accent) 12%,transparent)}
 .bld-chip.bad{border-color:var(--again);background:var(--bad-bg);animation:bldshake .35s}
 .bld-gap{display:inline-block;width:44px;height:40px;border:2px dashed var(--accent);border-radius:10px;background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .bld-chip.hint{outline:3px solid #ffd24a;outline-offset:2px}
@@ -1081,7 +1087,7 @@ dialog h3{font-size:18px;margin-bottom:14px}
 .timer{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
 
 @media (max-width:640px){
-  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats,.stats.six{grid-template-columns:repeat(2,1fr)}
   .grid2,.options{grid-template-columns:1fr}
   .rate{grid-template-columns:repeat(2,1fr)}
   .set-row{flex-direction:column;align-items:stretch}
@@ -2781,6 +2787,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="sentences.js"></script>
 <script src="tower.js"></script>
 <script src="showdown.js"></script>
+<script src="fanfare.js"></script>
 <script src="millionaire.js"></script>
 <script src="calendar.js"></script>
 <script src="priceparty.js"></script>
@@ -2820,6 +2827,8 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="builder-ja.js"></script>
 <script src="starters.js"></script>
 <script src="realsent.js"></script>
+<script src="rsdict.js"></script>
+<script src="rstag.js"></script>
 <script src="cardlist.js"></script>
 <script src="decktools.js"></script>
 <script src="layout.js"></script>

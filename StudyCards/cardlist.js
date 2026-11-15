@@ -8,13 +8,14 @@ const CL_FILTERS = [
   ['quick', 'Quick review', [['none', 'Not studied'], ['nq', 'Not quite'], ['got', 'Got it']]],
   ['card', 'Card status', [['active', 'Active'], ['frozen', 'Frozen']]],
   ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front']]],
+  ['ex', 'Example sentences', [['hasfront', 'Has front sentence'], ['nofront', 'Missing front sentence'], ['hasback', 'Has back translation'], ['noback', 'Missing back translation']]],
 ];
 const activeCardsOf = id => S.cards.filter(c => c.deckId === id && !c.frozen);
 
 /* Remembered per deck while the app is open */
 const clPrefs = {};
-const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; return p; };
-const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length;
+const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; return p; };
+const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length;
 
 /* ---------- Duplicates: cards in the same deck with the same front (and maybe the same back) ----------
    "exact" = same front AND same back (almost certainly an extra copy); "front" = same front, different back (maybe two meanings). */
@@ -50,6 +51,7 @@ function clMatches(c, p) {
   if (f.quick.length && !f.quick.includes(c.fr || 'none')) return false;
   if (f.card.length && !f.card.includes(c.frozen ? 'frozen' : 'active')) return false;
   if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.includes(i.kind)) return false; }
+  if (f.ex?.length && !f.ex.some(v => (v.endsWith('front') ? clExF(c) : clExB(c)) === v.startsWith('has'))) return false;
   return true;
 }
 /* Part of speech of a card (the same one its word label shows): the front first, then the back. '' = not known yet */
@@ -65,7 +67,11 @@ function clPos(c) {
 }
 const clPosOrder = k => { const i = typeof POS_GROUPS !== 'undefined' ? POS_GROUPS.findIndex(g => g[0] === k) : -1; return i < 0 ? 99 : i; };
 const clPosName = k => ({ noun: 'Nouns', verb: 'Verbs', adj: 'Adjectives', adv: 'Adverbs', pron: 'Pronouns', det: 'Articles & determiners', prep: 'Prepositions', conj: 'Conjunctions', num: 'Numbers', int: 'Interjections', other: 'Other (phrases…)' })[k] || k;
-const clSortName = s => s === 'pos' ? 'Part of speech' : /^pos:/.test(s) ? clPosName(s.slice(4)) + ' first' : CL_SORTS.find(x => x[0] === s)?.[1] || 'Newest';
+/* example sentences: front = the sentence on the card (c.example), back = its translation (c.exampleTr) */
+const CL_EX = { both: ['Both sentences', c => clExF(c) && clExB(c)], front: ['Front sentence', c => clExF(c)], back: ['Back sentence', c => clExB(c)] };
+const clExF = c => !!String(c.example || '').replace(/<[^>]*>/g, '').trim(), clExB = c => !!String(c.exampleTr || '').replace(/<[^>]*>/g, '').trim();
+const clExName = s => { const [, k, h] = s.split(':'); return `${h === 'has' ? 'Has' : 'Missing'} ${CL_EX[k]?.[0].toLowerCase() || 'example sentence'} first`; };
+const clSortName = s => /^ex:/.test(s) ? clExName(s) : s === 'pos' ? 'Part of speech' : /^pos:/.test(s) ? clPosName(s.slice(4)) + ' first' : CL_SORTS.find(x => x[0] === s)?.[1] || 'Newest';
 const clText = c => String(c.front || '').trim().replace(/^[^\p{L}\p{N}]+/u, '');   // "¿Dónde…" sorts under D
 function clSort(cs, sort) {
   const coll = new Intl.Collator(undefined, { sensitivity: 'base', numeric: true });
@@ -77,6 +83,10 @@ function clSort(cs, sort) {
     az: (a, b) => coll.compare(clText(a), clText(b)),
     za: (a, b) => coll.compare(clText(b), clText(a)),
   }[sort] || ((a, b) => (b.created || 0) - (a.created || 0));
+  if (/^ex:/.test(sort)) {   // "ex:front:has" = cards with a front example sentence first, "ex:back:none" = cards missing the back one first; A-Z inside
+    const [, k, h] = sort.split(':'), test = CL_EX[k]?.[1] || CL_EX.both[1], want = h === 'has';
+    return cs.sort((a, b) => (test(a) === want ? 0 : 1) - (test(b) === want ? 0 : 1) || coll.compare(clText(a), clText(b)));
+  }
   if (sort === 'pos' || /^pos:/.test(sort)) {
     // grouped by part of speech (noun, verb, adjective…), A-Z inside each group; "pos:verb" puts that group first
     const first = sort.slice(4), key = new Map(cs.map(c => { const k = clPos(c); return [c.id, (k === first ? -1 : clPosOrder(k))]; }));
@@ -133,7 +143,15 @@ function clSortDialog() {
           <p class="muted small" style="margin:0 0 6px">Groups the cards by the kind of word on them, using the same word labels as 🏷️ Word labels.${n[''] ? ` ${n['']} card${n[''] === 1 ? ' has' : 's have'} no label yet (longer phrases, or words not looked up yet).` : ''}</p>
           <div class="cl-opts">${opt('pos', 'All, grouped by part of speech')}</div>
           <div class="cl-opts cl-opts-pos">${POS_GROUPS.filter(([k]) => n[k]).map(([k, , cls]) => opt('pos:' + k, `<span><span class="pos-tag ${cls}">${esc(clPosName(k).toLowerCase())}</span> first</span>`, n[k])).join('')}</div></div>`;
-      })() : ''}`,
+      })() : ''}
+      ${(() => {
+        const cs = cardsOf(view.deckId), d = deckById(view.deckId), side = (k, l) => l ? `${k === 'front' ? 'Front' : 'Back'} (${esc(langName(l).replace(/ \(.*\)$/, ''))})` : (k === 'front' ? 'Front' : 'Back');
+        const opt = (v, label, count) => `<button type="button" class="cl-opt ${p.sort === v ? 'on' : ''}" data-sort="${v}">${label}<span class="muted small">${count}</span>${p.sort === v ? '<span class="cl-check">✓</span>' : ''}</button>`;
+        const row = (k, name) => { const has = cs.filter(CL_EX[k][1]).length; return `<div class="cl-exrow"><div class="small"><b>${name}</b></div><div class="cl-opts">${opt(`ex:${k}:has`, '✅ Has it first', has)}${opt(`ex:${k}:none`, '❌ Missing it first', cs.length - has)}</div></div>`; };
+        return `<div class="cl-group"><div class="cl-gname">Example sentences</div>
+          <p class="muted small" style="margin:0 0 6px">Check which cards have their example sentence on the front (the sentence itself) and on the back (its translation).</p>
+          ${row('front', side('front', d?.frontLang) + ' sentence')}${row('back', side('back', d?.backLang) + ' translation')}${row('both', 'Both')}</div>`;
+      })()}`,
     onOpen: dlg => {
       dlg.querySelector('[data-dlg=cancel]').hidden = true;
       dlg.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { p.sort = b.dataset.sort; dlg.close(); renderCardTable(); });

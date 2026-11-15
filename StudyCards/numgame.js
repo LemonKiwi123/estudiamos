@@ -138,10 +138,12 @@ function ngAnswer(given) {
   q.accentMiss = ng.mode === 'type' && q.ok && String(given).trim().toLowerCase().replace(/[\s-]+/g, ' ') !== q.answer.toLowerCase().replace(/[\s-]+/g, ' ');
   if (q.ok) { ng.right++; ng.streak++; ng.best = Math.max(ng.best, ng.streak); } else ng.streak = 0;
   ng.log.push({ ...q });
-  if (typeof sdSound === 'function') sdSound(q.ok ? 'right' : 'wrong');
-  if (!['hear', 'abcHear'].includes(ng.mode) || !q.ok) setTimeout(() => ng?.q === q && ngSay(q.say), 200);
+  let wait = 0;   // 🎺
+  if (q.ok && typeof rightSound === 'function') wait = rightSound(); else if (typeof sdSound === 'function') sdSound(q.ok ? 'right' : 'wrong');
+  const speaks = !['hear', 'abcHear'].includes(ng.mode) || !q.ok;
+  if (speaks) setTimeout(() => ng?.q === q && ngSay(q.say), 200 + wait);
   render();
-  if (q.ok && !q.accentMiss) setTimeout(() => { if (ng?.q === q) ngNext(); }, 1100);
+  if (q.ok && !q.accentMiss) setTimeout(() => { if (ng?.q === q) ngNext(); }, wait ? wait + (speaks ? 1900 : 500) : 1100);
 }
 function ngNext() {
   if (!ng) return;
@@ -200,7 +202,7 @@ views.numgame = () => {
         return `<button type="button" class="ng-opt ${st}" data-act="ngPick" data-i="${i}" ${done ? 'disabled' : ''}><kbd>${i + 1}</kbd>${esc(o)}</button>`; }).join('')}</div>`;
   const verdict = !done ? '' : q.ok ? (q.accentMiss ? `✓ Right! Watch the spelling: <b>${esc(q.answer)}</b>` : '✓ Right!') : `✗ It’s <b>${esc(q.answer)}</b>${q.n != null && ng.mode !== 'type' && ng.mode !== 'word' && ng.mode !== 'abcSpell' ? ` · ${esc(NG_WORDS[ng.lang](q.n))}` : ''}`;
   return `<div class="study-top"><button type="button" class="btn ghost" data-act="ngSetup">← Quit</button>
-      <div class="prompt-label muted">${NG_LANGS[ng.lang].flag} ${M.icon} ${M.label} · ${ng.i + 1}/${ng.total}</div><div class="muted">✓ ${ng.right} · 🔥 ${ng.streak}</div></div>
+      <div class="prompt-label muted">${NG_LANGS[ng.lang].flag} ${M.icon} ${M.label} · ${ng.i + 1}/${ng.total}</div><div class="muted">✓ ${ng.right} · 🔥 ${ng.streak}</div>${typeof fanfarePicker === 'function' ? fanfarePicker() : ''}</div>
     <div class="panel ng-card"><div class="muted small">${esc(M.desc)}</div>
       <div class="ng-prompt">${prompt}</div>${opts}
       ${done ? `<div class="ng-verdict ${q.ok ? 'ok' : 'no'}">${verdict} <button type="button" class="btn sm ghost" data-act="ngSayIt" data-t="${esc(q.say && ng.mode !== 'abcSpell' ? q.say : q.answer)}">🔊</button></div>

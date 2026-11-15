@@ -5,6 +5,9 @@ const RESULT_TYPES = {
   quiz: { emoji: '📝', name: 'Quiz' }, match: { emoji: '🧩', name: 'Match words' }, sentence: { emoji: '✏️', name: 'Finish the sentence' },
   listen: { emoji: '🎧', name: 'Listen & tap' }, quick: { emoji: '⚡', name: 'Quick review' }, runner: { emoji: '🐘', name: 'Elephant run' }, tower: { emoji: '🧱', name: 'Word Tower' }, showdown: { emoji: '🎤', name: 'Word Showdown' }, millionaire: { emoji: '🥜', name: 'Peanut Millionaire' }, priceparty: { emoji: '🏷️', name: 'Price Party' }, spinspell: { emoji: '🎡', name: 'Spin & Spell' }, wordtown: { emoji: '🎲', name: 'Word Town' }, trails: { emoji: '🌿', name: 'Wordling Trails' }, saga: { emoji: '🗡️', name: 'Lexicon Saga' },
 };
+/* quizzes (quiz + quick review) and games are counted separately on the Progress page */
+const QUIZ_KINDS = new Set(['quiz', 'quick']);
+const isQuizResult = h => QUIZ_KINDS.has(h.type);
 const QUIZ_MODE_NAMES = { mc: 'multiple choice', type: 'typing', listen: 'listening', mixed: 'mixed' };
 function addHistory(entry) {
   S.history ||= [];
@@ -132,17 +135,23 @@ Object.assign(actions, { posPractice: el => posPractice(el.dataset.k) });
 
 views.progress = () => {
   const hist = S.history || [], all = levelCounts(S.cards);
-  const f = view.filter || {}, shown = hist.filter(h => (!f.deck || h.deckId === f.deck) && (!f.type || h.type === f.type));
+  const f = view.filter || {}, typeOk = h => !f.type || (f.type === '@quiz' ? isQuizResult(h) : f.type === '@game' ? !isQuizResult(h) : h.type === f.type);
+  const shown = hist.filter(h => (!f.deck || h.deckId === f.deck) && typeOk(h));
+  const quizzes = hist.filter(isQuizResult), games = hist.filter(h => !isQuizResult(h));
+  const avgOf = list => { const r = list.slice(0, 10); return r.length ? Math.round(r.reduce((a, h) => a + h.score, 0) / r.length) : null; };
+  const qAvg = avgOf(quizzes), gAvg = avgOf(games);
   const limit = view.limit || 30;
   const last7 = Array.from({ length: 7 }, (_, i) => S.log[dateKey(Date.now() - i * DAY)]?.reviews || 0).reduce((a, b) => a + b, 0);
-  const recent = hist.slice(0, 10), avg = recent.length ? Math.round(recent.reduce((a, h) => a + h.score, 0) / recent.length) : null;
   // 30-day activity: reviews (from study) + practice sessions (quizzes/games/quick reviews)
   const days = Array.from({ length: 30 }, (_, i) => {
     const t = Date.now() - (29 - i) * DAY, k = dateKey(t);
-    return { t, reviews: S.log[k]?.reviews || 0, sessions: hist.filter(h => dateKey(h.when) === k).length };
+    const that = hist.filter(h => dateKey(h.when) === k);
+    return { t, reviews: S.log[k]?.reviews || 0, quizzes: that.filter(isQuizResult).length, games: that.filter(h => !isQuizResult(h)).length };
   });
-  const maxV = Math.max(1, ...days.map(x => x.reviews + x.sessions * 5));
-  const trend = hist.slice(0, 20).reverse();
+  const maxV = Math.max(1, ...days.map(x => x.reviews + (x.quizzes + x.games) * 5));
+  const trendHtml = (list, title) => list.length >= 2 ? `<div><h3>${title}</h3>
+      <div class="trend">${list.slice(0, 20).reverse().map(h => `<div class="bar" title="${RESULT_TYPES[h.type]?.name}, ${esc(h.deckName || '')}: ${h.score}%" style="height:${Math.max(4, h.score)}%;background:${scoreColor(h.score)}"></div>`).join('')}</div>
+      <div class="row-between muted small"><span>Older</span><span>Latest</span></div></div>` : `<div><h3>${title}</h3><p class="muted small">Not enough results yet.</p></div>`;
   return `
     <div class="row-between" style="margin-bottom:16px"><h2>Your progress</h2>
       ${typeof currentProfile === 'function' && currentProfile() ? `<div class="row" style="gap:8px">${avatarHtml(currentProfile(), 28)}<b>${esc(currentProfile().name || '')}</b></div>` : ''}</div>
@@ -154,22 +163,22 @@ views.progress = () => {
         <span class="muted">Mastered = remembered for ${MASTERED_DAYS}+ days in Study</span></div>
     </section>
     ${posStandingHtml()}
-    <section class="stats" style="margin-top:16px">
+    <section class="stats six" style="margin-top:16px">
       <div class="stat"><div class="n">${streak()}</div><div class="l">Day streak</div></div>
       <div class="stat"><div class="n">${last7}</div><div class="l">Reviews, last 7 days</div></div>
-      <div class="stat"><div class="n">${hist.length}</div><div class="l">Quizzes &amp; games saved</div></div>
-      <div class="stat"><div class="n" style="color:${avg == null ? 'inherit' : scoreColor(avg)}">${avg == null ? '–' : avg + '%'}</div><div class="l">Average of last 10 scores</div></div>
+      <div class="stat"><div class="n">${quizzes.length}</div><div class="l">📝 Quizzes taken</div></div>
+      <div class="stat"><div class="n" style="color:${qAvg == null ? 'inherit' : scoreColor(qAvg)}">${qAvg == null ? '–' : qAvg + '%'}</div><div class="l">Quiz average (last 10)</div></div>
+      <div class="stat"><div class="n">${games.length}</div><div class="l">🎮 Games played</div></div>
+      <div class="stat"><div class="n" style="color:${gAvg == null ? 'inherit' : scoreColor(gAvg)}">${gAvg == null ? '–' : gAvg + '%'}</div><div class="l">Game average (last 10)</div></div>
     </section>
     ${typeof streakPanel === 'function' ? streakPanel() + badgesPanel() : ''}
     <section class="panel" style="margin-top:16px">
-      <div class="row-between"><h3>Activity, last 30 days</h3><span class="small"><span style="color:var(--accent)">■</span> Study reviews <span style="color:var(--good);margin-left:10px">■</span> Quizzes &amp; games</span></div>
-      <div class="activity">${days.map(x => `<div class="day" title="${new Date(x.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${x.reviews} reviews, ${x.sessions} quiz/game">
-        <div class="s" style="height:${(x.sessions * 5 / maxV * 100).toFixed(1)}%"></div><div class="r" style="height:${(x.reviews / maxV * 100).toFixed(1)}%"></div></div>`).join('')}</div>
+      <div class="row-between"><h3>Activity, last 30 days</h3><span class="small"><span style="color:var(--accent)">■</span> Study reviews <span style="color:var(--hard);margin-left:10px">■</span> Quizzes <span style="color:var(--good);margin-left:10px">■</span> Games</span></div>
+      <div class="activity">${days.map(x => `<div class="day" title="${new Date(x.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${x.reviews} reviews, ${x.quizzes} quiz${x.quizzes === 1 ? '' : 'zes'}, ${x.games} game${x.games === 1 ? '' : 's'}">
+        <div class="s" style="height:${(x.games * 5 / maxV * 100).toFixed(1)}%"></div><div class="q" style="height:${(x.quizzes * 5 / maxV * 100).toFixed(1)}%"></div><div class="r" style="height:${(x.reviews / maxV * 100).toFixed(1)}%"></div></div>`).join('')}</div>
       <div class="row-between muted small"><span>30 days ago</span><span>Today</span></div>
     </section>
-    ${trend.length >= 2 ? `<section class="panel" style="margin-top:16px"><h3>Recent scores</h3>
-      <div class="trend">${trend.map(h => `<div class="bar" title="${RESULT_TYPES[h.type]?.name}, ${esc(h.deckName || '')}: ${h.score}%" style="height:${Math.max(4, h.score)}%;background:${scoreColor(h.score)}"></div>`).join('')}</div>
-      <div class="row-between muted small"><span>Older</span><span>Latest</span></div></section>` : ''}
+    ${hist.length >= 2 ? `<section class="panel trend-pair" style="margin-top:16px">${trendHtml(quizzes, '📝 Recent quiz scores')}${trendHtml(games, '🎮 Recent game scores')}</section>` : ''}
     <section class="panel" style="margin-top:16px">
       <h3>Decks</h3>
       ${S.decks.length ? `<div class="deck-progress">${S.decks.map(d => {
@@ -182,7 +191,9 @@ views.progress = () => {
       <div class="row-between"><h3>Saved quizzes &amp; games</h3>
         <div class="row">
           <select class="inp" id="histDeck" style="margin:0;width:auto"><option value="">All decks</option>${S.decks.map(d => `<option value="${d.id}" ${f.deck === d.id ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select>
-          <select class="inp" id="histType" style="margin:0;width:auto"><option value="">All types</option>${Object.entries(RESULT_TYPES).map(([k, t]) => `<option value="${k}" ${f.type === k ? 'selected' : ''}>${t.emoji} ${t.name}</option>`).join('')}</select>
+          <select class="inp" id="histType" style="margin:0;width:auto"><option value="">Quizzes and games</option>
+            <option value="@quiz" ${f.type === '@quiz' ? 'selected' : ''}>📝 All quizzes</option><option value="@game" ${f.type === '@game' ? 'selected' : ''}>🎮 All games</option>
+            ${[['Quizzes', true], ['Games', false]].map(([label, q]) => `<optgroup label="${label}">${Object.entries(RESULT_TYPES).filter(([k]) => QUIZ_KINDS.has(k) === q).map(([k, t]) => `<option value="${k}" ${f.type === k ? 'selected' : ''}>${t.emoji} ${t.name}</option>`).join('')}</optgroup>`).join('')}</select>
         </div></div>
       ${shown.length ? `<div class="hist">${shown.slice(0, limit).map(h => `
         <button type="button" class="hist-row" data-act="openResult" data-id="${h.id}">

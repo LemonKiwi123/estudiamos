@@ -214,14 +214,14 @@ function skHeard(list) {
   if (m.ok) {
     sk.right++; sk.streak++; sk.best = Math.max(sk.best, sk.streak); sk.state = 'right';
     sk.log.push({ card: c, ok: true, tries: sk.tries, heard: m.heard });
-    if (typeof sdSound === 'function') sdSound('right');
+    sk.wait = typeof rightSound === 'function' ? rightSound() : 0;   // 🎺
   } else {
     sk.streak = 0; sk.state = sk.tries >= 3 ? 'reveal' : 'wrong';
     if (sk.state === 'reveal') sk.log.push({ card: c, ok: false, tries: sk.tries, heard: m.heard });
     if (typeof sdSound === 'function') sdSound('wrong');
   }
   render();
-  if (sk.state === 'reveal' || sk.state === 'right') setTimeout(() => sk && speak(plainSent(c.front), sk.lang), 300);
+  if (sk.state === 'reveal' || sk.state === 'right') setTimeout(() => sk && skCur() === c && speak(plainSent(c.front), sk.lang), 300 + (sk.state === 'right' ? sk.wait || 0 : 0));
 }
 function skNext() {
   if (!sk) return;
@@ -266,7 +266,7 @@ views.speakgame = () => {
   const c = skCur(), front = plainSent(c.front), st = sk.state, h = sk.heard;
   const ans = skAnswers(c, sk.base)[0] || '', hint = sk.hint && ans ? `<div class="sk-hint">💡 Starts with <b>“${esc(ans[0])}…”</b> · ${ans.replace(/ /g, '').length} letters</div>` : '';
   return `<div class="study-top"><button type="button" class="btn ghost" data-act="games" data-id="${d.id}">← Games</button>
-      <div class="prompt-label muted">🎙️ Say it! · ${sk.i + 1}/${sk.cards.length}</div><div class="muted">✓ ${sk.right} · 🔥 ${sk.streak}</div></div>
+      <div class="prompt-label muted">🎙️ Say it! · ${sk.i + 1}/${sk.cards.length}</div><div class="muted">✓ ${sk.right} · 🔥 ${sk.streak}</div>${typeof fanfarePicker === 'function' ? fanfarePicker() : ''}</div>
     <div class="panel sk-card">
       <div class="muted small">Say this in ${esc(langName(d.frontLang) || 'the deck’s language')}:</div>
       <div class="sk-prompt">${esc(plainSent(c.back))}</div>${hint}
