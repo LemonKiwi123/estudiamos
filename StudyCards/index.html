@@ -1628,6 +1628,22 @@ function migrate(s) {
       if ((c.front === 'comer' || c.front === 'hablar') && c.notes.includes(' — ')) c.notes = '';
     }
   });
+  // once: extra meanings that an older import saved as "example sentences" (short, no punctuation, no translation) go to the notes
+  if (!s.fixedImportExamples) {
+    const moved = [];
+    for (const c of s.cards) {
+      const ex = String(c.example || '').replace(/<[^>]*>/g, ' ').trim();
+      if (!ex || String(c.exampleTr || '').trim() || ex.split(/\s+/).length > 4 || looksLikeSentence(ex, '')) continue;
+      moved.push([c.id, c.example, c.notes]); c.notes = joinNotes(c.notes, ex); c.example = '';
+    }
+    s.fixedImportExamples = Date.now();
+    if (moved.length) setTimeout(() => {
+      save(); if (typeof render === 'function') render();
+      const undo = () => { for (const [id, ex, notes] of moved) { const c = S.cards.find(x => x.id === id); if (c) { c.example = ex; c.notes = notes; } } save(); render(); toast('Change undone'); };
+      const msg = `🧹 Fixed ${moved.length} card${moved.length === 1 ? '' : 's'} where an import had put an extra meaning in the example sentence (it’s in the notes now).`;
+      if (typeof undoToast === 'function') undoToast(msg, undo); else toast(msg);
+    }, 2500);
+  }
   return s;
 }
 const APP_VERSION = '1.4.4';
@@ -1891,8 +1907,19 @@ function parseImport(text, sep) {
   if (sep === 'auto') sep = detectSep(text);
   return text.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#')).map(l => splitLine(l, sep).map(x => stripHtml(x).trim()))
     .filter(p => p.length >= 2 && p[0] && p[1] && !(/^front$/i.test(p[0]) && /^back$/i.test(p[1])))
-    .map(p => ({ front: p[0], back: p[1], notes: p[2] || '', example: p[3] || '', exampleTr: p[4] || '' }));
+    .map(p => {
+      const it = { front: p[0], back: p[1], notes: p[2] || '', example: p[3] || '', exampleTr: p[4] || '' };
+      if (!looksLikeSentence(it.example, it.exampleTr)) { it.notes = joinNotes(it.notes, it.example); it.example = ''; }   // an extra meaning, not a sentence
+      return it;
+    });
 }
+/* Is this really an example sentence? Some word lists (like Duolingo's) put extra meanings ("you come from", "got") in the
+   columns where sentences go. A sentence ends with . ! ? (or starts with ¿ ¡), is 5+ words long, or comes with a translation. */
+function looksLikeSentence(ex, tr) {
+  const t = String(ex || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').trim();
+  return !t || !!String(tr || '').trim() || /[.!?…。！？]\s*["'»”’)]*$/.test(t) || /^[¿¡「“"]/.test(t) || t.split(/\s+/).length >= 5;
+}
+function joinNotes(a, b) { return [a, b].map(x => String(x || '').trim()).filter(Boolean).join('; '); }
 function importDialog(deck) {
   openDialog({
     title: `Import cards into "${deck.name}"`, ok: 'Import', wide: true,
