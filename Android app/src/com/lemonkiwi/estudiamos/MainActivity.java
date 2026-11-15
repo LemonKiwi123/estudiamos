@@ -1,6 +1,11 @@
 package com.lemonkiwi.estudiamos;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -17,6 +22,7 @@ import android.webkit.WebViewClient;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -32,6 +38,9 @@ public class MainActivity extends Activity {
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private ValueCallback<Uri[]> fileCallback;
+    private static final int MIC_PERMISSION = 8;
+    private SpeechRecognizer recognizer;
+    private String pendingLang = null;
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -47,6 +56,7 @@ public class MainActivity extends Activity {
         s.setTextZoom(100);
         tts = new TextToSpeech(this, status -> ttsReady = status == TextToSpeech.SUCCESS);
         web.addJavascriptInterface(new Speech(), "AndroidTTS");
+        if (SpeechRecognizer.isRecognitionAvailable(this)) web.addJavascriptInterface(new Listen(), "AndroidSpeech");
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
@@ -121,8 +131,66 @@ public class MainActivity extends Activity {
         if (web != null) web.saveState(out);
     }
 
+    /* the Say it! game: listen with the phone's own speech recognizer, send what it heard to the page */
+    private void sendToPage(String fn, String arg) { runOnUiThread(() -> web.evaluateJavascript("window." + fn + " && window." + fn + "(" + arg + ")", null)); }
+    private static String json(String t) {
+        StringBuilder b = new StringBuilder("\"");
+        for (char c : t.toCharArray()) { if (c == '"' || c == '\\') b.append('\\').append(c); else if (c < 32) b.append(String.format("\\u%04x", (int) c)); else b.append(c); }
+        return b.append('"').toString();
+    }
+    private long lastLevel = 0;
+    private static String jsonList(Bundle results) {
+        ArrayList<String> list = results == null ? null : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        StringBuilder b = new StringBuilder("[");
+        if (list != null) for (int i = 0; i < list.size(); i++) { if (i > 0) b.append(','); b.append(json(list.get(i))); }
+        return b.append(']').toString();
+    }
+    private void startListening(String lang) {
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            pendingLang = lang; requestPermissions(new String[] { Manifest.permission.RECORD_AUDIO }, MIC_PERMISSION); return;
+        }
+        if (recognizer == null) {
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            recognizer.setRecognitionListener(new RecognitionListener() {
+                public void onResults(Bundle results) { sendToPage("__androidSpeechResult", jsonList(results)); }
+                public void onPartialResults(Bundle partial) { sendToPage("__androidSpeechPartial", jsonList(partial)); }
+                public void onError(int error) { sendToPage("__androidSpeechError", String.valueOf(error)); }
+                public void onRmsChanged(float db) {   // the sound level for the meter, about 12 times a second
+                    long now = System.currentTimeMillis();
+                    if (now - lastLevel > 80) { lastLevel = now; sendToPage("__androidSpeechLevel", String.valueOf(db)); }
+                }
+                public void onReadyForSpeech(Bundle p) { } public void onBeginningOfSpeech() { }
+                public void onBufferReceived(byte[] b) { } public void onEndOfSpeech() { } public void onEvent(int t, Bundle p) { }
+            });
+        }
+        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5);
+        i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+        // wait through short pauses instead of stopping at the first breath (some phones ignore these)
+        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 2500L);
+        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L);
+        i.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 1500L);
+        if (lang != null && !lang.isEmpty()) { i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang); i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, lang); }
+        recognizer.startListening(i);
+    }
+    @Override
+    public void onRequestPermissionsResult(int request, String[] perms, int[] grants) {
+        if (request != MIC_PERMISSION) { super.onRequestPermissionsResult(request, perms, grants); return; }
+        String lang = pendingLang; pendingLang = null;
+        if (grants.length > 0 && grants[0] == PackageManager.PERMISSION_GRANTED) startListening(lang);
+        else sendToPage("__androidSpeechError", "9");
+    }
+    private class Listen {
+        @JavascriptInterface
+        public void start(String lang) { runOnUiThread(() -> startListening(lang)); }
+        @JavascriptInterface
+        public void stop() { runOnUiThread(() -> { if (recognizer != null) recognizer.stopListening(); }); }
+    }
+
     @Override
     protected void onDestroy() {
+        if (recognizer != null) recognizer.destroy();
         if (tts != null) tts.shutdown();
         super.onDestroy();
     }

@@ -250,6 +250,8 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
     `<button type="button" class="tool" data-act="palette" data-ed="${id}" data-cmd="hiliteColor" title="Highlight"><span class="hl">ab</span><span class="caret">▾</span></button>`,
     `<select class="tool-sel" data-ed="${id}" data-cmd="fontName" title="Font">${EDITOR_FONTS.map(([v, l]) => `<option value="${v}"${v ? ` style="font-family:'${v}'"` : ''}>${l}</option>`).join('')}</select>`,
     `<select class="tool-sel" data-ed="${id}" data-cmd="fontSize" title="Text size">${EDITOR_SIZES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`,
+    `<button type="button" class="tool dock-only" data-act="edMenu" data-ed="${id}" data-cmd="fontName" title="Font">Font<span class="caret">▾</span></button>`,
+    `<button type="button" class="tool dock-only" data-act="edMenu" data-ed="${id}" data-cmd="fontSize" title="Text size">Size<span class="caret">▾</span></button>`,
     tb('removeFormat', 'Tx', 'Clear formatting').replace('class="tool"', 'class="tool clear"'));
   if (pics) tools.push(`<button type="button" class="tool" data-act="edPic" data-ed="${id}" title="Add a picture (you can also paste or drag one in)">🖼️</button>`);
   tools.push(`<button type="button" class="tool" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>`);
@@ -351,12 +353,13 @@ function openPalette(btn) {
   m.innerHTML = `<div class="pal-title">${hl ? 'Highlight color' : 'Text color'}</div>
     <div class="pal-grid">${list.map(([c, n]) => `<button type="button" class="pal-sw" style="background:${c}" title="${n}" data-color="${c}"></button>`).join('')}</div>
     <button type="button" class="pal-none" data-color="${hl ? 'transparent' : 'reset'}">${hl ? '⌫ No highlight' : '↺ Default color'}</button>`;
+  if (btn.closest('.ed-tools.docked')) {
+    m.className = `palette pal-strip ${hl ? 'hl' : 'text'}`;
+    m.innerHTML = `<button type="button" class="pal-off" data-color="${hl ? 'transparent' : 'reset'}" title="${hl ? 'No highlight' : 'Default color'}" aria-label="${hl ? 'No highlight' : 'Default color'}"></button><span class="pal-div"></span>`
+      + list.map(([c, n]) => `<button type="button" class="pal-sw" style="background:${c}" title="${n}" aria-label="${n}" data-color="${c}"></button>`).join('');
+  }
   (btn.closest('dialog[open]') || document.body).appendChild(m);
-  const r = btn.getBoundingClientRect(), vv = window.visualViewport, vw = vv?.width || innerWidth, vh = vv?.height || innerHeight, vt = vv?.offsetTop || 0, vl = vv?.offsetLeft || 0;
-  const want = { x: Math.max(vl + 8, Math.min(vl + vw - m.offsetWidth - 8, r.left)), y: r.bottom + m.offsetHeight + 8 > vt + vh ? Math.max(vt + 8, r.top - m.offsetHeight - 6) : r.bottom + 6 };
-  m.style.left = want.x + 'px'; m.style.top = want.y + 'px';
-  const got = m.getBoundingClientRect();                                   // a dialog can shift fixed elements; correct for it
-  m.style.left = (want.x * 2 - got.left) + 'px'; m.style.top = (want.y * 2 - got.top) + 'px';
+  palShow(m, btn);
   m.addEventListener('click', e => {
     const b = e.target.closest('[data-color]'); if (!b) return;
     const c = b.dataset.color;
@@ -367,7 +370,93 @@ function openPalette(btn) {
     closePalette();
   });
 }
-function closePalette() { $('#palette')?.remove(); }
-document.addEventListener('click', e => { if (!e.target.closest('#palette') && !e.target.closest('[data-act=palette]')) closePalette(); }, true);
+function closePalette() { $('#palette')?.remove(); document.querySelectorAll('.ed-tools .tool.on').forEach(b => b.classList.remove('on')); }
+/* a strip sits across the screen right on top of the docked toolbar; anything else pops up next to its button */
+function palShow(m, btn) {
+  m._btn = btn;
+  if (!m.classList.contains('pal-strip')) return palPlace(m, btn);
+  btn.classList.add('on'); palStripPlace(m);
+}
+function palStripPlace(m) {
+  const bar = m._btn?.closest('.ed-tools'); if (!bar?.isConnected) return closePalette();
+  const vv = window.visualViewport;
+  m.style.width = (vv?.width || innerWidth) + 'px'; m.style.left = (vv?.offsetLeft || 0) + 'px';
+  m.style.top = (parseFloat(bar.style.top) - m.offsetHeight) + 'px';   // straight on top of the toolbar
+}
+/* put a pop-up next to its button: below it, or above it when there is no room or the toolbar sits on the keyboard */
+function palPlace(m, btn) {
+  const r = btn.getBoundingClientRect(), vv = window.visualViewport, vw = vv?.width || innerWidth, vh = vv?.height || innerHeight, vt = vv?.offsetTop || 0, vl = vv?.offsetLeft || 0;
+  const up = !!btn.closest('.ed-tools.docked') || r.bottom + m.offsetHeight + 8 > vt + vh;
+  const want = { x: Math.max(vl + 8, Math.min(vl + vw - m.offsetWidth - 8, r.left)), y: up ? Math.max(vt + 8, r.top - m.offsetHeight - 6) : r.bottom + 6 };
+  m.style.left = want.x + 'px'; m.style.top = want.y + 'px';
+  const got = m.getBoundingClientRect();                                   // a dialog can shift fixed elements; correct for it
+  m.style.left = (want.x * 2 - got.left) + 'px'; m.style.top = (want.y * 2 - got.top) + 'px';
+}
+function openEdMenu(btn) {
+  closePalette();
+  palRange = edRange && edId === btn.dataset.ed ? edRange.cloneRange() : null;
+  const id = btn.dataset.ed, cmd = btn.dataset.cmd, sel = btn.parentNode.querySelector(`select[data-cmd="${cmd}"]`); if (!sel) return;
+  const m = document.createElement('div'); m.className = 'palette ed-menu'; m.id = 'palette';
+  const items = [...sel.options].filter(o => o.value).map(o => `<button type="button" data-v="${esc(o.value)}"${cmd === 'fontName' ? ` style="font-family:'${esc(o.value)}'"` : ''}>${esc(o.textContent)}</button>`).join('');
+  if (btn.closest('.ed-tools.docked')) { m.className = 'palette pal-strip chips'; m.innerHTML = items; }
+  else m.innerHTML = `<div class="pal-title">${cmd === 'fontName' ? 'Font' : 'Text size'}</div><div class="ed-menu-list">${items}</div>`;
+  (btn.closest('dialog[open]') || document.body).appendChild(m);
+  palShow(m, btn);
+  m.addEventListener('click', e => {
+    const b = e.target.closest('[data-v]'); if (!b) return;
+    if (palRange) { edRange = palRange; edId = id; }
+    applyFormat(id, cmd, b.dataset.v); closePalette();
+  });
+}
+actions.edMenu = el => { if ($('#palette')?._btn === el) { closePalette(); return; } openEdMenu(el); };
+document.addEventListener('click', e => { if (!e.target.closest('#palette') && !e.target.closest('[data-act=palette], [data-act=edMenu]')) closePalette(); }, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePalette(); });
-actions.palette = el => { if ($('#palette')) { closePalette(); return; } openPalette(el); };
+actions.palette = el => { if ($('#palette')?._btn === el) { closePalette(); return; } openPalette(el); };
+
+/* ---------- phones: while you type in a card field, the formatting toolbar sits right above the keyboard,
+   out of the way of the phone's copy / paste bubble. It goes back in place when you leave the field. ---------- */
+const edDockable = () => !!window.visualViewport && matchMedia('(pointer: coarse)').matches;
+let edDocked = null;
+function edPlace() {
+  const d = edDocked; if (!d) return;
+  if (!d.tools.isConnected) { edDocked = null; return; }
+  const vv = window.visualViewport, t = d.tools;
+  // only the keyboard's own numbers: Safari measures elements from the visible part of the page, so measuring would double the shift
+  t.style.width = vv.width + 'px'; t.style.left = vv.offsetLeft + 'px'; t.style.top = (vv.offsetTop + vv.height - t.offsetHeight) + 'px';
+  const strip = document.querySelector('#palette.pal-strip'); if (strip) palStripPlace(strip);
+}
+function edUndock() {
+  const d = edDocked; if (!d) return;
+  closePalette(); d.tools.classList.remove('docked'); d.tools.style.left = d.tools.style.top = d.tools.style.width = ''; d.ph.remove(); edDocked = null;
+}
+function edDock(area) {
+  const tools = area.closest('.editor')?.querySelector('.ed-tools'); if (!tools) return;
+  if (edDocked?.tools === tools) return edFollow();
+  edUndock();
+  const ph = document.createElement('div'); ph.className = 'ed-tools-ph';
+  tools.before(ph); tools.classList.add('docked'); edDocked = { tools, ph }; edFollow();
+}
+/* the keyboard takes a moment to slide up, and phones don't always say when it is done:
+   keep the bar on the keyboard every frame for a little while after a tap, a cursor move or a resize */
+let edFollowUntil = 0;
+function edFollow(ms = 1200) {
+  const running = performance.now() < edFollowUntil;
+  edFollowUntil = Math.max(edFollowUntil, performance.now() + ms);
+  if (running) return;
+  const tick = () => { if (!edDocked) { edFollowUntil = 0; return; } edPlace(); if (performance.now() < edFollowUntil) requestAnimationFrame(tick); else edFollowUntil = 0; };
+  requestAnimationFrame(tick);
+}
+document.addEventListener('focusin', e => {
+  if (!edDockable()) return;
+  const a = e.target.closest?.('.ed-area');
+  if (a) edDock(a); else if (!e.target.closest?.('.ed-tools, #palette')) edUndock();
+});
+document.addEventListener('focusout', () => {
+  if (!edDocked) return;
+  setTimeout(() => { const a = document.activeElement; if (!a?.closest?.('.ed-area, .ed-tools, #palette')) edUndock(); }, 200);
+});
+window.visualViewport?.addEventListener('resize', () => { edPlace(); if (edDocked) edFollow(600); });
+window.visualViewport?.addEventListener('scroll', edPlace);
+window.addEventListener('scroll', () => { if (edDocked) edPlace(); }, true);
+document.addEventListener('selectionchange', () => { if (edDocked) edFollow(500); });
+document.addEventListener('touchend', e => { if (edDocked && e.target.closest?.('.ed-area')) edFollow(); }, { passive: true });

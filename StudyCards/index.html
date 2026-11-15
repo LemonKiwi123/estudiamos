@@ -455,6 +455,25 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .folder-empty{padding:16px;border:2px dashed var(--border);border-radius:12px;color:var(--muted);text-align:center;margin-top:10px;font-size:14px}
 .deck-grid.empty-drop{display:block}
 .quiz-lock{border:2px solid var(--accent-soft);background:color-mix(in srgb,var(--accent) 6%,var(--surface));border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.sk-card{max-width:620px;margin:10px auto;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.sk-prompt{font-size:30px;font-weight:800;line-height:1.2}
+.sk-hint{color:var(--muted)}
+.sk-mic{width:110px;height:110px;border-radius:50%;border:4px solid var(--accent);background:var(--accent-soft);font-size:48px;cursor:pointer;transition:transform .15s}
+.sk-mic:hover:not(:disabled){transform:scale(1.05)}.sk-mic:disabled{opacity:.45;cursor:default}
+.sk-mic.on{background:var(--accent);animation:skpulse 1s ease-in-out infinite}
+@keyframes skpulse{50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--accent) 25%,transparent)}}
+@media (prefers-reduced-motion:reduce){ .sk-mic.on{animation:none} }
+.sk-mic.on.lv{animation:none;box-shadow:0 0 0 calc(var(--lv,0) * 26px) color-mix(in srgb,var(--accent) 28%,transparent);transition:box-shadow .08s}
+.sk-meter{width:220px;max-width:80%;height:10px;border-radius:6px;background:var(--border);overflow:hidden}
+.sk-meter i{display:block;height:100%;width:0;background:var(--again);border-radius:6px;transition:width .08s}.sk-meter i.ok{background:var(--accent)}.sk-meter i.good{background:var(--good)}
+.sk-live{min-height:24px;font-size:18px;font-style:italic;color:var(--muted)}
+.sk-tip{font-size:14px;color:var(--again)}
+.sk-status{min-height:22px;color:var(--muted)}
+.sk-heard{font-size:18px;display:flex;flex-direction:column;gap:2px}.sk-heard small{color:var(--muted);font-size:13px}
+.sk-heard.ok b{color:var(--good)}.sk-heard.no b{color:var(--again)}
+.sk-verdict{font-size:20px}.sk-verdict.ok{color:var(--good)}.sk-verdict.no{color:var(--again)}
+.sk-review{display:flex;flex-direction:column;gap:6px;text-align:left;max-width:520px;margin:0 auto}
+.sk-miss{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:10px}.sk-miss small{flex-basis:100%;color:var(--muted)}
 .cl-more{display:flex;justify-content:center;padding:14px 0}
 .drop-on{outline:3px dashed var(--accent);outline-offset:3px;border-radius:14px}
 .drop-no{outline:3px dashed var(--again);outline-offset:3px;border-radius:14px;cursor:no-drop}
@@ -994,6 +1013,25 @@ dialog h3{font-size:18px;margin-bottom:14px}
 .ed-tools .tool.clear{font-size:12px;text-decoration:line-through;color:var(--muted)}
 .ed-tools .tool-sel:hover{background:var(--surface)}
 .ed-tools .tool-sp{flex:1}
+.ed-tools.docked{position:fixed;z-index:60;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior:contain;margin:0;box-sizing:border-box;border:0;border-top:1px solid var(--border);border-radius:0;padding:4px 6px;box-shadow:0 -4px 14px rgba(0,0,0,.12);scrollbar-width:none}
+.ed-tools.docked::-webkit-scrollbar{display:none}
+.ed-tools.docked{gap:6px;padding:6px 10px;background:var(--surface)}.ed-tools.docked .tool{flex:none;min-width:44px;height:44px;font-size:19px;border-radius:10px}.ed-tools.docked .tool svg{width:22px;height:22px}.ed-tools.docked .tool-sel{flex:none;height:44px}.ed-tools.docked .tool:active{background:var(--accent-soft)}
+.ed-tools.docked .tool-sp{display:none}
+.ed-tools.docked [data-act=edPic]{order:-3}.ed-tools.docked [data-act=edScan]{order:-2}.ed-tools.docked [data-act=speakField]{order:-1}
+.ed-tools .dock-only{display:none}.ed-tools.docked .dock-only{display:inline-grid;grid-auto-flow:column;align-items:center;font-size:14px}.ed-tools.docked .tool-sel{display:none}
+.pal-strip{display:flex;align-items:center;gap:10px;overflow-x:auto;overscroll-behavior:contain;scrollbar-width:none;box-sizing:border-box;border:0;border-top:1px solid var(--border);border-radius:0;box-shadow:0 -4px 14px rgba(0,0,0,.08);padding:8px 12px;z-index:61}
+.pal-strip::-webkit-scrollbar{display:none}
+.pal-strip .pal-sw{flex:none;width:34px;height:34px;aspect-ratio:auto;border-radius:9px}.pal-strip.text .pal-sw{border-radius:50%}
+.pal-strip .pal-off{flex:none;width:34px;height:34px;border-radius:9px;border:2px solid var(--accent);cursor:pointer;background:linear-gradient(to top right,transparent 45%,var(--muted) 46% 54%,transparent 55%),var(--surface)}
+.pal-strip.text .pal-off{border-radius:50%;background:var(--text);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.pal-strip .pal-div{flex:none;width:1px;height:26px;background:var(--border)}
+.pal-strip.chips button{flex:none;border:1px solid var(--border);background:var(--surface2);border-radius:18px;padding:8px 14px;font-size:15px;color:var(--text);white-space:nowrap;cursor:pointer}
+.ed-tools.docked .tool.on{background:var(--accent-soft)}
+.ed-menu{width:190px}.ed-menu-list{display:flex;flex-direction:column;gap:2px;max-height:min(50vh,320px);overflow-y:auto}
+.ed-menu-list button{border:0;background:none;text-align:left;padding:9px 10px;border-radius:8px;font-size:15px;color:var(--text);cursor:pointer}.ed-menu-list button:hover,.ed-menu-list button:active{background:var(--surface2)}
+.ed-tools-ph{display:none}.ed-tools.docked+.ed-area{border-radius:10px}
+/* phones: the toolbar only shows on top of the keyboard while you type, so the fields stay clean */
+@media (pointer: coarse){ .ed-tools:not(.docked){display:none} .ed-area{border-radius:10px} }
 .ed-area{min-height:64px;max-height:320px;overflow:auto;padding:9px 11px;border:1px solid var(--border);border-radius:0 0 10px 10px;background:var(--bg);outline:none;overflow-wrap:anywhere;font-weight:400}
 .ed-area:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ed-area:empty::before{content:attr(data-placeholder);color:var(--muted);pointer-events:none}
@@ -2712,8 +2750,10 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part3.js"></script>
 <script src="saga-part4.js"></script>
 <script src="saga-part5.js"></script>
+<script src="saga-part6.js"></script>
 <script src="saga.js"></script>
 <script src="numgame.js"></script>
+<script src="speakgame.js"></script>
 <script src="bulkedit.js"></script>
 <script src="pos.js"></script>
 <script src="tour.js"></script>

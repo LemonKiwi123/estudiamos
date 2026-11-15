@@ -94,7 +94,8 @@ views.quick = () => {
       <button type="button" class="btn ghost" data-act="quickStart" data-id="${d.id}">← Back</button>
       <div style="flex:1;max-width:420px">${qrBar(k)}</div>
       <div class="row" style="gap:6px"><span class="muted small" style="font-variant-numeric:tabular-nums">Round ${qr.round} · ${Math.min(qr.i + 1, qr.queue.length)}/${qr.queue.length}</span>
-        <button type="button" class="icon-btn" data-act="qrUndo" title="Undo (Ctrl+Z)" ${qr.history.length ? '' : 'disabled'}>${ICON.undo}</button></div>
+        <button type="button" class="icon-btn" data-act="qrUndo" title="Undo (Ctrl+Z)" ${qr.history.length ? '' : 'disabled'}>${ICON.undo}</button>
+        ${!qr.roundEnd && qrCard() ? `<button type="button" class="icon-btn" data-act="qrEdit" title="Edit this card (E)">${ICON.edit}</button>` : ''}</div>
     </div>`;
   if (qr.roundEnd) {
     const left = activeCardsOf(d.id).filter(x => x.fr === 'nq');
@@ -121,7 +122,7 @@ views.quick = () => {
       <button type="button" class="btn big qr-nq" data-act="qrAns" data-got="0">✗ Not quite <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">1</kbd></button>
       <button type="button" class="btn big qr-got" data-act="qrAns" data-got="1">✓ Got it <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">2</kbd></button>
     </div>
-    <div class="shortcuts">Keys: Space flip · 1 or ← Not quite · 2 or → Got it · R replay · Ctrl+Z undo</div>`;
+    <div class="shortcuts">Keys: Space flip · 1 or ← Not quite · 2 or → Got it · R replay · E edit · Ctrl+Z undo</div>`;
 };
 
 views.quickDone = () => {
@@ -150,6 +151,7 @@ Object.assign(actions, {
   qrAns: el => qrAnswer(el.dataset.got === '1'),
   qrNext: () => qrNextRound(),
   qrUndo: () => qrUndo(),
+  qrEdit: () => { const c = qrCard(); if (c) cardDialog(c, () => { if (view.name === 'quick') render(); }); },
 });
 document.addEventListener('keydown', e => {
   if (view.name !== 'quick' || !qr || $('#dlg').open || e.altKey) return;
@@ -162,4 +164,5 @@ document.addEventListener('keydown', e => {
   else if (e.key === '1' || e.key === 'ArrowLeft') { e.preventDefault(); qrAnswer(false); }
   else if (e.key === '2' || e.key === 'ArrowRight') { e.preventDefault(); qrAnswer(true); }
   else if (k === 'r') speakQuick(true);
+  else if (k === 'e') { e.preventDefault(); actions.qrEdit(); }
 });

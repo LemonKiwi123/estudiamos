@@ -14,11 +14,12 @@ function sgFix(s) {
   s.flags ||= {}; s.got ||= {}; s.bag ||= {}; s.gearBag ||= {}; s.beaten ||= {}; s.playMs ||= 0; s.bench ||= []; s.met ||= {};
   for (const h of [...s.party, ...s.bench]) { h.st ||= {}; s.met[h.key] = 1; }
   if (!SG_MAPS[s.map]) Object.assign(s, { map: 'town', x: 9, y: 9, dir: 'down' });
+  if (typeof sgFixMore === 'function') sgFixMore(s);
   return s;
 }
 function sgNewSave(slot, name) {
   sgSlots()[slot] = sgFix({ v: 1, name: name.slice(0, 10) || 'Hero', party: [sgHero('knight', name.slice(0, 10) || 'Hero')], gold: 50, bag: { herb: 2 }, gearBag: {},
-    map: 'town', x: 9, y: 3, dir: 'up', flags: {}, got: {}, beaten: {}, home: 'town', started: Date.now(), playMs: 0, steps: 0 });
+    map: SG_MAPS.castle_q ? 'castle_q' : 'town', x: SG_MAPS.castle_q ? 14 : 9, y: 3, dir: 'up', flags: {}, got: {}, beaten: {}, home: 'town', started: Date.now(), playMs: 0, steps: 0 });
   S.sagaSlot = slot; save();
 }
 function sgSaveNow(silent) {
@@ -223,7 +224,7 @@ function sgBoxRaw() {
     const sp = q.mode === 'mc' && done ? sgSpeed(q) : null;
     const verdict = !done ? '' : q.timeout ? `⏱️ Time’s up! It was: <b>${esc(q.answer)}</b>` : q.grade === 'exact' ? (q.spell ? (q.fast ? '⚡ Perfect and fast!' : '✓ Right!') : sp.crit ? `⚡ Lightning fast! Critical! (+${sp.pct}%)` : sp.pct >= 5 ? `✓ Right! Speed bonus +${sp.pct}%` : '✓ Right!') : q.grade === 'close' ? `≈ Almost! It’s <b>${esc(q.answer)}</b>` : `✗ It was: <b>${esc(q.answer)}</b>`;
     el.innerHTML = `<div class="sg-q"><div class="sg-mtitle">${q.title}</div>
-      <div class="sg-prompt"><span>${esc(q.prompt)}</span>${!q.spell && typeof speakBtn === 'function' ? speakBtn(q.prompt, q.lang) : ''}</div>
+      <div class="sg-prompt"><span>${q.listen && !done ? '🎧 Listen…' : esc(q.prompt)}</span>${!q.spell && typeof speakBtn === 'function' ? speakBtn(q.prompt, q.lang) : ''}</div>
       ${q.mode === 'type'
         ? `<form class="sg-typeform" data-sgtype="1"><input id="sgType" autocomplete="off" autocapitalize="off" spellcheck="false" lang="${esc(q.lang || '')}" placeholder="Type the word…" aria-label="Spell it in ${esc(langName(q.lang) || 'the deck language')}" ${done ? 'disabled' : ''} value="${done ? esc(q.given) : ''}"><button type="submit" class="sg-cast" ${done ? 'disabled' : ''}>✨ Cast</button></form>`
         : `${q.limit ? `<div class="sg-timer"><div style="animation-duration:${q.limit / 1000}s;${done ? 'animation-play-state:paused' : ''}"></div></div>` : ''}<div class="sg-opts ${q.opts.length > 4 ? 'six' : ''}">${q.opts.map((o, i) => { const st = !done ? '' : norm(o) === norm(q.answer) ? 'right' : o === q.given ? 'wrong' : 'dim';
@@ -301,7 +302,7 @@ function sgInteract() {
   const s = sgS(), [dx, dy] = SG_DIRS[s.dir], fx = s.x + dx, fy = s.y + dy, m = SG_MAPS[s.map];
   const o = sgObjAt(s.map, fx, fy); if (o) return sgUseObj(o);
   let n = sgNpcAt(s.map, fx, fy);
-  if (!n && 'L=A'.includes(sgTile(s.map, fx, fy))) n = sgNpcAt(s.map, fx + dx, fy + dy);   // talk across the throne, the bar or the altar
+  if (!n && 'L=AJt'.includes(sgTile(s.map, fx, fy))) n = sgNpcAt(s.map, fx + dx, fy + dy);   // talk across the throne, the bar or the altar
   if (n) { n.dir && (sg.np[s.map + ':' + n.id] = { ...(sg.np[s.map + ':' + n.id] || { x: n.x, y: n.y }), dir: { up: 'down', down: 'up', left: 'right', right: 'left' }[s.dir] }); return sgTalk(n); }
   if (m.doors?.[fx + ',' + fy]) return sgDoor(m.doors[fx + ',' + fy]);
   if (sgTile(s.map, fx, fy) === 'Z') return sgOracle();
@@ -337,6 +338,7 @@ function sgTalk(n) {
     if (!s.flags.king) return sgSay(SG_STORY.tamsin.before);
     return sgSay(SG_STORY.tamsin.join(esc(s.name)), () => { sgJoin('scribe'); });
   }
+  if (typeof sgTalkMore === 'function' && sgTalkMore(n)) return;
   if (n.chat) return sgSay(`${esc(n.name || 'Townsperson')}: ${SG_CHAT[Math.floor(Math.random() * SG_CHAT.length)]}`);
   if (n.lines) return sgSay(n.lines);
 }
@@ -435,6 +437,7 @@ function sgUseObj(o) {
   const s = sgS();
   if (o.type === 'lever') return sgUseLever(o);
   if (o.type === 'plaque') return sgSay(o.lines);
+  if (o.type === 'colorChest') return sgUseColorChest(o);
   if (o.type === 'statue') return sgUseStatue(o);
   if (o.type === 'chest' || o.type === 'lockChest') {
     if (s.got[o.id]) return sgSay('The chest is empty.');
@@ -483,6 +486,7 @@ function sgGive(give) {
     else if (k === 'gear') { s.gearBag[v] = (s.gearBag[v] || 0) + 1; out.push(`⚔️ You found a <b>${SG_GEAR[v].name}</b>! Equip it from the menu.`); }
     else if (k === 'shard') { s.flags[v > 1 ? 'shard' + v : 'shard'] = 1; }
     else if (k === 'flag') { s.flags[v] = 1; }
+    else if (k === 'ckey') out.push(...sgGiveKey(v));
     else { s.bag[k] = (s.bag[k] || 0) + v; out.push(`${SG_ITEMS[k].icon} You found <b>${v > 1 ? v + ' × ' : ''}${SG_ITEMS[k].name}</b>!`); }
   }
   return out;
@@ -493,6 +497,7 @@ function sgDoor(kind) {
   const s = sgS();
   const m = SG_MAPS[s.map];
   if (kind === 'sage') return sgSage();
+  if (kind === 'jail') { const id = s.map + '_jail', r = SG_MAPS[id]; if (r) return sgWarp(id, r.entry.x, r.entry.y, 'up'); }
   if (kind === 'tavern' || kind === 'church') { const id = m[kind], r = SG_MAPS[id]; if (r) return sgWarp(id, r.entry.x, r.entry.y, 'up'); }
   if (kind === 'inn') {
     const cost = m.inn || 10;
@@ -571,6 +576,7 @@ function sgLoadSlot(k) {
 }
 /* 🌀 Wayfare: fly to any town you have visited (taught by the Archmage near the end) */
 function sgWayfare(back) {
+  if (typeof sgJailed === 'function' && sgJailed()) return sgSay('👮 Jailer: No magic tricks in my jail!');
   const s = sgS(), caster = s.party.filter(h => h.hp > 0).sort((a, b) => b.mp - a.mp)[0], cost = 4;
   const towns = Object.entries(SG_MAPS).filter(([id, m]) => m.town && s.seen?.[id]);
   sgMenu(`🌀 Wayfare · ${caster ? `${esc(caster.name)} casts it (${cost} MP, has ${caster.mp})` : 'nobody can cast'} · pick a town`, towns.map(([id, m]) => ({
@@ -621,9 +627,10 @@ function sgItemTarget(k, inBattle, user) {
     sgSaveNow(true); sgSay(msg, inBattle ? () => sgNextHero() : () => sgItemMenu(false));
   } })), () => sgItemMenu(inBattle, user));
 }
-const sgKeyItems = () => { const f = sgS().flags; return [f.shard && '💎 Lexicon Shard 1', f.shard2 && '💎 Lexicon Shard 2', f.allshards && '💎 All the Lexicon Shards', f.key1 && '🪶 Dawn Quill', f.key2 && '🫙 Dusk Inkwell', f.key3 && '⭐ Star Seal', f.tide && '🌊 Tide Charm', f.ship && '⛵ Quill Swan', f.crystal && '💠 Voice Crystal', f.wayfare && '🌀 Wayfare (spell)', f.lexicon && '📖 The whole Lexicon'].filter(Boolean).join(' · '); };
+const sgKeyItems = () => { const f = sgS().flags; return [f.shard && '💎 Lexicon Shard 1', f.shard2 && '💎 Lexicon Shard 2', f.allshards && '💎 All the Lexicon Shards', f.key1 && '🪶 Dawn Quill', f.key2 && '🫙 Dusk Inkwell', f.key3 && '⭐ Star Seal', f.tide && '🌊 Tide Charm', f.ship && '⛵ Quill Swan', f.crystal && '💠 Voice Crystal', f.wayfare && '🌀 Wayfare (spell)', f.lexicon && '📖 The whole Lexicon', ...(typeof sgColorKeyItems === 'function' ? sgColorKeyItems() : [])].filter(Boolean).join(' · '); };
 function sgFeather() {
   const s = sgS();
+  if (typeof sgJailed === 'function' && sgJailed()) return sgSay('👮 Jailer: No feathers in my jail! Hand it over… just kidding. But you’re staying.');
   s.bag.feather--; sgSay(['You toss the feather into the air… 🪶', 'A gust of wind carries the party home!'], () => { const h = SG_MAPS[s.home || 'town']; sgWarp(s.home || 'town', h.home.x, h.home.y, 'down'); });
 }
 function sgEquipMenu() {
@@ -659,7 +666,7 @@ function sgMapRoot(map) {   // which overworld tile a town or dungeon floor sits
   const s = sgS(); return { map, x: s.x, y: s.y };
 }
 const SG_MAP_COL = c => ({ E: '#14101c', J: '#5a5a66', z: '#f4c542', I: '#2a1a40', g: '#2e7d32', N: '#5d6d7e', _: '#c8955a', O: '#6b4226', '=': '#8b5a2b', t: '#8b5a2b', b: '#a87440', p: '#6b4226', A: '#f6f6f0', G: '#7d3c98', '.': '#4caf50', f: '#1e6b35', h: '#81c784', M: '#7a6a58', W: '#2f6fd0', B: '#8b5a2b', P: '#d9b878', U: '#c0392b', V: '#3e2a1c', Y: '#c49a5a', d: '#e6c77a', k: '#2e8b4a', Q: '#8b5a2b', u: '#c0763a', Z: '#f5eef8',
-  '#': '#666c75', K: '#b03a48', L: '#f4c542', R: '#c0392b', H: '#f3e2c0', D: '#5e3a1a', S: '#8b5a2b', F: '#ff8fb1', T: '#1e6b35', X: '#2a1d12', C: '#7a5a3e', c: '#6d5038', '<': '#f6f6f0', '>': '#14141c' })[c] || '#444';
+  '#': '#666c75', n: '#a8a49c', e: '#b03a48', v: '#8b5a2b', q: '#c0392b', w: '#c9d3e0', a: '#2e8b4a', K: '#b03a48', L: '#f4c542', R: '#c0392b', H: '#f3e2c0', D: '#5e3a1a', S: '#8b5a2b', F: '#ff8fb1', T: '#1e6b35', X: '#2a1d12', C: '#7a5a3e', c: '#6d5038', '<': '#f6f6f0', '>': '#14141c' })[c] || '#444';
 function sgMapOpen(view = 'world') { sg.ui = { type: 'map', view }; sgBox(); }
 function sgMapHtml(u) {
   const tab = (v, label) => `<button type="button" class="map-tab ${u.view === v ? 'on' : ''}" data-act="sgMapView" data-v="${v}">${label}</button>`;
@@ -677,7 +684,7 @@ function sgMapDraw() {
     const m = SG_MAPS[s.map], mm = trMiniMap(cv, m.rows, c => sgMapColor(c, m.theme), { y0: 24, maxH: H - 24 });
     g.fillStyle = '#ffffff'; g.fillText(m.name, 8, 4);
     for (const o of sgObjs(s.map)) { const [x, y] = mm.at(o.x, o.y); g.font = `${Math.max(10, mm.t + 2)}px sans-serif`;
-      g.fillText(o.type === 'chest' ? (s.got[o.id] ? '▫️' : '🎁') : o.type === 'lockChest' ? (s.got[o.id] ? '▫️' : '🔒') : o.type === 'seal' ? '🌀' : o.type === 'npc' ? '🙂' : '👾', x - 2, y - 2); }
+      g.fillText(o.type === 'chest' ? (s.got[o.id] ? '▫️' : '🎁') : o.type === 'lockChest' ? (s.got[o.id] ? '▫️' : '🔒') : o.type === 'colorChest' ? (s.got[o.id] ? '▫️' : SG_CKEYS[o.color].icon) : o.type === 'seal' ? '🌀' : o.type === 'npc' ? '🙂' : '👾', x - 2, y - 2); }
     const [px, py] = mm.at(s.x, s.y); star(px + mm.t / 2, py + mm.t / 2, Math.max(4, mm.t * 0.7));
     return;
   }
@@ -688,7 +695,9 @@ function sgMapDraw() {
   grid.forEach((row, r) => row.forEach((id, c) => {
     const m = SG_MAPS[id]; if (!m) return;
     const x0 = 4 + c * cw, y0 = top + r * ch, MW = m.rows[0].length, MH = m.rows.length, tw = cw / MW, th = ch / MH, at = (x, y) => [x0 + x * tw, y0 + y * th];
-    if (!known(id)) { g.fillStyle = '#1b2266'; g.fillRect(x0, y0, cw + 1, ch + 1); g.fillStyle = '#5a64b0'; g.font = 'bold 20px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText('???', x0 + cw / 2, y0 + ch / 2 - 12); g.textAlign = 'left'; return; }
+    if (!known(id)) {   // not explored yet: the land shows as gray fog, the sea stays sea blue
+      for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const w = m.rows[y][x] === 'W'; g.fillStyle = w ? SG_MAP_COL('W') : (x * 7 + y * 13) % 5 ? '#8a8174' : '#7a7266'; g.fillRect(Math.floor(x0 + x * tw), Math.floor(y0 + y * th), Math.ceil(tw) + 1, Math.ceil(th) + 1); }
+      g.fillStyle = '#2e2a24'; g.font = 'bold 20px ui-monospace,monospace'; g.textAlign = 'center'; g.fillText('???', x0 + cw / 2, y0 + ch / 2 - 12); g.textAlign = 'left'; return; }
     for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { g.fillStyle = sgMapColor(m.rows[y][x], m.theme); g.fillRect(Math.floor(x0 + x * tw), Math.floor(y0 + y * th), Math.ceil(tw) + 1, Math.ceil(th) + 1); }
     later.push(() => {
       g.font = `bold ${colsN > 3 ? 9 : 11}px ui-monospace,monospace`; const nm = m.openSea ? '' : m.name, nw = g.measureText(nm).width + 8;
@@ -960,6 +969,12 @@ function sgTileArt(ch, theme) {
       case 'g': R(0, 0, 16, 16, '#2e7d32'); for (let y = 2; y < 16; y += 4) R(0, y, 16, 1, '#1b5e20'); for (let y = 0; y < 16; y += 4) for (let x = (y / 4) % 2 ? 0 : 4; x < 16; x += 8) R(x, y, 1, 3, '#1b5e20'); R(6, 9, 4, 5, 'gold'); R(7, 10, 2, 3, 'cream'); R(10, 10, 1, 2, 'gold'); break;
       case 'N': R(0, 0, 16, 16, '#5d6d7e'); for (let y = 2; y < 16; y += 4) R(0, y, 16, 1, '#34495e'); R(7, 2, 2, 12, 'gold'); R(4, 5, 8, 2, 'gold'); break;
       case '_': floor(); break;
+      case 'n': R(0, 0, 16, 16, '#a8a49c'); R(0, 7, 16, 1, '#8a867e'); R(0, 15, 16, 1, '#8a867e'); R(7, 0, 1, 7, '#8a867e'); R(15, 8, 1, 7, '#8a867e'); R(3, 3, 1, 1, '#bcb8b0'); R(11, 11, 1, 1, '#bcb8b0'); break;
+      case 'e': floor(); R(2, 1, 12, 14, '#5e3a1a'); R(3, 2, 10, 4, '#f6f6f0'); R(3, 6, 10, 8, '#b03a48'); R(3, 6, 10, 1, '#7d2633'); R(3, 9, 10, 1, '#d8586a'); break;
+      case 'v': floor(); R(2, 3, 5, 11, '#8b5a2b'); R(2, 5, 5, 1, '#3a2010'); R(2, 11, 5, 1, '#3a2010'); R(9, 6, 5, 8, '#a87440'); R(9, 6, 5, 1, '#5e3a1a'); R(9, 9, 5, 1, '#5e3a1a'); R(11, 6, 1, 8, '#5e3a1a'); break;
+      case 'q': R(0, 0, 16, 16, 'stone'); R(0, 0, 16, 2, 'stoneD'); R(2, 4, 12, 12, '#5f656e'); R(4, 7, 8, 9, '#14141c'); R(5, 11, 6, 4, '#ff7a1a'); R(6, 9, 4, 3, '#f4c542'); R(7, 13, 2, 2, '#fff3a0'); break;
+      case 'w': R(0, 0, 16, 16, '#a8a49c'); R(5, 1, 6, 5, '#c9d3e0'); R(6, 3, 4, 1, '#141420'); R(4, 6, 8, 6, '#c9d3e0'); R(4, 6, 8, 1, '#8e9aae'); R(5, 12, 2, 3, '#8e9aae'); R(9, 12, 2, 3, '#8e9aae'); R(7, 0, 2, 1, '#c0392b'); R(3, 14, 10, 2, '#5f656e'); break;
+      case 'a': floor(); R(5, 10, 6, 5, '#b0603a'); R(5, 10, 6, 1, '#7a3418'); R(3, 2, 10, 8, '#2e8b4a'); R(5, 1, 6, 3, '#4caf50'); R(4, 5, 2, 2, '#1e6b35'); R(10, 6, 2, 2, '#1e6b35'); break;
       case 'O': R(0, 0, 16, 16, '#6b4226'); for (let x = 3; x < 16; x += 4) R(x, 0, 1, 16, '#4a2c17'); R(0, 15, 16, 1, '#3a2010'); R(1, 5, 1, 1, '#2a1a10'); R(9, 11, 1, 1, '#2a1a10'); break;
       case '=': floor(); R(0, 3, 16, 13, '#6b4226'); R(0, 3, 16, 4, '#a87440'); R(0, 6, 16, 1, '#4a2c17'); R(3, 0, 3, 4, 'gold'); R(4, 1, 1, 2, 'cream'); R(10, 1, 3, 3, '#c0392b'); break;
       case 't': floor(); R(2, 4, 12, 8, '#6b4226'); R(3, 5, 10, 5, '#8b5a2b'); R(4, 12, 2, 3, 'woodD'); R(10, 12, 2, 3, 'woodD'); R(7, 3, 2, 3, 'gold'); R(7, 2, 2, 1, '#ff9a3a'); break;
@@ -994,6 +1009,7 @@ const SG_LOOKS = {
   priest: { A: { hair: 'short', shirt: 1, body: 'dress' }, colors: { 0: '#f2c29a', 1: '#f6f6f0', 2: '#d4ac0d', 3: '#3a3a3a' } },
   barkeep: { A: TR_ARCH.shop || TR_ARCH.man, colors: { 0: '#f2c29a', 1: '#f6f6f0', 2: '#8b5a2b', 3: '#2a1a10' } },
   archmage: { A: { hair: 'long', shirt: 1, body: 'dress', cape: 1 }, colors: { 0: '#f2c29a', 1: '#8e44ad', 2: '#f4c542', 3: '#e5e5e5' }, crown: false },
+  ...(typeof SG_LOOKS_MORE !== 'undefined' ? SG_LOOKS_MORE : {}),
 };
 const sgShipArt = dir => sgCache['ship' + dir] ||= sgCanvas(16, 18, g => {
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); }, f = dir === 'right';
@@ -1169,6 +1185,7 @@ function sgDrawWorld(g) {
   }
   for (const o of sgObjs(s.map)) {
     if (o.type === 'chest' || o.type === 'lockChest') g.drawImage(sgChestArt(!!s.got[o.id], o.type === 'lockChest'), ox(o.x), oy(o.y));
+    else if (o.type === 'colorChest') g.drawImage(sgColorChestArt(o.color, !!s.got[o.id]), ox(o.x), oy(o.y));
     else if (o.type === 'seal') { g.globalAlpha = 0.7 + 0.3 * Math.sin(sg.frame / 8); g.drawImage(sgSealArt(), ox(o.x), oy(o.y)); g.globalAlpha = 1; }
     else if (o.type === 'npc') g.drawImage(sgPersonArt(o.look, 'down', 0), ox(o.x), oy(o.y) - 2);
     else if (o.type === 'hidden') { if ((sg.frame + o.x * 37) % 140 < 10) { g.fillStyle = '#ffffff'; const X = ox(o.x) + 7, Y = oy(o.y) + 6; g.fillRect(X, Y - 2, 1, 5); g.fillRect(X - 2, Y, 5, 1); } }
@@ -1264,7 +1281,9 @@ function sgQuantize(cv) {
   const pal = sgPalette(); if (pal[0] === 'full') return;
   if (sgQuantize.sig !== pal[0]) { sgQuantize.sig = pal[0]; sgQuantize.rgb = pal[2].map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))); }
   const P = sgQuantize.rgb, g = cv.getContext('2d'), im = g.getImageData(0, 0, cv.width, cv.height), d = im.data;
-  for (let i = 0; i < d.length; i += 4) { const l = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114, c = P[l > 178 ? 0 : l > 112 ? 1 : l > 52 ? 2 : 3]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+  for (let i = 0; i < d.length; i += 4) {
+    // sea water is always the darkest shade (with light waves), so it never looks like grass or forest
+    const sea = d[i] === 47 && d[i + 1] === 111 && d[i + 2] === 208, l = sea ? 0 : d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114, c = P[l > 178 ? 0 : l > 112 ? 1 : l > 52 ? 2 : 3]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
   g.putImageData(im, 0, 0);
 }
 
