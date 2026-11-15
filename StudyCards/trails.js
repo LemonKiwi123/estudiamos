@@ -507,7 +507,7 @@ const trItemAt = (map, x, y) => trItemsHere(map).find(i => i.x === x && i.y === 
 const trCanWalk = (map, x, y) => TR_WALKABLE.has(trTile(map, x, y)) && !trNpcAt(map, x, y) && !trItemAt(map, x, y) && !(trS().x === x && trS().y === y && trS().map === map);
 
 /* ---------- Questions from the deck ---------- */
-function trCard() { if (!tr.queue.length) tr.queue = shuffle(tr.pool.slice()); return tr.queue.pop(); }
+function trCard() { return gmPick(tr); }   // words you miss come back sooner and more often (runner.js)
 function trAsk(title, then) {
   const c = trCard(), rev = Math.random() < 0.3, prompt = rev ? c.back : c.front, answer = rev ? c.front : c.back;
   const pool = tr.pool.filter(x => x.id !== c.id).map(x => rev ? x.front : x.back);
@@ -531,7 +531,7 @@ function trTimerMenu() {
 function trTimeUp(q) {
   if (!tr || tr.ui?.q !== q || q.given != null) return;
   q.given = ''; q.ok = false; q.timeout = true; q.fast = false; q.mult = 0;
-  tr.session.results.push({ cardId: q.card.id, q: q.prompt, a: q.answer, given: '(time ran out)', ok: false });
+  tr.session.results.push({ cardId: q.card.id, q: q.prompt, a: q.answer, given: '(time ran out)', ok: false }); gmResult(tr, q.card, false);
   if (typeof sdSound === 'function') sdSound('wrong');
   trBox();
   setTimeout(() => { if (typeof trMusic !== 'undefined') trMusic.setDuck(1); if (tr?.ui?.q === q) { tr.ui = null; q.then(false, false, q); } }, 1500);
@@ -539,7 +539,7 @@ function trTimeUp(q) {
 function trAnswer(i) {
   const q = tr.ui?.q; if (!q || q.given != null || !q.opts[i]) return;
   clearTimeout(q.timer); q.secs = (Date.now() - q.t0) / 1000; q.given = q.opts[i]; q.ok = norm(q.given) === norm(q.answer); q.mult = q.ok ? trSpeedMult(q.secs, q.limit) : 0; q.fast = q.ok && q.mult >= 1.3;
-  tr.session.results.push({ cardId: q.card.id, q: q.prompt, a: q.answer, given: q.given, ok: q.ok });
+  tr.session.results.push({ cardId: q.card.id, q: q.prompt, a: q.answer, given: q.given, ok: q.ok }); gmResult(tr, q.card, q.ok);
   if (typeof sdSound === 'function') sdSound(q.ok ? 'right' : 'wrong');
   trBox();
   setTimeout(() => { if (typeof trMusic !== 'undefined') trMusic.setDuck(1); if (tr?.ui?.q === q) { tr.ui = null; q.then(q.ok, q.fast, q); } }, q.ok ? 750 : 1500);

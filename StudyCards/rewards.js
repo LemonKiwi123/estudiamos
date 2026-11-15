@@ -149,7 +149,7 @@ function trophySvg(level, size = 48, on = true) {
 }
 
 /* ---------- Popups & small UI ---------- */
-const PLAYING = ['study', 'quick', 'quiz', 'game', 'builder', 'runner', 'tower', 'showdown', 'millionaire', 'priceParty', 'spinSpell', 'wordTown', 'trails', 'saga'];
+const PLAYING = ['study', 'quick', 'quiz', 'game', 'builder', 'realsent', 'runner', 'tower', 'showdown', 'millionaire', 'priceParty', 'spinSpell', 'wordTown', 'trails', 'saga'];
 let popupTimer = null;
 function schedulePopups() { if (!popupTimer && pendingPopups.length) popupTimer = setTimeout(showPopups, 800); }
 function showPopups() {

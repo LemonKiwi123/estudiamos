@@ -634,6 +634,7 @@ views.builder = () => {
     <div class="study-top"><button type="button" class="btn ghost" data-act="games" data-id="${bld.deckId}">← Games</button>
       <div style="flex:1"><b>🧩 Sentence Builder</b> <span class="muted small">· ${esc(L.name)} grammar</span></div>
       <span class="muted small">✅ ${bld.score}${bld.streak > 1 ? ` · 🔥 ${bld.streak} in a row` : ''}</span></div>
+    ${typeof bldModeTabs === 'function' ? bldModeTabs('build') : ''}
     <div class="flash bld-board" style="min-height:0">
       <div class="muted small">${bld.frame ? `Fill each blank with the right ${esc(bldPosNames())}. The other words are already in place. It only counts if it follows the grammar rules.` : `Tap or drag words to build a sentence in ${esc(L.name)}. Drag a word out to take it back. It only counts if it follows the grammar rules.`}</div>
       <div class="bld-line ${bld.done ? 'done' : ''}" aria-label="Your sentence">${bld.frame ? bldFrameHtml(chipH) : line.length ? line.map((c, i) => (bld.gap === i ? '<span class="bld-gap" aria-label="empty spot"></span>' : '') + chipH(c, 'line', i)).join('') : '<span class="muted">Your sentence goes here…</span>'}</div>
@@ -660,7 +661,8 @@ views.builder = () => {
       <button type="button" class="btn small" data-act="bldWords">📚 Add my deck's words${(S.bldWords || []).length ? ` (${S.bldWords.length})` : ''}</button>
       <select class="inp" id="bldLang" style="margin:0;width:auto">${Object.entries(BLD_LANGS).map(([k, l]) => `<option value="${k}" ${k === bld.lang ? 'selected' : ''}>Build in ${l.name}</option>`).join('')}</select>
     </div>
-    ${bldPosPicker()}`;
+    ${bldPosPicker()}
+    ${typeof bldReportBtn === 'function' ? bldReportBtn(bld.lang) : ''}`;
 };
 function bldCheckNow() {
   const line = bld.line.map(id => bld.tray.find(t => t.id === id)), r = BLD_LANGS[bld.lang].check(line);
@@ -671,6 +673,7 @@ function bldCheckNow() {
     bld.msg = `🎉 <b>${esc(text)}</b>${meaning ? `<br><span class="muted">${esc(meaning)}</span>` : ''}<br><span class="small">Correct ${L.name}! +${pts} points</span>`;
     const lang = langBase(d?.frontLang || '') === bld.lang ? d.frontLang : langBase(d?.backLang || '') === bld.lang ? d.backLang : L.voice;
     if (typeof speak === 'function') speak(text, lang);
+    if (meaning && typeof gtRemember === 'function') gtRemember(bld.lang, meaning, text, 'Made by the Sentence Builder (its English meaning)');   // for 🌐 Report a translation problem
   } else { bld.fails++; bld.streak = 0; bld.bad = r.at; bld.msg = `✋ ${esc(r.msg)}${bld.fails >= 2 && !bld.showEx ? '<br><span class="small">Stuck? Tap 💡 Hint, or 🔀 New words for a fresh set.</span>' : ''}`; }
   render();
 }

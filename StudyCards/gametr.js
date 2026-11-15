@@ -98,10 +98,10 @@ function gtLangLabel(deckLang) { const b = gtBase(deckLang); return gtWant(deckL
    already filled in, like the Feedback page: nothing is sent by the app itself. */
 const GT_RECENT = [];
 const gtPlain = s => String(s ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/\s+/g, ' ').trim();
-function gtRemember(lang, en, tr) {
+function gtRemember(lang, en, tr, src) {
   const e = gtPlain(en), t = gtPlain(tr); if (!e || !/[A-Za-z]{2}/.test(e)) return;
   const i = GT_RECENT.findIndex(x => x.lang === lang && x.en === e); if (i >= 0) GT_RECENT.splice(i, 1);
-  GT_RECENT.unshift({ lang, en: e, tr: t, same: e === t }); if (GT_RECENT.length > 30) GT_RECENT.pop();
+  GT_RECENT.unshift({ lang, en: e, tr: t, same: e === t, src }); if (GT_RECENT.length > 30) GT_RECENT.pop();
 }
 const GT_LANG_ENGLISH = { es: 'Spanish', fr: 'French', ja: 'Japanese' };
 function gtReportBtn(deckLang, game) {
@@ -115,7 +115,7 @@ function gtReportDialog(lang, game) {
   const langName = GT_LANG_ENGLISH[lang] || lang;
   const list = rows.length ? `<div class="gt-lines" role="radiogroup" aria-label="Which line?">${rows.map((r, i) => `<label class="gt-line"><input type="radio" name="gtline" value="${i}" ${i === 0 ? 'checked' : ''}>
       <span><b lang="${lang}">${esc(r.tr)}</b>${r.same ? ' <span class="pill">still in English</span>' : `<small class="muted">${esc(r.en)}</small>`}</span></label>`).join('')}</div>`
-    : '<p class="muted" style="margin:0">Play a little first: the last lines the game shows will appear here so you can pick one.</p>';
+    : '<p class="muted" style="margin:0">Play a little first: the last lines the game shows (or the sentences you finish) will appear here so you can pick one.</p>';
   openDialog({ title: '🌐 Report a translation problem', wide: true, ok: 'Send report', body: `
       <p class="muted small" style="margin-top:0">Pick the line (newest first), say what’s wrong and, if you can, how it should say it. This opens the Estudiamos page on GitHub with your report filled in; you check it and post it there (a free GitHub account is needed).</p>
       ${list}
@@ -129,7 +129,7 @@ function gtReportDialog(lang, game) {
       const dev = typeof cmDeviceInfo === 'function' ? cmDeviceInfo() : {};
       if (typeof ghUrl !== 'function' || !ghUrl()) { toast('Reporting isn’t set up yet'); return false; }
       const body = [`**Game:** ${game} · **Language:** ${langName}`, `**App version:** ${dev.version || '?'} · **Device:** ${dev.device || '?'} · **Browser:** ${dev.browser || '?'}`, '',
-        `### Problem\n${kind}`, ...(r ? ['', `### The line in the game\n> ${r.tr}`, '', `### The English it comes from\n> ${r.en}`] : []), ...(fix ? ['', `### Better wording\n> ${fix}`] : []), ...(note ? ['', `### More details\n${note}`] : [])].join('\n');
+        `### Problem\n${kind}`, ...(r ? ['', `### The line in the game\n> ${r.tr}`, '', `### The English it comes from\n> ${r.en}`, ...(r.src ? ['', `### Source\n${r.src}`] : [])] : []), ...(fix ? ['', `### Better wording\n> ${fix}`] : []), ...(note ? ['', `### More details\n${note}`] : [])].join('\n');
       const title = `Translation (${langName}): ${(r ? r.tr : note).slice(0, 60)}`;
       cmOpen(ghUrl(`/issues/new?labels=translation&title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`));
       toast('Opening GitHub… thank you!');

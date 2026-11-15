@@ -5,6 +5,34 @@
 const RW = 800, RH = 270, GROUND = 222, ELE_X = 70, ELE = 92, JUMP_T = 0.82, JUMP_H = 118;
 let run = null;
 const runnerPool = deckId => cardsOf(deckId).filter(c => c.front.trim() && c.back.trim());   // (used by several games)
+/* Words you struggle with come back more often (Lexicon Saga and Wordling Trails).
+   S.gameMiss[cardId] is a struggle score: +2 for a miss, -1 for a right answer (0 to 6), kept between sessions.
+   - A missed word comes back again 3 to 5 questions later.
+   - Each time the shuffled list is rebuilt, a word with a struggle score is put in it 1 or 2 extra times.
+   g is the game's state: { pool, queue, retry, asked }. */
+const gmScore = id => (S.gameMiss || {})[id] || 0;
+function gmPick(g) {
+  g.retry ||= []; g.asked ||= 0;
+  g.retry = g.retry.filter(r => g.asked <= r.at + 8 && g.pool.some(c => c.id === r.id));   // forget stale ones
+  const due = g.retry.find(r => g.asked >= r.at && r.id !== g.last);
+  if (due) { const c = g.pool.find(x => x.id === due.id); if (c) return (g.last = c.id, c); }
+  if (!g.queue.length) {
+    const list = g.pool.slice();
+    for (const c of g.pool) { const s = gmScore(c.id); for (let k = 0; k < Math.min(2, Math.ceil(s / 2)); k++) list.push(c); }
+    g.queue = shuffle(list);
+  }
+  let c = g.queue.pop();
+  if (c && c.id === g.last && g.queue.length) { const i = g.queue.findIndex(x => x.id !== c.id); if (i >= 0) [c, g.queue[i]] = [g.queue[i], c]; }
+  g.last = c?.id; return c;
+}
+function gmResult(g, card, ok) {
+  if (!card) return;
+  g.retry ||= []; g.asked = (g.asked || 0) + 1;
+  g.retry = g.retry.filter(r => r.id !== card.id);
+  const m = S.gameMiss ||= {}, s = Math.max(0, Math.min(6, (m[card.id] || 0) + (ok ? -1 : 2)));
+  if (s) m[card.id] = s; else delete m[card.id];
+  if (!ok) g.retry.push({ id: card.id, at: g.asked + 3 + Math.floor(Math.random() * 3) });
+}
 /* Elephant run uses cards that have one line on each side: a word, a phrase or a sentence are all fine.
    "Stacked" cards with several lines (like a verb chart: Golpear / Yo golpeo / Tú golpeas…) are left out,
    and so are cards with the same text on both sides (the answer would be the question). */

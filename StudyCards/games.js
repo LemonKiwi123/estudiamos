@@ -66,7 +66,7 @@ function gameAvail(d) {
     runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} cards)`) : 'Needs at least 3 cards with one line on each side (not stacked like a verb chart)' },
     numbers: { ok: true, info: '🎧 Listening, reading and writing · no cards needed' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
-    builder: { ok: true, info: ['es', 'en'].includes(langBase(d.frontLang || '')) || ['es', 'en'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice · uses your deck’s words it knows' : '📝 Spanish or English grammar practice' },
+    builder: { ok: true, info: ['es', 'en', 'fr', 'ja'].includes(langBase(d.frontLang || '')) || ['es', 'en', 'fr', 'ja'].includes(langBase(d.backLang || '')) ? '📝 Grammar practice + 📖 real sentences · uses your deck’s words' : '📝 Grammar practice + 📖 real sentences (Spanish, French, Japanese, English)' },
     sentence: { ok: sent >= 1 && n >= 2, info: sent ? `${sent} sentence${sent > 1 ? 's' : ''} ready` : 'Add example sentences to your cards first' },
     speak: (() => { const n = skPool(d.id).length, sup = skSupport(); return { ok: n >= 1 && !!d.frontLang && sup.ok, info: !d.frontLang ? 'Set a front language for this deck first' : !sup.ok ? 'Needs Chrome, Edge or Safari on a secure address' : `🎙️ Uses your microphone · ${n} card${n === 1 ? '' : 's'}` }; })(),
     listen: { ok: !!d.frontLang && d.tts !== false && n >= 2, info: d.tts === false ? 'Read aloud is turned off for this deck' : !d.frontLang ? 'Set a front language for this deck first' : lis >= 3 ? `${lis} sentences & phrases` : 'Single words. Add example sentences to hear full sentences.' },
@@ -77,7 +77,7 @@ let game = null;
 const GAMES = {
   match: { emoji: '🧩', title: 'Match words', desc: 'Tap a word, then tap its meaning. Clear the board as fast as you can.' },
   sentence: { emoji: '✏️', title: 'Finish the sentence', desc: 'Pick the missing word in an example sentence.' },
-  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Pick words from a tray to build a sentence. It only counts if it follows the grammar rules: gender, verb endings, word order and more. Spanish or English.' },
+  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Pick words from a tray to build a sentence. It only counts if it follows the grammar rules: gender, verb endings, word order and more. Or switch to 📖 Real sentences and put real sentences, written by people, back in order. Spanish, French, Japanese or English.' },
   speak: { emoji: '🎙️', title: 'Say it!', desc: 'See what a word means, then say it out loud. Estudiamos listens through your microphone and checks it.' },
   listen: { emoji: '🎧', title: 'Listen & tap', desc: 'Hear a sentence, then tap the words you heard in the right order.' },
   priceparty: { emoji: '🏷️', title: 'Price Party', desc: 'Name the products to win drop chips, then bounce them down the peg board for prizes! 1–2 players.' },

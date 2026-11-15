@@ -3,7 +3,8 @@
    Original little songs, played live with the Web Audio API like an old handheld sound chip:
    a pulse-wave lead, a triangle bass and noise drums. Nothing is downloaded.
    Each song is written in bars of 8 steps (eighth notes): a note like "E5", "-" to hold, "." for silence.
-   Drums: k = kick, s = snare, h = hi-hat. */
+   Drums: k = kick, s = snare, h = hi-hat.
+   Optional: wave = the lead's tone ('square', 'thin' = a narrow pulse, 'triangle'), harm = a quieter second melody line. */
 const TRM_SONGS = {
   town: { bpm: 104, lead: [
       'E5 - G5 - C6 - B5 A5', 'G5 - - - E5 - . .', 'F5 - A5 - D6 - C6 B5', 'A5 - - - G5 - . .',
@@ -49,6 +50,9 @@ const trMusic = {
     const N = 32, re = new Float32Array(N), im = new Float32Array(N);
     for (let k = 1; k < N; k++) im[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * 0.25);
     this.pulse = ac.createPeriodicWave(re, im);
+    const re2 = new Float32Array(N), im2 = new Float32Array(N);   // 12.5% pulse: a thinner, bell-like tone
+    for (let k = 1; k < N; k++) im2[k] = (2 / (k * Math.PI)) * Math.sin(k * Math.PI * 0.125);
+    this.thin = ac.createPeriodicWave(re2, im2);
     const buf = ac.createBuffer(1, ac.sampleRate * 0.3, ac.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     this.noise = buf;
@@ -57,7 +61,7 @@ const trMusic = {
   resolve(name) {
     const s = TRM_SONGS[name]; if (!s) return null;
     const base = s.from ? TRM_SONGS[s.from] : s;
-    return { ...base, ...s, lead: trmSteps(base.lead), bass: trmSteps(base.bass), drums: trmSteps(base.drums), shift: s.shift || 0 };
+    return { ...base, ...s, lead: trmSteps(base.lead), bass: trmSteps(base.bass), drums: trmSteps(base.drums), harm: base.harm ? trmSteps(base.harm) : null, shift: s.shift || 0 };
   },
   play(name, { restart = false } = {}) {
     if (!this.on()) { this.stop(); this.name = name; return; }
@@ -78,7 +82,9 @@ const trMusic = {
       const len = s.lead.length;
       if (s.once && this.step >= len) { const back = this.after; this.after = null; this.song = null; if (back) this.play(back, { restart: true }); else this.stop(); return; }
       const i = this.step % len;
-      this.voice(s.lead, i, this.pulse, s.shift, 0.55 * s.vol, stepLen);
+      const lw = s.wave === 'thin' ? this.thin : s.wave === 'square' || s.wave === 'triangle' ? s.wave : this.pulse;
+      this.voice(s.lead, i, lw, s.shift, (s.wave === 'square' ? 0.42 : s.wave === 'triangle' ? 0.8 : 0.55) * s.vol, stepLen);
+      if (s.harm) this.voice(s.harm, i % s.harm.length, this.thin, s.shift, 0.3 * s.vol, stepLen);
       this.voice(s.bass, i % s.bass.length, 'triangle', s.shift, 0.9 * s.vol, stepLen);
       this.drum(s.drums[i % s.drums.length], this.next, s.vol);
       this.next += stepLen; this.step++;

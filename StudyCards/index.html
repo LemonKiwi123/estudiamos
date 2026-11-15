@@ -350,6 +350,10 @@ nav button.dot::after{content:"";position:absolute;top:5px;right:4px;width:8px;h
 .bld-board>*{width:100%;align-self:stretch}
 .bld-line{min-height:64px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;border:2px dashed var(--border);border-radius:14px;background:var(--bg)}
 .bld-line.done{border-style:solid;border-color:var(--good);background:var(--ok-bg)}
+.rs-tabs{display:flex;gap:8px;justify-content:center;margin:0 0 10px}
+.rs-en{font-size:1.15em;font-weight:600;margin:6px 0 10px}
+.rs-end{font:600 18px var(--font,inherit);color:var(--muted);align-self:flex-end;margin-left:-4px}
+.rs-src{margin-top:8px}
 .bld-tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0 4px}
 .bld-chip{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:8px 14px;border-radius:12px;border:2px solid var(--border);background:var(--surface);cursor:pointer;font:600 18px/1.2 inherit;color:var(--text);box-shadow:0 2px 0 var(--border);transition:transform .08s}
 .bld-chip:hover:not([disabled]){transform:translateY(-2px)}
@@ -1229,6 +1233,14 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .sg-opt.wrong{background:#922b21;border-color:#f1948a}
 .sg-opt.dim{opacity:.45}
 .sg-typeform{display:flex;gap:6px}
+.sg-say{display:flex;flex-direction:column;align-items:center;gap:6px}
+.sg-mic{font:inherit;font-size:16px;font-weight:700;padding:8px 18px;border-radius:6px;border:2px solid #fff;background:#f4c542;color:#0a1450;cursor:pointer}
+.sg-mic.on{background:#e74c3c;color:#fff;animation:sgPulse 1s infinite}
+@keyframes sgPulse{50%{opacity:.7}}
+.sg-lvl{width:80%;height:6px;border:1px solid #fff;border-radius:3px;overflow:hidden}
+.sg-lvl i{display:block;height:100%;width:0;background:#7fff7f;transition:width .08s}
+.sg-live{font-size:13px;min-height:1.3em;text-align:center}
+.sg-saytype{font:inherit;font-size:12px;background:none;border:0;color:#fff;text-decoration:underline;cursor:pointer;opacity:.85}
 .sg-typeform input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 10px;border-radius:6px;border:2px solid #fff;background:#fff;color:#0a1450}
 .sg-cast{border:2px solid #fff;background:#8e44ad;color:#fff;border-radius:6px;font:inherit;font-weight:800;padding:0 12px;cursor:pointer}
 .sg-cast:disabled{opacity:.5}
@@ -2751,6 +2763,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="gametr-fr.js"></script>
 <script src="gametr-ja.js"></script>
 <script src="gametr-more.js"></script>
+<script src="gametr-saga8.js"></script>
 <script src="trails-data.js"></script>
 <script src="trails-dex.js"></script>
 <script src="trails.js"></script>
@@ -2759,6 +2772,8 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part4.js"></script>
 <script src="saga-part5.js"></script>
 <script src="saga-part6.js"></script>
+<script src="saga-part7.js"></script>
+<script src="saga-part8.js"></script>
 <script src="saga.js"></script>
 <script src="numgame.js"></script>
 <script src="speakgame.js"></script>
@@ -2775,6 +2790,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="builder-fr.js"></script>
 <script src="builder-ja.js"></script>
 <script src="starters.js"></script>
+<script src="realsent.js"></script>
 <script src="cardlist.js"></script>
 <script src="decktools.js"></script>
 <script src="layout.js"></script>
