@@ -268,7 +268,7 @@ function folderHomeView(cardFn, now = Date.now()) {
     <div class="row-between fv-top"><button type="button" class="btn" data-act="folderBack" data-to="${up?.id || ''}" title="Back up one level">← ${up ? esc(up.name) : 'All folders'}</button>
       <div class="row">${typeof deckViewToggle === 'function' && ds.length ? deckViewToggle() : ''}${folderDepth(f) < FOLDER_MAX_DEPTH ? `<button type="button" class="btn" data-act="newSubFolder" data-id="${f.id}">📁 New folder inside</button>` : ''}<button type="button" class="btn primary" data-act="newDeck">+ New deck</button></div></div>
     <div class="deck-list"><section class="folder colored" style="--fc:${f.color};--fc-ink:${ink}">${head}${body}</section></div>
-    ${subs.length ? `<div class="folder-subs fv-subs">${subs.map(x => folderSection(x, list ? (d => deckRow(d, now)) : cardFn, 1)).join('')}</div>` : ''}
+    ${subs.length ? `<div class="folder-subs fv-subs${list ? ' deck-list' : ''}">${subs.map(x => folderSection(x, list ? (d => deckRow(d, now)) : cardFn, 1)).join('')}</div>` : ''}   <!-- (list view: subfolder decks need the list layout too) -->
     ${ds.length && !list ? `<div class="deck-grid" data-drop="${f.id}" style="margin-top:12px">${ds.map(cardFn).join('')}</div>` : ''}
   </div>`;
 }
