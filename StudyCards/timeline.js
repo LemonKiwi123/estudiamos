@@ -7,7 +7,8 @@ const tlById = id => tlAll().find(t => t.id === id);
 const TL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const tlNum = e => e.y + ((e.m || 1) - 1) / 12 + ((e.d || 1) - 1) / 365;   // for sorting and spacing
 function tlDate(e) {
-  const yr = e.y < 0 ? `${-e.y} BCE` : String(e.y);
+  if (e.y <= -1e6) return `${e.approx ? 'about ' : ''}${(-e.y / 1e6).toLocaleString(undefined, { maximumFractionDigits: 1 })} million years ago`;   // deep time (geology, fossils)
+  const yr = e.y < 0 ? `${(-e.y).toLocaleString()} BCE` : String(e.y);
   return (e.approx ? 'c. ' : '') + (e.m ? (e.d ? `${TL_MONTHS[e.m - 1]} ${e.d}, ` : `${TL_MONTHS[e.m - 1]} `) : '') + yr;
 }
 const tlSorted = t => t.events.slice().sort((a, b) => tlNum(a) - tlNum(b));

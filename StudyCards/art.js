@@ -296,15 +296,15 @@ function basicsHtml() {
 function abNew() { const all = [...ART_ELEMENTS, ...ART_PRINCIPLES], x = all[Math.floor(Math.random() * all.length)]; abQ = { def: x[1], answer: x[0], given: null, opts: shuffle([x[0], ...shuffle(all.filter(y => y !== x).map(y => y[0])).slice(0, 3)]) }; }
 
 /* ---------- the Art studio page ---------- */
-const ART_TABS = [['sketch', '✏️ Sketchpad'], ['color', '🌈 Color'], ['photo', '🖼️ Photo helper'], ['timer', '⏱️ Practice timer'], ['guides', '📐 Guides'], ['anim', '🎬 Animation tips'], ['basics', '📚 Art basics']];
-const ART_VIEWS = { sketch: () => paintHtml(), flip: () => flipHtml(), anim: () => animHtml(), color: colorHtml, photo: photoHtml, timer: timerHtml, guides: guidesHtml, basics: basicsHtml };   // paint.js and flipbook.js load after this file
+const ART_TABS = [['sketch', '✏️ Sketchpad'], ['color', '🌈 Color'], ['photo', '🖼️ Photo helper'], ['timer', '⏱️ Practice timer'], ['guides', '📐 Guides'], ['shapes', '🎲 Random shapes'], ['anim', '🎬 Animation tips'], ['basics', '📚 Art basics']];
+const ART_VIEWS = { sketch: () => paintHtml(), flip: () => flipHtml(), anim: () => animHtml(), color: colorHtml, photo: photoHtml, timer: timerHtml, guides: guidesHtml, shapes: () => shapesHtml(), basics: basicsHtml };   // paint.js and flipbook.js load after this file
 views.art = () => {
   const a = art(); setTimeout(artMount, 0);
   return `<div class="row-between" style="margin-bottom:12px"><h2 style="margin:0">🎨 Art studio</h2>
       <div class="row" style="gap:6px;flex-wrap:wrap">${ART_TABS.map(([k, l]) => `<button type="button" class="btn sm ${a.tab === k ? 'primary' : ''}" data-art="tab" data-k="${k}">${l}</button>`).join('')}</div></div>
     <div class="panel art-panel">${(ART_VIEWS[a.tab] || sketchHtml)()}</div>`;
 };
-function artMount() { const t = art().tab; if (t === 'sketch') paintMount(); else if (t === 'flip') flipMount(); else if (t === 'anim') animMount(); else if (t === 'guides') guideRedraw(); else if (t === 'photo') phDraw(); }
+function artMount() { const t = art().tab; if (t === 'sketch') paintMount(); else if (t === 'flip') flipMount(); else if (t === 'anim') animMount(); else if (t === 'guides') guideRedraw(); else if (t === 'photo') phDraw(); else if (t === 'shapes') shRedraw(); }
 function artRedraw() { const p = document.querySelector('.art-panel'); if (!p || view.name !== 'art') return; p.innerHTML = (ART_VIEWS[art().tab] || sketchHtml)(); artMount(); }
 function artMakeDeck(name, rows) {
   let d = S.decks.find(x => x.name === name);

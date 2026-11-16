@@ -589,7 +589,7 @@ function muRandomMelody() {   // simple, singable: steps mostly by small jumps, 
 }
 
 /* ---------- the Music studio page ---------- */
-const MU_TABS = [['theory', '🎼 Theory'], ['ear', '👂 Ear training'], ['tuner', '🎙️ Tuner'], ['drums', '🥁 Drum machine'], ['maker', '🎹 Music maker']];
+const MU_TABS = [['theory', '🎼 Theory'], ['ear', '👂 Ear training'], ['tuner', '🎙️ Tuner'], ['drums', '🥁 Drum machine'], ['maker', '🎹 Music maker'], ['sheet', '🎼 Sheet music']];
 /* ---------- 🎙️ tuner: listens through the microphone and shows the note and how many cents sharp or flat ---------- */
 const TUNINGS = {
   chromatic: ['🎯 Any note', []], guitar: ['🎸 Guitar (standard)', [40, 45, 50, 55, 59, 64]], bass: ['🎸 Bass guitar', [28, 33, 38, 43]],
@@ -672,9 +672,9 @@ views.music = () => {
   return `<div class="crumbs"><a data-act="homeSubject" data-k="music">🎵 Music</a> / Music studio</div>
     <div class="row-between" style="margin-bottom:12px"><h2 style="margin:0">🎵 Music studio</h2>
       <div class="row" style="gap:6px;flex-wrap:wrap">${MU_TABS.map(([k, l]) => `<button type="button" class="btn sm ${m.tab === k ? 'primary' : ''}" data-mu="tab" data-k="${k}">${l}</button>`).join('')}</div></div>
-    <div class="panel mu-panel">${({ theory: muTheoryHtml, ear: muEarHtml, tuner: muTunerHtml, drums: muDrumsHtml, maker: muMakerHtml })[m.tab]()}</div>`;
+    <div class="panel mu-panel">${({ theory: muTheoryHtml, ear: muEarHtml, tuner: muTunerHtml, drums: muDrumsHtml, maker: muMakerHtml, sheet: () => sheetHtml() })[m.tab]()}</div>`;
 };
-function muRedraw() { const p = document.querySelector('.mu-panel'); if (p && view.name === 'music') { p.innerHTML = ({ theory: muTheoryHtml, ear: muEarHtml, tuner: muTunerHtml, drums: muDrumsHtml, maker: muMakerHtml })[mus().tab](); muTransportBtns(); muMeterLoop(); } }
+function muRedraw() { const p = document.querySelector('.mu-panel'); if (p && view.name === 'music') { p.innerHTML = ({ theory: muTheoryHtml, ear: muEarHtml, tuner: muTunerHtml, drums: muDrumsHtml, maker: muMakerHtml, sheet: () => sheetHtml() })[mus().tab](); muTransportBtns(); muMeterLoop(); } }
 Object.assign(actions, { musicStudio: el => { if (el?.dataset?.t) mus().tab = el.dataset.t; go({ name: 'music' }); } });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-mu]'); if (!b || view.name !== 'music') return;

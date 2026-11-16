@@ -180,7 +180,7 @@ function sheetsHtml() {
   const list = rows.filter(([a, b]) => !q || norm(a + ' ' + b).includes(q));
   return `<div class="row" style="gap:6px;flex-wrap:wrap;margin-bottom:8px">${Object.entries(SHEETS).map(([key, [n]]) => `<button type="button" class="btn sm ${key === k ? 'primary' : ''}" data-cl="sheet" data-k="${key}">${n}</button>`).join('')}</div>
     <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px"><input type="search" class="inp" id="sheetQ" placeholder="Search the ${name} sheet…" value="${esc(c.sheetQ || '')}" style="margin:0;max-width:320px">
-      <button type="button" class="btn" data-cl="sheetCards">📇 Make flashcards</button></div>
+      <button type="button" class="btn" data-cl="sheetCards">📇 Make flashcards</button><button type="button" class="btn ghost" data-act="keys">⌨️ Keyboard shortcuts</button></div>
     <div class="sheet">${list.map(([a, b]) => `<div class="sheet-row"><pre class="code-box sm"><code>${hlCode(a)}</code></pre><span>${esc(b)}</span></div>`).join('') || '<p class="muted">Nothing matches.</p>'}</div>`;
 }
 

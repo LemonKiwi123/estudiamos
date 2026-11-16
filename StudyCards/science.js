@@ -37,6 +37,7 @@ function ptHtml() {
       <div class="pt-gap" style="grid-row:6;grid-column:3">57–71</div><div class="pt-gap" style="grid-row:7;grid-column:3">89–103</div>
       <div class="pt-info" style="grid-row:1 / span 3;grid-column:3 / span 10">${ptInfoHtml(sel)}</div>
     </div></div>
+    <div class="pt-info-m">${ptInfoHtml(sel)}</div>
     <div class="pt-legend">${Object.entries(PT_CATS).map(([k, [n, c]]) => `<button type="button" class="pt-key ${hi === k ? 'on' : ''}" style="--c:${c}" data-sci="cat" data-k="${k}"><i></i>${n}</button>`).join('')}</div>
     <p class="muted small">Tap an element for details, or a color to light up that family. Masses in [brackets] are for the most stable form of a radioactive element.</p>`;
 }
@@ -179,14 +180,129 @@ function spaceHtml() {
         <p class="muted small" style="margin:6px 0 0">Your mass stays the same everywhere; your weight changes with each world’s gravity. Uses the same unit you typed (kg or lb).</p></div></div>`;
 }
 
+
+/* ---------- ⚗️ chemistry: molar mass, grams ↔ moles, balancing equations, the pH scale ---------- */
+const PT_MASS = Object.fromEntries(PT.map(e => [e.sym, parseFloat(String(e.mass).replace(/[\[\]]/g, ''))]));
+function chemParse(f) {   // "Ca(OH)2", "CuSO4·5H2O" → Map(element → count)
+  const src = String(f).replace(/\s+/g, '').replace(/[·•*]/g, '.'); if (!src) throw new Error('Type a formula, like H2O');
+  const add = (m, k, n) => m.set(k, (m.get(k) || 0) + n);
+  const part = s => { let i = 0; const read = () => { const out = new Map();
+      while (i < s.length) { const ch = s[i];
+        if (ch === '(' || ch === '[') { i++; const inner = read(); if (s[i] !== ')' && s[i] !== ']') throw new Error('A bracket is missing'); i++; const n = num(); for (const [k, v] of inner) add(out, k, v * n); }
+        else if (ch === ')' || ch === ']') return out;
+        else if (/[A-Z]/.test(ch)) { let sym = ch; i++; if (/[a-z]/.test(s[i] || '')) sym += s[i++]; if (!(sym in PT_MASS)) throw new Error(`“${sym}” isn’t an element symbol`); add(out, sym, num()); }
+        else throw new Error(`“${ch}” doesn’t belong in a formula`); }
+      return out; };
+    const num = () => { let d = ''; while (/\d/.test(s[i] || '')) d += s[i++]; return d ? +d : 1; };
+    const m = read(); if (i < s.length) throw new Error('There’s an extra “)”'); return m; };
+  const total = new Map();
+  for (const chunk of src.split('.')) { if (!chunk) continue; const c = chunk.match(/^(\d+)(.*)$/), n = c ? +c[1] : 1, body = c ? c[2] : chunk; for (const [k, v] of part(body)) add(total, k, v * n); }
+  if (!total.size) throw new Error('Type a formula, like H2O'); return total;
+}
+const chemMass = m => [...m].reduce((a, [k, n]) => a + PT_MASS[k] * n, 0);
+const fmt4 = v => (Math.round(v * 1000) / 1000).toLocaleString(undefined, { maximumFractionDigits: 3 });
+const subN = s => String(s).replace(/(?<=[A-Za-z)\]])(\d+)/g, '<sub>$1</sub>');
+/* balancing: find whole-number coefficients with fractions (exact), via row reduction of the element table */
+function chemBalance(eq) {
+  const [L, R] = String(eq).split(/\s*(?:->|→|=|⟶)\s*/); if (!R) throw new Error('Use an arrow: like H2 + O2 -> H2O');
+  const side = s => s.split(/\s+\+\s+|\s*\+\s*(?=[A-Z(\[\d])/).map(x => x.trim().replace(/^\d+\s*(?=[A-Z(\[])/, '')).filter(Boolean);
+  const left = side(L), right = side(R), all = [...left, ...right], comps = all.map(chemParse);
+  const els = [...new Set(comps.flatMap(m => [...m.keys()]))];
+  for (const e of els) if (!left.some((_, i) => comps[i].has(e)) || !right.some((_, i) => comps[left.length + i].has(e))) throw new Error(`${e} is only on one side, so this can’t balance`);
+  const gcd = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) [a, b] = [b, a % b]; return a; };
+  const fr = (n, d = 1n) => { if (d < 0n) { n = -n; d = -d; } const g = gcd(n, d) || 1n; return [n / g, d / g]; };
+  const sub = (a, b) => fr(a[0] * b[1] - b[0] * a[1], a[1] * b[1]), mul = (a, b) => fr(a[0] * b[0], a[1] * b[1]), div = (a, b) => fr(a[0] * b[1], a[1] * b[0]);
+  const M = els.map(e => all.map((_, j) => fr(BigInt((comps[j].get(e) || 0) * (j < left.length ? 1 : -1)))));
+  const rows = M.length, cols = all.length, piv = []; let r = 0;
+  for (let c = 0; c < cols && r < rows; c++) {
+    let p = r; while (p < rows && M[p][c][0] === 0n) p++; if (p === rows) continue;
+    [M[r], M[p]] = [M[p], M[r]]; const pv = M[r][c]; M[r] = M[r].map(x => div(x, pv));
+    for (let k = 0; k < rows; k++) if (k !== r && M[k][c][0] !== 0n) { const f = M[k][c]; M[k] = M[k].map((x, j) => sub(x, mul(f, M[r][j]))); }
+    piv.push(c); r++;
+  }
+  const free = [...Array(cols).keys()].filter(c => !piv.includes(c));
+  if (free.length !== 1) throw new Error(free.length ? 'This one has more than one way to balance: check the formulas' : 'This can’t be balanced: check the formulas');
+  const x = Array(cols).fill(null); x[free[0]] = fr(1n);
+  piv.forEach((c, i) => { x[c] = fr(-M[i][free[0]][0], M[i][free[0]][1]); });
+  const lcm = x.reduce((a, [, d]) => a / gcd(a, d) * d, 1n); let ints = x.map(([n, d]) => n * lcm / d);
+  if (ints.some(v => v <= 0n)) { if (ints.every(v => v <= 0n)) ints = ints.map(v => -v); else throw new Error('This can’t be balanced with these formulas'); }
+  const g = ints.reduce((a, v) => gcd(a, v)); ints = ints.map(v => Number(v / g));
+  return { left, right, coef: ints };
+}
+const PH = [[0, 'Battery acid'], [1, 'Stomach acid'], [2, 'Lemon juice, vinegar'], [3, 'Orange juice, soda'], [4, 'Tomato juice'], [5, 'Black coffee'], [6, 'Milk'], [7, 'Pure water (neutral)'], [8, 'Sea water, eggs'], [9, 'Baking soda'], [10, 'Milk of magnesia'], [11, 'Ammonia cleaner'], [12, 'Soapy water'], [13, 'Bleach'], [14, 'Drain cleaner']];
+function chemHtml() {
+  const s = sci(), f = s.chemF ?? 'C6H12O6', eq = s.chemEq ?? 'C3H8 + O2 -> CO2 + H2O';
+  let mm = '', mmErr = '', mass = 0; try { const m = chemParse(f); mass = chemMass(m);
+    mm = `<div class="chem-big">${subN(esc(f.replace(/\s+/g, '')))} = <b>${fmt4(mass)}</b> g/mol</div><table class="sci-table chem-tab"><thead><tr><th>Element</th><th>Atoms</th><th>Mass</th><th>% of the mass</th></tr></thead><tbody>${[...m].map(([k, n]) => `<tr><td><b>${k}</b> ${esc(PT.find(e => e.sym === k).name)}</td><td>${n}</td><td>${fmt4(PT_MASS[k] * n)}</td><td>${(PT_MASS[k] * n / mass * 100).toFixed(1)}%</td></tr>`).join('')}</tbody></table>`; } catch (e) { mmErr = e.message; }
+  let bal = '', balErr = ''; try { const { left, right, coef } = chemBalance(eq), t = (list, off) => list.map((x, i) => `${coef[off + i] > 1 ? `<b class="chem-co">${coef[off + i]}</b>` : ''}${subN(esc(x))}`).join(' + ');
+    bal = `<div class="chem-big">${t(left, 0)} → ${t(right, left.length)}</div><p class="muted small" style="margin:4px 0 0">Each side now has the same number of every kind of atom.</p>`; } catch (e) { balErr = e.message; }
+  const g = s.chemG ?? '', mol = s.chemMol ?? '';
+  return `<div class="art-two"><div class="panel"><h3 style="margin-top:0">⚖️ Molar mass</h3>
+      <input class="inp mono" data-chem="chemF" value="${esc(f)}" placeholder="e.g. H2O, Ca(OH)2, CuSO4·5H2O" spellcheck="false" autocomplete="off">
+      <div id="chemMM">${mmErr ? `<p class="tt-err small">⚠️ ${esc(mmErr)}</p>` : mm}</div>
+      <h4 style="margin:12px 0 4px">Grams ↔ moles of ${subN(esc(f))}</h4>
+      <div class="row" style="gap:8px;flex-wrap:wrap"><label class="field" style="margin:0">Grams<input class="inp" inputmode="decimal" data-chem="chemG" value="${esc(g)}" placeholder="e.g. 90"></label>
+        <label class="field" style="margin:0">Moles<input class="inp" inputmode="decimal" data-chem="chemMol" value="${esc(mol)}" placeholder="e.g. 0.5"></label></div>
+      <p class="small" id="chemConv">${mass && (g || mol) ? (() => { const n = g ? +g / mass : +mol; return `${fmt4(n * mass)} g = <b>${fmt4(n)}</b> mol = <b>${(n * 6.02214076e23).toExponential(3).replace('e+', ' × 10^')}</b> molecules`; })() : '<span class="muted">Type grams or moles. 1 mole = 6.022 × 10²³ particles.</span>'}</p></div>
+    <div class="panel"><h3 style="margin-top:0">🧮 Balance an equation</h3>
+      <input class="inp mono" data-chem="chemEq" value="${esc(eq)}" placeholder="e.g. Fe + O2 -> Fe2O3" spellcheck="false" autocomplete="off">
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">${['H2 + O2 -> H2O', 'Fe + O2 -> Fe2O3', 'CH4 + O2 -> CO2 + H2O', 'Al + HCl -> AlCl3 + H2', 'C6H12O6 + O2 -> CO2 + H2O'].map(x => `<button type="button" class="btn sm ghost mono" data-sci="chemEx" data-k="${esc(x)}">${subN(esc(x))}</button>`).join('')}</div>
+      <div id="chemBal">${balErr ? `<p class="tt-err small">⚠️ ${esc(balErr)}</p>` : bal}</div>
+      <p class="muted small" style="margin:8px 0 0">Use + between things and -> for the arrow. Write formulas with capital letters: Co is cobalt, CO is carbon monoxide.</p></div></div>
+    <div class="panel" style="margin-top:12px"><h3 style="margin-top:0">🧪 The pH scale</h3>
+      <div class="ph-bar">${PH.map(([v]) => `<div style="background:${['#d7191c', '#e8432a', '#f46d43', '#f99652', '#fdae61', '#fdd28a', '#e6f598', '#abdda4', '#88cfa4', '#66c2a5', '#4ba9b5', '#3288bd', '#4a6fb7', '#5e4fa2', '#4a2a7a'][v]}"><b>${v}</b></div>`).join('')}</div>
+      <div class="ph-labels"><span>⬅ Acid</span><span>Neutral</span><span>Base (alkaline) ➡</span></div>
+      <div class="ph-list">${PH.map(([v, t]) => `<div><b>${v}</b> ${esc(t)}</div>`).join('')}</div>
+      <p class="muted small" style="margin:6px 0 0">Each step is 10 times stronger: pH 3 is 10× more acidic than pH 4. Values are typical; real ones vary.</p></div>`;
+}
+/* ---------- 🌍 geology: the geologic time scale, Earth's layers, plate boundaries, earthquakes ---------- */
+const GEO_TIME = [   // [name, level, starts (million years ago), ends, color, what happened]
+  ['Hadean', 'eon', 4567, 4000, '#ae027e', 'Earth forms; the Moon forms; a molten surface slowly cools.'],
+  ['Archean', 'eon', 4000, 2500, '#f0047f', 'Oldest rocks and the first simple life (bacteria).'],
+  ['Proterozoic', 'eon', 2500, 539, '#f73563', 'Oxygen builds up in the air; the first cells with a nucleus; the first many-celled life.'],
+  ['Cambrian', 'period', 539, 485, '#7fa056', 'The “Cambrian explosion”: most animal groups appear, in the sea.'],
+  ['Ordovician', 'period', 485, 444, '#009270', 'Fish without jaws; the first land plants. Ends with a mass extinction.'],
+  ['Silurian', 'period', 444, 419, '#b3e1b6', 'Fish with jaws; plants and small animals spread onto land.'],
+  ['Devonian', 'period', 419, 359, '#cb8c37', 'The “Age of Fish”; the first forests and four-legged animals.'],
+  ['Carboniferous', 'period', 359, 299, '#67a599', 'Huge swamp forests (today’s coal); the first reptiles; giant insects.'],
+  ['Permian', 'period', 299, 252, '#f04028', 'The supercontinent Pangaea. Ends with the biggest mass extinction ever.'],
+  ['Triassic', 'period', 252, 201, '#812b92', 'The first dinosaurs and mammals.'],
+  ['Jurassic', 'period', 201, 145, '#34b2c9', 'Giant dinosaurs; the first birds; Pangaea breaks apart.'],
+  ['Cretaceous', 'period', 145, 66, '#7fc64e', 'Flowering plants; T. rex. Ends with the asteroid that wiped out most dinosaurs.'],
+  ['Paleogene', 'period', 66, 23, '#fd9a52', 'Mammals spread and grow bigger; early primates and whales.'],
+  ['Neogene', 'period', 23, 2.6, '#ffe619', 'Grasslands spread; early human ancestors.'],
+  ['Quaternary', 'period', 2.6, 0, '#f9f97f', 'Ice ages; modern humans (Homo sapiens) appear.'],
+];
+const GEO_ERAS = [['Paleozoic era', 539, 252], ['Mesozoic era', 252, 66], ['Cenozoic era', 66, 0]];
+const GEO_LAYERS = [['Crust', '5–70 km thick', 'Solid rock. Thin under oceans, thicker under continents.', '#a0785a'], ['Mantle', 'to about 2,900 km', 'Hot rock that flows very slowly, moving the plates above it.', '#e86a33'],
+  ['Outer core', '2,900–5,150 km', 'Liquid iron and nickel. Its swirling makes Earth’s magnetic field.', '#f5a623'], ['Inner core', '5,150–6,371 km', 'Solid iron and nickel, about as hot as the Sun’s surface.', '#ffd84d']];
+const GEO_PLATES = [['↔️ Divergent', 'Plates pull apart. Magma rises and makes new crust.', 'Mid-Atlantic Ridge; East African Rift'], ['➡️⬅️ Convergent', 'Plates push together: one dives under the other, or both crumple up into mountains.', 'Andes; Himalayas; Japan’s volcanoes'], ['⇅ Transform', 'Plates slide past each other sideways, causing earthquakes.', 'San Andreas Fault (California)']];
+const GEO_QUAKES = [['Under 3', 'Usually not felt'], ['3–3.9', 'Felt by some; like a truck passing'], ['4–4.9', 'Felt by most; things rattle'], ['5–5.9', 'Damage to weak buildings'], ['6–6.9', 'Strong; damage over a wide area'], ['7–7.9', 'Major; serious damage'], ['8 and up', 'Great; can destroy whole areas']];
+function geoHtml() {
+  const span = 4567, pct = v => (v / span * 100);
+  return `<div class="panel"><h3 style="margin-top:0">🕰️ The geologic time scale</h3>
+      <p class="muted small" style="margin:0 0 8px">Earth is about 4.6 billion years old. Ma = millions of years ago (rounded).</p>
+      <div class="geo-bar" title="All of Earth’s history to scale">${GEO_TIME.filter(t => t[1] === 'eon').map(t => `<div style="width:${pct(t[2] - t[3])}%;background:${t[4]}">${t[0]}</div>`).join('')}<div style="width:${pct(539)}%;background:#9ad9dd" title="Phanerozoic: the last 539 million years">Phan.</div></div>
+      <p class="muted small" style="margin:4px 0 10px">To scale: everything with animals you can see (the Phanerozoic) fits in that thin last strip.</p>
+      <div class="geo-eras">${GEO_ERAS.map(([n, a, z]) => `<div><b>${n}</b> <span class="muted small">${a}–${z} Ma</span></div>`).join('')}</div>
+      <div class="geo-list">${GEO_TIME.map(([n, lvl, a, z, c, w]) => `<div class="geo-row ${lvl}"><i style="background:${c}"></i><b>${n}</b><span class="geo-ma">${a.toLocaleString()}–${z} Ma</span><span class="small">${esc(w)}</span></div>`).join('')}</div>
+      <div class="row" style="gap:6px;margin-top:8px"><button type="button" class="btn sm" data-sci="geoCards">📇 Make flashcards</button><button type="button" class="btn sm" data-sci="geoTimeline">🕰️ Make it a timeline</button></div></div>
+    <div class="art-two" style="margin-top:12px"><div class="panel"><h3 style="margin-top:0">🌍 Earth’s layers</h3>
+      <svg viewBox="0 0 200 200" class="geo-earth" aria-hidden="true">${GEO_LAYERS.map((l, i) => `<circle cx="100" cy="100" r="${[96, 90, 54, 24][i]}" fill="${l[3]}"/>`).join('')}<path d="M100 100 L100 2 A98 98 0 0 1 198 100 Z" fill="var(--surface)" opacity=".0"/></svg>
+      ${GEO_LAYERS.map(([n, d, t, c]) => `<div class="geo-layer"><i style="background:${c}"></i><div><b>${n}</b> <span class="muted small">${d}</span><div class="small">${esc(t)}</div></div></div>`).join('')}</div>
+    <div class="panel"><h3 style="margin-top:0">🧩 Plate boundaries</h3>${GEO_PLATES.map(([n, d, ex]) => `<div class="geo-layer"><div><b>${n}</b><div class="small">${esc(d)}</div><div class="muted small">Example: ${esc(ex)}</div></div></div>`).join('')}
+      <h3 style="margin:14px 0 6px">📈 Earthquake size (magnitude)</h3><table class="sci-table" style="min-width:0"><tbody>${GEO_QUAKES.map(([m, e]) => `<tr><td><b>${m}</b></td><td class="small">${esc(e)}</td></tr>`).join('')}</tbody></table>
+      <p class="muted small" style="margin:6px 0 0">Each step up is about 32 times more energy.</p></div></div>`;
+}
+
 /* ---------- the Science lab page ---------- */
 function sci() { const s = (S.settings.sci ||= {}); s.tab ||= 'pt'; s.el ??= 1; return s; }
-const SCI_TABS = [['pt', '🧪 Periodic table'], ['rocks', '🪨 Rocks & minerals'], ['space', '🔭 Space']];
+const SCI_TABS = [['pt', '🧪 Periodic table'], ['chem', '⚗️ Chemistry'], ['rocks', '🪨 Rocks & minerals'], ['geo', '🌍 Geology'], ['space', '🔭 Space']];
 views.science = () => {
   const s = sci();
   return `<div class="row-between" style="margin-bottom:12px"><h2 style="margin:0">🔬 Science lab</h2>
       <div class="row" style="gap:6px;flex-wrap:wrap">${SCI_TABS.map(([k, l]) => `<button type="button" class="btn sm ${s.tab === k ? 'primary' : ''}" data-sci="tab" data-k="${k}">${l}</button>`).join('')}</div></div>
-    <div class="sci-panel">${s.tab === 'pt' ? `<div class="panel">${view.ptQuiz ? ptQuizHtml() : ptHtml()}</div>` : s.tab === 'rocks' ? rocksHtml() : spaceHtml()}</div>`;
+    <div class="sci-panel">${s.tab === 'pt' ? `<div class="panel">${view.ptQuiz ? ptQuizHtml() : ptHtml()}</div>` : s.tab === 'rocks' ? rocksHtml() : s.tab === 'chem' ? chemHtml() : s.tab === 'geo' ? geoHtml() : spaceHtml()}</div>`;
 };
 function sciMakeDeck(name, rows) {
   let d = S.decks.find(x => x.name === name);
@@ -201,7 +317,7 @@ document.addEventListener('click', e => {
   const s = sci();
   switch (b.dataset.sci) {
     case 'tab': s.tab = b.dataset.k; view.ptQuiz = false; break;
-    case 'el': s.el = +b.dataset.n; { const box = document.querySelector('.pt-info'); document.querySelectorAll('.pt-el.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); if (box) box.innerHTML = ptInfoHtml(PT[s.el - 1]); } save(); return;
+    case 'el': s.el = +b.dataset.n; { document.querySelectorAll('.pt-el.on').forEach(x => x.classList.remove('on')); b.classList.add('on'); document.querySelectorAll('.pt-info, .pt-info-m').forEach(box => box.innerHTML = ptInfoHtml(PT[s.el - 1])); } save(); return;
     case 'cat': s.cat = s.cat === b.dataset.k ? '' : b.dataset.k; break;
     case 'ptQuiz': view.ptQuiz = true; ptQuizNew(); break;
     case 'ptBack': view.ptQuiz = false; break;
@@ -212,6 +328,11 @@ document.addEventListener('click', e => {
     case 'minCards': return sciMakeDeck('Minerals', MINERALS.map(m => [m[0], `Hardness ${m[2][0] === m[2][1] ? m[2][0] : m[2].join('–')} · ${m[3]} luster · ${m[4]} streak`, `${m[1]}. ${m[5]}`]));
     case 'minClear': s.minF = {}; break;
     case 'planet': s.planet = b.dataset.k; break;
+    case 'chemEx': s.chemEq = b.dataset.k; break;
+    case 'geoCards': return sciMakeDeck('Geologic time', GEO_TIME.map(([n, lvl, a, z, , w]) => [n, `${lvl === 'eon' ? 'Eon' : 'Period'}, ${a.toLocaleString()}–${z} million years ago`, w]));
+    case 'geoTimeline': { if (typeof tlAll !== 'function') return; const t = { id: uid(), name: 'Geologic time', desc: 'From Earth’s beginning to today (years are approximate)', subject: 'science', created: Date.now(), style: 'list',
+        events: GEO_TIME.map(([n, , a, , , w]) => ({ id: uid(), y: -Math.round(a * 1e6), m: 0, d: 0, approx: true, title: n, note: w })) };
+      tlAll().push(t); save(); toast('🕰️ Timeline made'); return go({ name: 'timeline', tl: t.id }); }
     default: return;
   }
   save(); render();
@@ -220,10 +341,15 @@ document.addEventListener('input', e => {
   if (view.name !== 'science') return;
   if (e.target.id === 'ptQ') { sci().ptq = e.target.value; const q = norm(e.target.value), hi = sci().cat;
     document.querySelectorAll('.pt-el').forEach(el => { const x = PT[+el.dataset.n - 1]; el.classList.toggle('dim', !((!q || norm(`${x.sym} ${x.name} ${x.n}`).includes(q)) && (!hi || x.cat === hi))); });
-    const hit = q && PT.filter(x => norm(`${x.sym} ${x.name} ${x.n}`).includes(q)); if (hit && hit.length === 1) { sci().el = hit[0].n; document.querySelector('.pt-info').innerHTML = ptInfoHtml(hit[0]); }
+    const hit = q && PT.filter(x => norm(`${x.sym} ${x.name} ${x.n}`).includes(q)); if (hit && hit.length === 1) { sci().el = hit[0].n; document.querySelectorAll('.pt-info, .pt-info-m').forEach(box => box.innerHTML = ptInfoHtml(hit[0])); }
     return; }
   if (e.target.dataset.scif === 'weight') { sci().weight = e.target.value; const w = +e.target.value || 0;
     document.querySelectorAll('.wt-row b').forEach((el, i) => { const g = i < PLANETS.length ? PLANETS[i][7] : MOON_G; el.textContent = w ? (w * g / 9.81).toFixed(1) : '–'; }); save(); }
+});
+document.addEventListener('input', e => {   // chemistry boxes redraw as you type
+  const k = e.target.dataset?.chem; if (!k || view.name !== 'science') return; const s = sci();
+  s[k] = e.target.value; if (k === 'chemG') s.chemMol = ''; if (k === 'chemMol') s.chemG = ''; save();
+  clearTimeout(chemHtml.t); chemHtml.t = setTimeout(() => { const pos = e.target.selectionStart, keep = k; const p = document.querySelector('.sci-panel'); if (!p) return; p.innerHTML = chemHtml(); const el = document.querySelector(`[data-chem="${keep}"]`); el?.focus(); try { el.setSelectionRange(pos, pos); } catch {} }, 250);
 });
 document.addEventListener('change', e => {
   const k = e.target.dataset?.scif; if (!k || view.name !== 'science' || k === 'weight') return;

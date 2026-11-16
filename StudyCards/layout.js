@@ -90,6 +90,7 @@ function railHtml() {
       top ? `<button type="button" class="btn sm primary" data-act="study" data-id="${top.id}" title="Study ${esc(top.name)}">Go</button>` : '')}
     ${packs ? quest('<svg class="pack-ico" viewBox="0 0 24 30" aria-hidden="true"><use href="#icoPack"/></svg>', `${packs} word pack${packs === 1 ? '' : 's'} ready to open`, 0, 0, '<button type="button" class="btn sm" data-act="packsHome">Open</button>') : ''}
   </section>`);
+  if (typeof homeBoxesHtml === 'function') parts.push(homeBoxesHtml());   // reminders and sticky notes (homebox.js); the home dashboard that also has them is hidden when this column shows
   return parts.join('');
 }
 function renderRail() {

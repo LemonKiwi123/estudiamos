@@ -171,7 +171,9 @@ views.progress = () => {
       <div class="stat"><div class="n">${games.length}</div><div class="l">🎮 Games played</div></div>
       <div class="stat"><div class="n" style="color:${gAvg == null ? 'inherit' : scoreColor(gAvg)}">${gAvg == null ? '–' : gAvg + '%'}</div><div class="l">Game average (last 10)</div></div>
     </section>
-    ${typeof streakPanel === 'function' ? streakPanel() + badgesPanel() : ''}
+    ${typeof streakPanel === 'function' ? streakPanel() : ''}
+    ${typeof homeBoxesHtml === 'function' ? `<div style="margin-top:16px">${homeBoxesHtml()}</div>` : ''}
+    ${typeof badgesPanel === 'function' ? badgesPanel() : ''}
     <section class="panel" style="margin-top:16px">
       <div class="row-between"><h3>Activity, last 30 days</h3><span class="small"><span style="color:var(--accent)">■</span> Study reviews <span style="color:var(--hard);margin-left:10px">■</span> Quizzes <span style="color:var(--good);margin-left:10px">■</span> Games</span></div>
       <div class="activity">${days.map(x => `<div class="day" title="${new Date(x.t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: ${x.reviews} reviews, ${x.quizzes} quiz${x.quizzes === 1 ? '' : 'zes'}, ${x.games} game${x.games === 1 ? '' : 's'}">

@@ -483,6 +483,47 @@ document.addEventListener('input', e => {
   clearTimeout(mgDraw.t); mgDraw.t = setTimeout(mathSave, 600);
 });
 
+/* ---------- 💵 tip calculator ---------- */
+function tipState() { const m = mathState(); m.tipc ||= { bill: '', pct: 18, people: 1, tax: '', afterTax: false, round: false }; return m.tipc; }
+function tipCalc() {
+  const t = tipState(), bill = Math.max(0, parseFloat(t.bill) || 0), tax = Math.max(0, parseFloat(t.tax) || 0), n = Math.max(1, Math.round(t.people) || 1);
+  const base = t.afterTax ? bill + tax : bill, tip = base * (+t.pct || 0) / 100, total = bill + tax + tip;
+  let each = total / n, eachTip = tip / n;
+  if (t.round) { const r = Math.ceil(each); eachTip += r - each; each = r; }
+  return { bill, tax, tip: t.round ? eachTip * n : tip, total: t.round ? each * n : total, each, eachTip, n };
+}
+const money = v => (Math.round(v * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function tipHtml() {
+  const t = tipState(), r = tipCalc();
+  return `<div class="tip">
+    <div class="tip-in">
+      <label class="field">Bill amount<input class="inp tip-big" inputmode="decimal" data-tip="bill" value="${esc(t.bill)}" placeholder="0.00" autocomplete="off"></label>
+      <div class="field">Tip<div class="tip-pcts">${[10, 15, 18, 20, 25].map(p => `<button type="button" class="btn ${+t.pct === p ? 'primary' : ''}" data-tipp="${p}">${p}%</button>`).join('')}
+        <label class="tip-custom"><input class="inp" inputmode="decimal" data-tip="pct" value="${[10, 15, 18, 20, 25].includes(+t.pct) ? '' : esc(t.pct)}" placeholder="Other" aria-label="Other tip percent">%</label></div></div>
+      <div class="field">Split between<div class="tip-people"><button type="button" class="btn" data-tipn="-1" aria-label="Fewer people">−</button><b>${r.n}</b> ${r.n === 1 ? 'person' : 'people'}<button type="button" class="btn" data-tipn="1" aria-label="More people">＋</button></div></div>
+      <details ${t.tax ? 'open' : ''}><summary class="small">Tax and rounding</summary>
+        <label class="field" style="margin-top:6px">Tax amount (optional)<input class="inp" inputmode="decimal" data-tip="tax" value="${esc(t.tax)}" placeholder="0.00"></label>
+        <label class="check"><input type="checkbox" data-tip="afterTax" ${t.afterTax ? 'checked' : ''}><span>Tip on the total after tax</span></label>
+        <label class="check"><input type="checkbox" data-tip="round" ${t.round ? 'checked' : ''}><span>Round each person up to a whole amount</span></label></details>
+    </div>
+    <div class="tip-out">
+      <div class="tip-row"><span>Tip (${+t.pct || 0}%)</span><b>${money(r.tip)}</b></div>
+      ${r.tax ? `<div class="tip-row"><span>Tax</span><b>${money(r.tax)}</b></div>` : ''}
+      <div class="tip-row total"><span>Total</span><b>${money(r.total)}</b></div>
+      ${r.n > 1 || t.round ? `<div class="tip-each"><span>Each person pays</span><b>${money(r.each)}</b><span class="muted small">${money(r.eachTip)} of that is tip</span></div>` : ''}
+      <div class="tip-table"><div class="muted small">Quick look at this bill</div>${[10, 15, 18, 20, 25].map(p => { const tp = (t.afterTax ? r.bill + r.tax : r.bill) * p / 100; return `<div class="tip-row sm"><span>${p}%</span><span>tip ${money(tp)}</span><b>${money(r.bill + r.tax + tp)}</b></div>`; }).join('')}</div>
+    </div></div>`;
+}
+function tipRedraw(keepFocus) { const box = document.querySelector('.tip'); if (!box) return; const f = keepFocus && document.activeElement?.dataset?.tip, pos = f ? document.activeElement.selectionStart : 0;
+  const t = document.createElement('div'); t.innerHTML = tipHtml(); box.replaceWith(t.firstElementChild);
+  if (f) { const el = document.querySelector(`[data-tip="${f}"]`); el?.focus(); try { el.setSelectionRange(pos, pos); } catch {} } }
+document.addEventListener('input', e => { const k = e.target.dataset?.tip; if (!k || view.name !== 'math' || e.target.type === 'checkbox') return; const t = tipState();
+  t[k] = e.target.value.replace(/[^\d.,]/g, '').replace(',', '.'); mathSave(); tipRedraw(true); });
+document.addEventListener('change', e => { const k = e.target.dataset?.tip; if (!k || view.name !== 'math' || e.target.type !== 'checkbox') return; tipState()[k] = e.target.checked; mathSave(); tipRedraw(); });
+document.addEventListener('click', e => { if (view.name !== 'math') return; const t = tipState();
+  const p = e.target.closest('[data-tipp]'); if (p) { t.pct = +p.dataset.tipp; mathSave(); return tipRedraw(); }
+  const n = e.target.closest('[data-tipn]'); if (n) { t.people = Math.max(1, Math.min(50, (t.people || 1) + +n.dataset.tipn)); mathSave(); return tipRedraw(); } });
+
 /* ---------- the Math page ---------- */
 views.math = () => {
   const m = mathState();
@@ -491,45 +532,17 @@ views.math = () => {
       <div class="seg" role="tablist">
         <button type="button" class="btn sm ${m.tab === 'sci' ? 'primary' : ''}" data-act="mathTab" data-t="sci" role="tab" aria-selected="${m.tab === 'sci'}">🔢 Scientific</button>
         <button type="button" class="btn sm ${m.tab === 'graph' ? 'primary' : ''}" data-act="mathTab" data-t="graph" role="tab" aria-selected="${m.tab === 'graph'}">📈 Graphing</button>
+        <button type="button" class="btn sm ${m.tab === 'tip' ? 'primary' : ''}" data-act="mathTab" data-t="tip" role="tab" aria-selected="${m.tab === 'tip'}">💵 Tip</button>
       </div></div>
-    <div class="panel">${m.tab === 'graph' ? mathGraphHtml() : mathCalcHtml('page')}</div>
-    <p class="muted small" style="margin-top:12px">${m.tab === 'graph'
+    <div class="panel">${m.tab === 'graph' ? mathGraphHtml() : m.tab === 'tip' ? tipHtml() : mathCalcHtml('page')}</div>
+    <p class="muted small" style="margin-top:12px">${m.tab === 'tip' ? 'Tip is worked out on the bill before tax by default. Tick “after tax” to tip on the whole bill.' : m.tab === 'graph'
       ? 'Type each line in terms of x: <code>2x + 1</code>, <code>x^2 - 4</code>, <code>sin(x)</code>, <code>1/x</code>, <code>√x</code>, <code>|x|</code>, <code>e^x</code>, <code>ln x</code>. Tap a colored dot to hide a line.'
-      : 'Type with your keyboard or tap the keys. <b>Enter</b> works it out, <b>Esc</b> clears. You can write <code>2(3+4)</code>, <code>sin 30</code>, <code>5!</code>, <code>√2</code>, <code>|−3|</code>, <code>nCr(5, 2)</code>, <code>nPr(5, 2)</code>, <code>logb(2, 8)</code>, <code>root(3, 27)</code>, <code>gcd(12, 18)</code>, <code>sinh</code>, <code>cosh</code>, <code>tanh</code>. Tap a line in the history to use it again.'}</p>
-    <label class="row muted small" style="gap:6px;margin-top:6px"><input type="checkbox" id="mathFab" ${S.settings.mathFab !== false ? 'checked' : ''}> Show the 🧮 calculator button on other screens</label>`;
+      : 'Type with your keyboard or tap the keys. <b>Enter</b> works it out, <b>Esc</b> clears. You can write <code>2(3+4)</code>, <code>sin 30</code>, <code>5!</code>, <code>√2</code>, <code>|−3|</code>, <code>nCr(5, 2)</code>, <code>nPr(5, 2)</code>, <code>logb(2, 8)</code>, <code>root(3, 27)</code>, <code>gcd(12, 18)</code>, <code>sinh</code>, <code>cosh</code>, <code>tanh</code>. Tap a line in the history to use it again.'}</p>`;
 };
 Object.assign(actions, {
   math: () => go({ name: 'math' }),
   mathTab: el => { mathState().tab = el.dataset.t; mathSave(); render(); },
 });
-document.addEventListener('change', e => { if (e.target.id === 'mathFab') { S.settings.mathFab = e.target.checked; save(); mathFab(); } });
 
-/* ---------- the floating 🧮 button and pop-up calculator (every screen except Math and while playing) ---------- */
-function mathFab() {
-  let fab = document.getElementById('mathFabBtn');
-  const hide = S.settings?.mathFab === false || typeof view === 'undefined' || view.name === 'math' || document.body.classList.contains('in-game');
-  if (!fab) {
-    fab = document.createElement('button'); fab.type = 'button'; fab.id = 'mathFabBtn'; fab.className = 'math-fab'; fab.title = 'Calculator'; fab.setAttribute('aria-label', 'Open the calculator');
-    fab.textContent = '🧮'; fab.onclick = () => mathPop(); document.body.append(fab);
-  }
-  fab.hidden = hide;
-  if (hide) document.getElementById('mathPop')?.remove();
-}
-function mathPop(close) {
-  let pop = document.getElementById('mathPop');
-  if (pop || close) { pop?.remove(); return; }
-  pop = document.createElement('div'); pop.id = 'mathPop'; pop.className = 'math-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Calculator');
-  pop.innerHTML = `<div class="math-pop-bar"><b>🧮 Calculator</b><span style="flex:1"></span>
-      <button type="button" class="btn sm ghost" data-mathpop="graph" title="Open the graphing calculator">📈</button>
-      <button type="button" class="btn sm ghost" data-mathpop="full" title="Open the Math page">⤢</button>
-      <button type="button" class="btn sm ghost" data-mathpop="close" title="Close">✕</button></div>${mathCalcHtml('pop')}`;
-  document.body.append(pop);
-  if (!matchMedia('(hover: none)').matches) pop.querySelector('.minput')?.focus();
-}
-document.addEventListener('click', e => {
-  const b = e.target.closest('[data-mathpop]'); if (!b) return;
-  const k = b.dataset.mathpop; mathPop(true);
-  if (k === 'graph') { mathState().tab = 'graph'; go({ name: 'math' }); } else if (k === 'full') { mathState().tab = 'sci'; go({ name: 'math' }); }
-});
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('mathPop') && !e.defaultPrevented) mathPop(true); });
-{ const r = window.render; if (typeof r === 'function') window.render = function () { const out = r.apply(this, arguments); try { mathFab(); } catch {} return out; }; }
+/* (The floating 🧮 calculator button was removed in 1.5.1: the calculator lives on the 🧮 Math page.) */
+document.getElementById('mathFabBtn')?.remove();
