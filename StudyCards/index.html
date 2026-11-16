@@ -2082,8 +2082,9 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
 /* 🔔 reminders + 🗒️ sticky notes on the home page (homebox.js) */
 .home-boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px} @media (max-width:860px){ .home-boxes{grid-template-columns:1fr} }
 .home-box{display:flex;flex-direction:column;gap:8px}
-#rail .home-boxes{grid-template-columns:1fr;gap:14px;margin:0} #rail .home-box.panel{background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:16px 18px;margin:0;box-shadow:none}
-.rem-add{display:grid;grid-template-columns:1fr auto auto auto;gap:6px} .rem-add .inp{margin:0;min-width:0} @media (max-width:640px){ .rem-add{grid-template-columns:1fr 1fr} .rem-add .inp:first-child{grid-column:1/-1} }
+#rail .home-boxes{grid-template-columns:1fr;gap:14px;margin:0} #rail .note-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))} #rail .home-box.panel{background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:16px 18px;margin:0;box-shadow:none}
+.rem-add{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:6px} .rem-add .inp{margin:0;min-width:0} .rem-add .inp:first-child{grid-column:1/-1}   /* text on its own line, then when / repeat / Add */
+.rem-box{container-type:inline-size} @container (max-width:520px){ .rem-add{grid-template-columns:minmax(0,1fr) auto} .rem-add [name=at]{grid-column:1/-1} }   /* narrow box (right column, phones): the date gets its own line */
 .rem-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .rem-list li{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"c t x" "c w x";gap:0 8px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .rem-list li.due{border-color:var(--hard);background:color-mix(in srgb,var(--hard) 10%,var(--surface))}
@@ -2092,7 +2093,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
 .note-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .sticky{background:var(--c);border-radius:4px 4px 14px 4px;box-shadow:0 3px 8px rgba(0,0,0,.14);padding:8px;display:flex;flex-direction:column;gap:4px;transform:rotate(-.6deg)}
 .sticky:nth-child(even){transform:rotate(.7deg)}
-.sticky textarea{border:0;background:transparent;resize:vertical;min-height:90px;font:inherit;font-size:14px;color:#2b2a26;outline:none;line-height:1.4}
+.sticky textarea{border:0;background:transparent;resize:vertical;height:110px;min-height:70px;max-height:260px;font:inherit;font-size:14px;color:#2b2a26;outline:none;line-height:1.4}
 .sticky-foot{display:flex;gap:3px;align-items:center}
 .sticky-c{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.25);cursor:pointer;padding:0} .sticky-c.on{outline:2px solid #2b2a26;outline-offset:1px}
 .sticky-del{margin-left:auto;border:0;background:none;cursor:pointer;font-size:13px;opacity:.6} .sticky-del:hover{opacity:1}
