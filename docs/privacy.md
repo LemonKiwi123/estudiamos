@@ -23,7 +23,7 @@ Only when you use these features, and only what is needed:
 | Email (only if you set it up yourself) | Your own email provider | The messages you choose to send, from your own account |
 | Feedback, reviews and translation reports | GitHub (opens in your browser) | Only what you type and choose to post |
 
-The microphone is used only while a speaking game or spoken spell is listening. Nothing is recorded or saved.
+The microphone is used only while a speaking game or spoken spell is listening. Nothing is recorded or saved. The music 🎙️ Tuner also uses the microphone, but only on your device: the sound is measured right there and is never sent anywhere, recorded or saved. Photos you open in the Art studio's photo helper also stay on your device. Links on the 🔗 Resources page open other websites in your browser; Estudiamos sends them nothing.
 
 The Microsoft Store version gets its updates from the Microsoft Store.
 
