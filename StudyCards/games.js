@@ -64,6 +64,7 @@ function gameAvail(d) {
     showdown: { ok: rp >= 5, info: rp >= 5 ? '👥 2 players on this PC' : 'Needs at least 5 cards with text on both sides' },
     tower: { ok: rp >= 3, info: rp >= 3 ? '👥 2 players on this PC' : 'Needs at least 3 cards with text on both sides' },
     runner: { ok: rw >= 3, info: rw >= 3 ? (best ? `Your best: ${best} jumps` : `Endless: how far can you go? (${rw} cards)`) : 'Needs at least 3 cards with one line on each side (not stacked like a verb chart)' },
+    chess: { ok: true, info: '🤖 vs computer or 👥 2 players · works with any deck' },
     numbers: { ok: true, info: '🎧 Listening, reading and writing · no cards needed' },
     match: { ok: n >= 3, info: n >= 3 ? `Up to ${Math.min(n, 18)} pairs per game` : 'Needs at least 3 cards' },
     builder: { ok: true, info: '📖 Real sentences, with word types, meanings and a hot/cold meter · your cards’ sentences first' },
@@ -89,12 +90,14 @@ const GAMES = {
   showdown: { emoji: '🎤', title: 'Word Showdown', desc: 'A quiz-show board for 2 players: pick tiles worth 100–500, steal wrong answers, and find the Double Down!' },
   tower: { emoji: '🧱', title: 'Word Tower', desc: 'Two players take turns pulling the block with the right meaning. One wrong pick and the tower crashes!' },
   numbers: { emoji: '🔢', title: 'Numbers & ABC', desc: 'Hear, read and write numbers and letters in the language you’re learning. Works without any cards.' },
+  chess: { emoji: '♟️', title: 'Chess', desc: 'Play chess against the computer (easy, medium or hard) or a friend. Turn on 📚 study mode to answer a card before each move.' },
   runner: { emoji: '🐘', title: 'Elephant run', desc: 'Help the elephant jump over stacks of books by picking the right meaning before they arrive.' },
 };
 
 function startGame(type, deckId) {
   if (type === 'builder') { typeof startSentenceBuilder === 'function' ? startSentenceBuilder(deckId) : startBuilder(deckId); return; }
   if (type === 'runner') { startRunner(deckId); return; }
+  if (type === 'chess') { chessSetupDialog(deckId); return; }
   if (type === 'numbers') { startNumGame(deckId); return; }
   if (type === 'speak') { startSpeak(deckId); return; }
   if (type === 'tower') { go({ name: 'towerSetup', deckId }); return; }
@@ -216,11 +219,11 @@ views.games = () => {
     <h2 style="margin-bottom:4px">Memory games</h2>
     <p class="muted" style="margin:0 0 18px">Practice with the cards in “${esc(d.name)}”. Games don’t change your study schedule.</p>
     ${friendTip('monkey', 'games')}
-    <div class="game-grid">${Object.entries(GAMES).map(([k, g]) => `
+    <div class="game-grid">${Object.entries(GAMES).filter(([k]) => typeof gameFitsSubject !== 'function' || gameFitsSubject(k, d)).map(([k, g]) => `
       <article class="game-card"><div class="emoji">${k === 'runner' ? (mascot(40) || g.emoji) : g.emoji}</div><h3>${g.title}</h3>
         <p class="muted small" style="margin:0">${g.desc}</p>
         <div class="small" style="color:${av[k].ok ? 'var(--muted)' : 'var(--hard)'}">${esc(av[k].info)}</div>
-        ${(k === 'sentence' || k === 'listen') && cardsOf(d.id).some(c => !c.example && c.front) ? `<button type="button" class="btn sm" data-act="fillExamples" data-id="${d.id}">✨ Add example sentences</button>` : ''}
+        ${(k === 'sentence' || k === 'listen') && (typeof deckSubject !== 'function' || deckSubject(d) === 'lang') && cardsOf(d.id).some(c => !c.example && c.front) ? `<button type="button" class="btn sm" data-act="fillExamples" data-id="${d.id}">✨ Add example sentences</button>` : ''}
         <button type="button" class="btn ${av[k].ok ? 'primary' : ''}" data-act="startGame" data-type="${k}" data-id="${d.id}" ${av[k].ok ? '' : 'disabled'}>Play</button>
       </article>`).join('')}</div>
     <div class="panel" style="margin-top:18px"><h3>Tip: add example sentences</h3>

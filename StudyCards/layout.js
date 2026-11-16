@@ -36,7 +36,7 @@ function deckRow(d, now = Date.now()) {
   const k = typeof levelCounts === 'function' ? levelCounts(cardsOf(d.id)) : null;
   return `<article class="deck deck-row" data-deck="${d.id}" draggable="true">
     <div class="dr-main" data-act="openDeck" data-id="${d.id}" title="Open ${esc(d.name)}">
-      <div class="dr-name">${esc(d.name)}</div>
+      <div class="dr-name">${typeof deckSubject === 'function' ? `<span title="${esc(subjName(deckSubject(d)))}">${subjEmoji(deckSubject(d))}</span> ` : ''}${esc(d.name)}</div>
       <div class="dr-sub">${due ? `🕒 ${due} card${due === 1 ? '' : 's'} to study today` : c.total ? '✓ Done for today' : 'No cards yet'}<span class="muted"> · ${c.total} card${c.total === 1 ? '' : 's'} · ${esc(langName(d.frontLang))} → ${esc(langName(d.backLang))}</span></div>
       ${k && k.total ? levelBar(k) : ''}
     </div>

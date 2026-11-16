@@ -10,8 +10,10 @@ function renderSideFavs() {
   const el = $('#sideFavs'); if (!el) return;
   const fs = favDecks(), now = Date.now(), on = view.name === 'home' && view.favOnly;
   el.hidden = !currentProfileId || view.name === 'profiles';
-  el.innerHTML = `<button type="button" class="sf-head${on ? ' on' : ''}" data-act="showFavs" title="Show only your favorite decks"><span class="ni" aria-hidden="true">⭐</span><span class="nt">Favorites</span><span class="sf-n">${fs.length}</span></button>
-    ${fs.length ? `<div class="sf-list">${fs.map(d => { const c = deckCounts(d, now), due = c.new + c.learn + c.review;
+  const open = S.settings.favsOpen !== false;
+  el.innerHTML = `<div class="sf-top"><button type="button" class="sf-head${on ? ' on' : ''}" data-act="showFavs" title="Show only your favorite decks"><span class="ni" aria-hidden="true">⭐</span><span class="nt">Favorites</span><span class="sf-n">${fs.length}</span></button>
+      <button type="button" class="sf-toggle" data-act="favsToggle" aria-expanded="${open}" title="${open ? 'Close the favorites list' : 'Open the favorites list'}">${open ? '▾' : '▸'}</button></div>
+    ${!open ? '' : fs.length ? `<div class="sf-list">${fs.map(d => { const c = deckCounts(d, now), due = c.new + c.learn + c.review;
       return `<button type="button" class="sf-deck${view.name === 'deck' && view.deckId === d.id ? ' on' : ''}" data-act="openDeck" data-id="${d.id}" title="Open ${esc(d.name)}"><span class="sf-name">${esc(d.name)}</span>${due ? `<span class="sf-due" title="${due} card${due === 1 ? '' : 's'} to study today">${due}</span>` : '<span class="sf-done" title="Done for today">✓</span>'}</button>`; }).join('')}</div>`
       : '<div class="sf-empty">Tap ☆ on a deck to pin it here.</div>'}`;
 }
@@ -23,5 +25,6 @@ function favHomeList(now, cardFn) {
 }
 Object.assign(actions, {
   favDeck: el => { const d = deckById(el.dataset.id); if (!d) return; d.fav = !d.fav; save(); render(); toast(d.fav ? `★ “${d.name}” added to favorites` : `“${d.name}” removed from favorites`); },
+  favsToggle: () => { S.settings.favsOpen = S.settings.favsOpen === false; save(); renderSideFavs(); },
   showFavs: () => { const on = view.name === 'home' && view.favOnly; go({ name: 'home', favOnly: !on }); },
 });
