@@ -2663,12 +2663,13 @@ function detectSep(text) {
   for (const s of ['\t', ';', ' - ', '=', ',']) if (lines.length && lines.filter(l => l.includes(s)).length >= lines.length * 0.6) return s;
   return '\t';
 }
-function parseImport(text, sep) {
+function parseImport(text, sep, { allowBlank = false } = {}) {   // allowBlank: keep rows with only a front (a list of words to translate)
   if (sep === 'auto') sep = detectSep(text);
   return text.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#')).map(l => splitLine(l, sep).map(x => stripHtml(x).trim()))
-    .filter(p => p.length >= 2 && p[0] && p[1] && !(/^front$/i.test(p[0]) && /^back$/i.test(p[1])))
+    .filter((p, i) => p[0] && (p[1] || allowBlank) && !(/^front$/i.test(p[0]) && /^back$/i.test(p[1] || ''))
+      && !(allowBlank && i === 0 && !p[1] && /^(front|words?|terms?|vocab(ulary)?|palabras?|mots?|word list)$/i.test(p[0])))   // a "Word" heading
     .map(p => {
-      const it = { front: p[0], back: p[1], notes: p[2] || '', example: p[3] || '', exampleTr: p[4] || '' };
+      const it = { front: p[0], back: p[1] || '', notes: p[2] || '', example: p[3] || '', exampleTr: p[4] || '' };
       if (!looksLikeSentence(it.example, it.exampleTr)) { it.notes = joinNotes(it.notes, it.example); it.example = ''; }   // an extra meaning, not a sentence
       return it;
     });

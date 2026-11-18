@@ -265,7 +265,10 @@ async function importFile(file, targetDeck) {
     else if (ext === 'ofc') { toast('Reading Noji file…'); res = await readOfc(await file.arrayBuffer()); }
     else if (['csv', 'tsv', 'txt'].includes(ext)) {
       const text = await file.text();
-      res = { decks: [{ name: base, cards: parseImport(text, ext === 'csv' ? detectCsvSep(text) : 'auto') }], skipped: 0 };
+      const sep = ext === 'csv' ? detectCsvSep(text) : 'auto';
+      let cards = parseImport(text, sep); const words = parseImport(text, sep, { allowBlank: true });
+      if (words.length > cards.length) cards = words;   // some (or all) rows are just a word with no back: keep them, they can be translated
+      res = { decks: [{ name: base, cards }], skipped: 0 };
     } else { toast('Unsupported file type: .' + ext); return; }
     if (!res.decks.some(d => d.cards.length)) { toast('No cards with text were found in that file'); return; }
     importSummary(res, file.name, targetDeck);
@@ -274,6 +277,7 @@ async function importFile(file, targetDeck) {
 function detectCsvSep(text) { const l = text.split(/\r?\n/).find(x => x.trim()) || ''; return l.includes('\t') ? '\t' : (l.split(';').length > l.split(',').length ? ';' : ','); }
 function importSummary(res, fileName, targetDeck) {
   const total = res.decks.reduce((a, d) => a + d.cards.length, 0), anyProgress = res.decks.some(d => d.cards.some(c => c.progress));
+  const blanks = res.decks.reduce((a, d) => a + d.cards.filter(c => !String(c.back || '').trim()).length, 0);
   const last = S.decks.at(-1) || { frontLang: 'es-ES', backLang: 'en-US' };
   const existing = n => S.decks.find(d => d.name.toLowerCase() === n.toLowerCase());
   openDialog({
@@ -291,8 +295,11 @@ function importSummary(res, fileName, targetDeck) {
         <label class="field">Back language (new decks)<select name="backLang">${langOptions(last.backLang)}</select></label></div>
       ${res.decks.some(d => d.frontLang) ? '<p class="muted small" style="margin:0">Decks marked “from file” keep the languages saved in the file. You can change them later in deck settings.</p>' : ''}`}
       ${anyProgress ? `<label class="check"><input type="checkbox" name="progress" checked><span>Keep study progress (when cards are due, intervals, ease)</span></label>` : ''}
-      <label class="check"><input type="checkbox" name="skipDup" checked><span>Skip cards whose front already exists in the deck</span></label>`,
+      <label class="check"><input type="checkbox" name="skipDup" checked><span>Skip cards whose front already exists in the deck</span></label>
+      ${blanks ? `<label class="check"><input type="checkbox" name="autoTr" ${typeof txSuggest === 'function' ? 'checked' : 'disabled'}><span><b>🌐 Translate the ${blanks} card${blanks === 1 ? '' : 's'} with no back</b>
+        <span class="muted small" style="display:block">${blanks === total ? 'This file is a list of words.' : `${blanks} row${blanks === 1 ? ' has' : 's have'} only one column.`} Each word is translated from the front language into the back language and put on the back. The words are sent to Wiktionary or MyMemory (free translators); you can fix any translation afterwards.</span></span></label>` : ''}`,
     onOk: f => {
+      const toTr = [];
       let added = 0, dup = 0, decksMade = 0;
       res.decks.forEach((src, i) => {
         if (!f['deck' + i].checked) return;
@@ -312,13 +319,41 @@ function importSummary(res, fileName, targetDeck) {
           c.created = Date.now() + k;
           if (it.progress && f.progress?.checked) Object.assign(c, it.progress);
           S.cards.push(c); seen.add(key); added++;
+          if (!String(it.back || '').trim() && !it.backHtml && f.autoTr?.checked) toTr.push({ c, deck });
         });
       });
       save();
+      if (toTr.length) setTimeout(() => importTranslate(toTr), 300);
       if (targetDeck) render(); else go({ name: 'home' });
       toast(`Imported ${added} card${added === 1 ? '' : 's'}${decksMade ? ` into ${decksMade} new deck${decksMade === 1 ? '' : 's'}` : ''}${dup ? `, skipped ${dup} duplicates` : ''}`);
     },
   });
+}
+
+/* 🌐 fill in the empty backs of just-imported cards, one word at a time, with a window that shows how far along it is */
+async function importTranslate(list) {
+  const okDeck = d => typeof txCanDeck === 'function' && txCanDeck(d);
+  const todo = list.filter(x => okDeck(x.deck)), noLang = list.length - todo.length;
+  if (!todo.length) { toast('Give the deck two different languages (Deck settings) to translate its cards'); return; }
+  let done = 0, got = 0, stop = false, err = '';
+  const msg = () => `<p style="margin:0 0 8px">${stop || done >= todo.length ? `Translated <b>${got}</b> of ${todo.length} card${todo.length === 1 ? '' : 's'}.` : `Translating… <b>${done}</b> of ${todo.length}`}</p>
+    <div class="seg-bar" style="height:8px;border-radius:5px;overflow:hidden;background:var(--surface2)"><i style="display:block;height:100%;width:${Math.round(done / todo.length * 100)}%;background:var(--good)"></i></div>
+    <p class="muted small" style="margin:8px 0 0">${err ? esc(err) + ' ' : ''}${done >= todo.length || stop ? `${todo.length - got ? `${todo.length - got} card${todo.length - got === 1 ? ' was' : 's were'} left with an empty back to fill in yourself. ` : ''}${noLang ? `${noLang} card${noLang === 1 ? '' : 's'} skipped: their deck needs two different languages. ` : ''}You can change any translation in the card list.` : 'You can keep using Estudiamos. Closing this window stops translating.'}</p>`;
+  openDialog({ title: '🌐 Translating your cards', ok: 'Done', body: msg(), onOk: () => {},
+    onOpen: dlg => dlg.addEventListener('close', () => { stop = true; }, { once: true }) });
+  const draw = () => { const b = $('#dlg .dlg-body'); if (b && $('#dlg').open) b.innerHTML = msg(); };
+  for (const { c, deck } of todo) {
+    if (stop) break;
+    try {
+      const r = await txSuggest(c.front, deck.frontLang, deck.backLang), t = r.list[0]?.ins;
+      if (t && !String(c.back || '').trim()) { c.back = t; got++; }
+    } catch (e) { err = txErrText(e); if (e?.message === 'limit') { done = todo.length; break; } }
+    done++; draw(); if (done % 10 === 0) save();
+    await new Promise(res => setTimeout(res, 250));   // be gentle with the free services
+  }
+  done = Math.max(done, stop ? done : todo.length); save(); draw();
+  if (!$('#dlg').open) toast(`🌐 Translated ${got} card${got === 1 ? '' : 's'}`);
+  render();
 }
 
 /* ---------- Export ---------- */

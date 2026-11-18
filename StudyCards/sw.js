@@ -1,7 +1,7 @@
 'use strict';
 /* Keeps a copy of the app on the device so it opens with no connection (needs https or localhost).
    Always tries the PC first so updates arrive; falls back to the saved copy when the PC can't be reached. */
-const CACHE = 'estudiar-app-v379';
+const CACHE = 'estudiar-app-v381';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-256.png', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'estudiar.ico', 'console-guts.svg',
   'mascot.js', 'rich.js', 'profiles.js', 'quick.js', 'progress.js', 'streak.js', 'rewards.js', 'runner.js', 'themes.js', 'friends.js', 'avatar.js',
   'packs.js', 'dictionary.js', 'math.js', 'folders.js', 'sentences.js', 'tower.js', 'showdown.js', 'millionaire.js', 'calendar.js', 'priceparty.js', 'spinspell.js',
