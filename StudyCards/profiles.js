@@ -137,6 +137,8 @@ function profileDialog(p, { setup = false } = {}) {
         </div>
       </div>
       <label class="field">Username<input name="name" id="pfName" required maxlength="40" value="${esc(prof.name)}" placeholder="Your name"></label>
+      ${setup || prof.id === currentProfileId ? `<div class="field">Light or dark mode <span class="hint muted">(also in Settings → Appearance)</span>
+        <div class="seg" style="margin-top:6px">${[['light', '☀️ Light'], ['dark', '🌙 Dark'], ['system', '💻 Match device']].map(([v, l]) => `<label><input type="radio" name="pfTheme" value="${v}" ${(S.settings.theme || 'system') === v ? 'checked' : ''}>${l}</label>`).join('')}</div></div>` : ''}
       <div class="field">Background theme <span class="hint muted">(click one to preview it, or use your own picture)</span>${scenePicker(prof.scene || 'meadow', prof.id, prof.bgColor)}</div>
       <div class="field">Background color <span class="hint muted">(optional)</span>${bgColorPicker(prof.bgColor)}</div>
       ${themeColorPickers(prof)}
@@ -185,6 +187,12 @@ function profileDialog(p, { setup = false } = {}) {
         toast('Default theme. Press Save to keep it.');
       });
       dlg.addEventListener('close', () => { scenePreview = null; scenePreviewColor = undefined; themePreview = {}; applyScene(); }, { once: true });
+      // light / dark: try it right away; it's kept when you press Save, and goes back if you cancel
+      const themeWas = S.settings.theme || 'system'; dlg.pfThemeKeep = false;
+      dlg.querySelectorAll('[name=pfTheme]').forEach(r => r.addEventListener('change', () => { S.settings.theme = r.value; applyTheme(); }));
+      const themeBack = () => { if (!dlg.pfThemeKeep && S.settings.theme !== themeWas) { S.settings.theme = themeWas; applyTheme(); } };
+      dlg.addEventListener('close', themeBack, { once: true }); dlg.addEventListener('cancel', themeBack, { once: true });
+      dlg.querySelector('[data-dlg=cancel]')?.addEventListener('click', themeBack);
       dlg.querySelectorAll('[name=color]').forEach(r => r.addEventListener('change', () => { if (!pendingAvatar) { pendingAvatar = pendingAvatar === null ? null : undefined; preview(); } }));
       $('#pfPick').onclick = () => pickBinaryFile('image/*', async f => {
         try { pendingAvatar = await squareImage(f); mode = 'photo'; $('#pfRemove').hidden = false; preview(); } catch { toast('Could not use that picture'); }
@@ -198,6 +206,7 @@ function profileDialog(p, { setup = false } = {}) {
     onOk: f => {
       const name = f.name.value.trim();
       if (!name) { toast('Enter a username'); return false; }
+      if (f.pfTheme) { $('#dlg').pfThemeKeep = true; S.settings.theme = f.pfTheme.value; save(); applyTheme(); }
       const pin = f.pin.value, pin2 = f.pin2.value;
       if (pin && !/^\d{4,8}$/.test(pin)) { toast('The PIN must be 4–8 digits'); return false; }
       if (pin !== pin2) { toast('The two PINs don’t match'); return false; }

@@ -88,14 +88,17 @@ function weekStrip() {
   }
   return `<div class="week">${cells.join('')}</div>`;
 }
+let streakMin = false;   // phones can fold the streak box; kept only in memory, so it opens fully each time the page loads
 function streakPanel() {
   const s = displayStreak(), st = streakState(), act = dayActivity(), goal = dailyGoal(), done = act >= goal;
   const next = STREAK_BADGES.find(([n]) => n > s.n);
-  return `<section class="panel streak-panel">
+  return `<section class="panel streak-panel ${streakMin ? 'min' : ''}">
     <div class="sp-main">
       <div class="flame ${done ? 'lit' : ''}">🔥</div>
-      <div><div class="sp-n">${s.n} day${s.n === 1 ? '' : 's'}</div>
-        <div class="muted small">${done ? 'Goal reached today ✓' : s.n ? (s.freezeNeeded ? 'A streak freeze will cover the missed day. Study today!' : 'Reach today’s goal to keep your streak going!') : s.lost ? `Your ${s.lost}-day streak ended. Start a new one today!` : 'Reach your daily goal to start a streak'}</div></div>
+      <div style="flex:1;min-width:0"><div class="sp-n">${s.n} day${s.n === 1 ? '' : 's'}</div>
+        <div class="muted small sp-min-sum">Today: <b>${Math.min(act, goal)}/${goal}</b> cards${done ? ' ✓' : ''}</div>
+        <div class="muted small sp-msg">${done ? 'Goal reached today ✓' : s.n ? (s.freezeNeeded ? 'A streak freeze will cover the missed day. Study today!' : 'Reach today’s goal to keep your streak going!') : s.lost ? `Your ${s.lost}-day streak ended. Start a new one today!` : 'Reach your daily goal to start a streak'}</div></div>
+      <button type="button" class="hb-min sp-min" data-act="streakMin" aria-expanded="${!streakMin}" title="${streakMin ? 'Show' : 'Minimize'} your streak" aria-label="${streakMin ? 'Show' : 'Minimize'} your streak">${streakMin ? '▸' : '▾'}</button>
     </div>
     <div class="sp-goal">
       <div class="row-between small"><span>Today: <b>${Math.min(act, goal)}/${goal}</b> cards</span><span class="row" style="gap:8px"><span class="muted">❄️ ${st.freezes}/${MAX_FREEZES} freezes · best ${st.best || 0}</span><button type="button" class="btn sm" data-act="streakCalendar">📅 Calendar</button></span></div>
@@ -119,3 +122,5 @@ function renderStreakChip() {
   b.innerHTML = `<span style="filter:${done ? 'none' : 'grayscale(1)'}">🔥</span>${s.n}`;
   b.title = `${s.n}-day streak · today ${Math.min(dayActivity(), dailyGoal())}/${dailyGoal()} cards`;
 }
+
+Object.assign(actions, { streakMin: () => { streakMin = !streakMin; document.querySelectorAll('.streak-panel').forEach(el => { const t = document.createElement('div'); t.innerHTML = streakPanel(); el.replaceWith(t.firstElementChild); }); } });

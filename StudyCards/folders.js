@@ -40,7 +40,7 @@ function folderDialog(f, parentId) {
     title: f ? 'Edit folder' : 'New folder', ok: f ? 'Save' : 'Create folder',
     body: `<label class="field">Folder name<input name="name" required maxlength="60" value="${esc(f?.name || '')}" placeholder="e.g. Spanish class, Travel words"></label>
       ${folders().length && (parents.length || parentNow) ? `<label class="field">Inside folder<select name="parent"><option value="">— Not inside another folder —</option>${parents.map(([x, depth]) => `<option value="${x.id}" ${parentNow === x.id ? 'selected' : ''}>${'\u00a0\u00a0\u00a0'.repeat(depth)}📁 ${esc(x.name)}</option>`).join('')}</select></label>` : ''}
-      <div class="field">Color<div class="row" style="gap:6px;margin-top:6px">${FOLDER_COLORS.map(c => `<label class="swatch" style="background:${c}"><input type="radio" name="color" value="${c}" ${(f?.color || FOLDER_COLORS[0]) === c ? 'checked' : ''}></label>`).join('')}</div></div>
+      <div class="field">Color<div style="margin-top:6px">${palFieldHtml('color', f?.color || FOLDER_COLORS[0])}</div></div>
       ${S.decks.length ? `<div class="field">Decks in this folder <span class="hint muted">(tick to add, untick to remove)</span><div class="folder-pick">${S.decks.map(d => {
         const other = d.folderId && d.folderId !== f?.id ? folderById(d.folderId) : null;
         return `<label class="check"><input type="checkbox" name="d_${d.id}" ${f && d.folderId === f.id ? 'checked' : ''}><span>${esc(d.name)}${other ? ` <span class="muted small">(now in ${esc(other.name)})</span>` : ''}</span></label>`;

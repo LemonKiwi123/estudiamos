@@ -20,6 +20,8 @@ function renderBulkBar() {
     <button type="button" class="btn sm" data-act="bulkStrip" title="Remove notes in ( ) or [ ], and/or clear text formatting, on the selected cards">🧹 Brackets &amp; formatting</button>
     <button type="button" class="btn sm" data-act="bulkPos" title="Show or hide part-of-speech labels (noun, verb…) on the selected cards">🏷️ Word labels</button>
     <button type="button" class="btn sm" data-act="bulkExamples" title="Find a real example sentence + translation for each selected card that doesn’t have one">✨ Add sentences</button>
+    <button type="button" class="btn sm" data-act="bulkTranslate" title="Translate the selected cards from one side into the other (you check them first)">🌐 Translate</button>
+    <button type="button" class="btn sm" data-act="bulkSwap" title="Swap the front and back of the selected cards">⇄ Swap sides</button>
     <button type="button" class="btn sm" data-act="bulkDup" title="Make a copy of each selected card in this deck">📄 Duplicate cards</button>
     <button type="button" class="btn sm" data-act="deckFromSel" title="Make a new deck with copies of only these cards">📦 New deck from these</button>
     <button type="button" class="btn sm" data-act="bulkFreeze" data-on="1" title="Skip these cards when studying">❄️ Freeze</button>
@@ -184,4 +186,10 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.classList?.contains('cardSel')) { t.checked ? bulkSel.add(t.dataset.id) : bulkSel.delete(t.dataset.id); t.closest('tr')?.classList.toggle('sel-on', t.checked); renderBulkBar(); }
   else if (t.id === 'selAll') { for (const c of renderCardTable.st?.cs || []) t.checked ? bulkSel.add(c.id) : bulkSel.delete(c.id); document.querySelectorAll('.cardSel').forEach(x => { x.checked = t.checked; t.checked ? bulkSel.add(x.dataset.id) : bulkSel.delete(x.dataset.id); x.closest('tr')?.classList.toggle('sel-on', t.checked); }); renderBulkBar(); }
+});
+// the whole selection strip beside a card is a click target, not only the little box
+document.addEventListener('click', e => {
+  const td = e.target.closest?.('table.cards td.sel'); if (!td || e.target.matches('input')) return;
+  const ck = td.querySelector('input[type=checkbox]'); if (!ck) return;
+  ck.checked = !ck.checked; ck.dispatchEvent(new Event('change', { bubbles: true }));
 });

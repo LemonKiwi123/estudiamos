@@ -4,18 +4,24 @@
    further rounds until every card is "Got it". Progress is saved per card (card.fr) and does not
    change the spaced-repetition schedule. */
 let qr = null;
+/* Quick review can use the deck card list's filters and sort (cardlist.js): "only the cards my filters show" and "in my sort order". Saved per deck. */
+const qrOpt = deckId => ((S.settings.qrOpt ||= {})[deckId] ||= { filter: false, sort: false });
+const qrUseFilter = deckId => qrOpt(deckId).filter && typeof clPref === 'function' && clFilterCount(clPref(deckId)) > 0;
+const qrUseSort = deckId => qrOpt(deckId).sort && typeof clPref === 'function';
+function qrPool(deckId) { const cs = activeCardsOf(deckId); if (!qrUseFilter(deckId)) return cs; const p = clPref(deckId); return cs.filter(c => clMatches(c, p)); }
+const qrOrder = (deckId, cs) => qrUseSort(deckId) ? clSort(cs.slice(), clPref(deckId).sort) : shuffle(cs);
 function qrCounts(deckId) {
-  const cs = activeCardsOf(deckId);
+  const cs = qrPool(deckId);
   return { total: cs.length, got: cs.filter(c => c.fr === 'got').length, nq: cs.filter(c => c.fr === 'nq').length, ns: cs.filter(c => !c.fr).length };
 }
 function qrBar(k) {
   const t = Math.max(1, k.total), pc = n => (n / t * 100).toFixed(2) + '%';
-  return `<div class="seg-bar" title="${k.got} got it · ${k.nq} not quite · ${k.ns} not studied"><div class="g" style="width:${pc(k.got)}"></div><div class="n" style="width:${pc(k.nq)}"></div></div>`;
+  return `<div class="seg-bar qr-seg" title="${k.got} got it · ${k.nq} not quite · ${k.ns} not studied"><div class="g" style="width:${pc(k.got)}"></div><div class="n" style="width:${pc(k.nq)}"></div></div>`;
 }
 function startQuick(deckId, reset) {
-  if (reset) { cardsOf(deckId).forEach(c => { delete c.fr; }); save(); }
-  const cs = activeCardsOf(deckId), notStudied = cs.filter(c => !c.fr), notQuite = cs.filter(c => c.fr === 'nq');
-  const ids = [...shuffle(notStudied), ...shuffle(notQuite)].map(c => c.id);
+  if (reset) { (qrUseFilter(deckId) ? qrPool(deckId) : cardsOf(deckId)).forEach(c => { delete c.fr; }); save(); }   // with filters on, Start over only resets the filtered cards
+  const cs = qrPool(deckId), notStudied = cs.filter(c => !c.fr), notQuite = cs.filter(c => c.fr === 'nq');
+  const ids = [...qrOrder(deckId, notStudied), ...qrOrder(deckId, notQuite)].map(c => c.id);
   if (!ids.length) { go({ name: 'quickDone', deckId }); return; }
   qr = { deckId, queue: ids, i: 0, revealed: false, round: 1, roundEnd: false, history: [], rounds: 1, start: Date.now(), missed: new Set(), seen: new Set(ids) };
   go({ name: 'quick', deckId }); speakQuick();
@@ -42,14 +48,14 @@ function qrAnswer(got) {
   qr.i++; qr.revealed = false;
   while (qr.i < qr.queue.length && !qrCard()) qr.i++;           // skip cards deleted meanwhile
   if (qr.i >= qr.queue.length) {
-    if (!activeCardsOf(qr.deckId).some(x => x.fr === 'nq')) { qr.finished = Date.now(); recordQuick(); go({ name: 'quickDone', deckId: qr.deckId }); return; }
+    if (!qrPool(qr.deckId).some(x => x.fr === 'nq')) { qr.finished = Date.now(); recordQuick(); go({ name: 'quickDone', deckId: qr.deckId }); return; }
     qr.roundEnd = true; render(); return;
   }
   render(); speakQuick();
 }
 function qrNextRound() {
   if (!qr) return;
-  qr.queue = shuffle(activeCardsOf(qr.deckId).filter(x => x.fr === 'nq').map(x => x.id));
+  qr.queue = qrOrder(qr.deckId, qrPool(qr.deckId).filter(x => x.fr === 'nq')).map(x => x.id);
   qr.i = 0; qr.round++; qr.rounds = qr.round; qr.roundEnd = false; qr.revealed = false;
   render(); speakQuick();
 }
@@ -63,6 +69,15 @@ function qrUndo() {
   toast('Undone');
 }
 
+function qrOptsHtml(d) {   // only shown when the card list has filters or a sort picked
+  const p = typeof clPref === 'function' ? clPref(d.id) : null; if (!p) return '';
+  const nf = clFilterCount(p), o = qrOpt(d.id), sortName = clSortName(p.sort), hasSort = p.sort && p.sort !== 'newest';
+  if (!nf && !hasSort && !o.sort) return `<p class="muted small" style="margin:0">Tip: pick a sort or filters in the deck’s card list (Edit cards →) to quick review just those cards, in that order.</p>`;
+  const n = activeCardsOf(d.id).filter(c => clMatches(c, p)).length;
+  return `<div class="qr-opts">
+    ${nf ? `<label class="check"><input type="checkbox" data-qro="filter" data-id="${d.id}" ${o.filter ? 'checked' : ''}><span>Only the cards my filters show <span class="muted small">(${nf} filter${nf === 1 ? '' : 's'} · ${n} card${n === 1 ? '' : 's'})</span></span></label>` : ''}
+    <label class="check"><input type="checkbox" data-qro="sort" data-id="${d.id}" ${o.sort ? 'checked' : ''}><span>In my sort order <span class="muted small">(⇅ ${esc(sortName)})</span> instead of shuffled</span></label></div>`;
+}
 views.quickStart = () => {
   const d = deckById(view.deckId); if (!d) { view = { name: 'home' }; return views.home(); }
   const k = qrCounts(d.id), started = k.got + k.nq > 0, allGot = k.total > 0 && k.got === k.total;
@@ -76,9 +91,10 @@ views.quickStart = () => {
       ${friendTip('rabbit', 'quick', null, { compact: true })}
       <div style="width:100%;max-width:460px">${qrBar(k)}
         <div class="row" style="justify-content:space-between;margin-top:8px;font-size:13px">
-          <span style="color:var(--good)">● Got it ${k.got}</span><span style="color:var(--hard)">● Not quite ${k.nq}</span><span class="muted">● Not studied ${k.ns}</span></div></div>
+          <span style="color:var(--qr-got)">● Got it ${k.got}</span><span style="color:var(--qr-nq)">● Not quite ${k.nq}</span><span class="muted">● Not studied ${k.ns}</span></div></div>
+      ${qrOptsHtml(d)}
       <div class="row" style="justify-content:center">
-        ${!k.total ? '<span class="muted">This deck has no cards yet.</span>'
+        ${!k.total ? `<span class="muted">${qrUseFilter(d.id) ? 'No cards match your filters.' : 'This deck has no cards yet.'}</span>`
           : allGot ? `<span class="muted">Every card is marked Got it 🎉</span><button type="button" class="btn primary big" data-act="qrStart" data-id="${d.id}" data-reset="1">Review all again</button>`
           : started ? `<button type="button" class="btn primary big" data-act="qrStart" data-id="${d.id}">Continue (${k.ns + k.nq} left)</button>
                        <button type="button" class="btn" data-act="qrStart" data-id="${d.id}" data-reset="1">Start over</button>`
@@ -94,11 +110,12 @@ views.quick = () => {
       <button type="button" class="btn ghost" data-act="quickStart" data-id="${d.id}">← Back</button>
       <div style="flex:1;max-width:420px">${qrBar(k)}</div>
       <div class="row" style="gap:6px"><span class="muted small" style="font-variant-numeric:tabular-nums">Round ${qr.round} · ${Math.min(qr.i + 1, qr.queue.length)}/${qr.queue.length}</span>
+        <button type="button" class="icon-btn qr-tts ${autoplayOn(d) ? 'on' : ''}" data-act="qrTts" title="Read cards aloud automatically: ${autoplayOn(d) ? 'on' : 'off'} (A)" aria-pressed="${autoplayOn(d)}">${autoplayOn(d) ? '🔊' : '🔇'}</button>
         <button type="button" class="icon-btn" data-act="qrUndo" title="Undo (Ctrl+Z)" ${qr.history.length ? '' : 'disabled'}>${ICON.undo}</button>
         ${!qr.roundEnd && qrCard() ? `<button type="button" class="icon-btn" data-act="qrEdit" title="Edit this card (E)">${ICON.edit}</button>` : ''}</div>
     </div>`;
   if (qr.roundEnd) {
-    const left = activeCardsOf(d.id).filter(x => x.fr === 'nq');
+    const left = qrPool(d.id).filter(x => x.fr === 'nq');
     return `${top}<div class="flash" style="min-height:0">
       <div style="font-size:36px">💪</div>
       <div class="word sm">Round ${qr.round} done</div>
@@ -112,7 +129,7 @@ views.quick = () => {
   const s = qrSides(), long = t => t.length > 40;
   return `${top}
     <div class="flash" data-act="qrFlip" style="cursor:pointer" title="Click to flip (Space)">
-      <span class="pill ${c.fr === 'nq' ? 'learn' : ''}">${c.fr === 'nq' ? 'Not quite last time' : 'New in this review'}</span>
+      <span class="pill ${c.fr === 'nq' ? 'learn qr-nq-pill' : ''}">${c.fr === 'nq' ? 'Not quite last time' : 'New in this review'}</span>
       <div class="side"><div class="word${long(s.q) ? ' sm' : ''}">${s.qh}</div>${speakBtn(s.q, s.ql, true)}</div>
       ${qr.revealed ? `<hr><div class="side"><div class="word${long(s.a) ? ' sm' : ''}">${s.ah}</div>${speakBtn(s.a, s.al, true)}</div>
         ${c.example ? `<div class="notes">“${esc(plainSent(c.example))}”${c.exampleTr ? `<br><span class="small">${esc(c.exampleTr)}</span>` : ''}</div>` : ''}
@@ -122,7 +139,7 @@ views.quick = () => {
       <button type="button" class="btn big qr-nq" data-act="qrAns" data-got="0">✗ Not quite <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">1</kbd></button>
       <button type="button" class="btn big qr-got" data-act="qrAns" data-got="1">✓ Got it <kbd style="background:transparent;color:inherit;border-color:currentColor;opacity:.7">2</kbd></button>
     </div>
-    <div class="shortcuts">Keys: Space flip · 1 or ← Not quite · 2 or → Got it · R replay · E edit · Ctrl+Z undo</div>`;
+    <div class="shortcuts">Keys: Space flip · 1 or ← Not quite · 2 or → Got it · R replay · A read aloud on/off · E edit · Ctrl+Z undo</div>`;
 };
 
 views.quickDone = () => {
@@ -151,6 +168,7 @@ Object.assign(actions, {
   qrAns: el => qrAnswer(el.dataset.got === '1'),
   qrNext: () => qrNextRound(),
   qrUndo: () => qrUndo(),
+  qrTts: () => { const d = deckById(qr?.deckId); if (!d) return; const on = !autoplayOn(d); d.autoplay = on; save(); if (!on && 'speechSynthesis' in window) speechSynthesis.cancel(); render(); toast(on ? '🔊 Cards are read aloud' : '🔇 Reading aloud is off'); if (on) speakQuick(); },
   qrEdit: () => { const c = qrCard(); if (c) cardDialog(c, () => { if (view.name === 'quick') render(); }); },
 });
 document.addEventListener('keydown', e => {
@@ -165,4 +183,6 @@ document.addEventListener('keydown', e => {
   else if (e.key === '2' || e.key === 'ArrowRight') { e.preventDefault(); qrAnswer(true); }
   else if (k === 'r') speakQuick(true);
   else if (k === 'e') { e.preventDefault(); actions.qrEdit(); }
+  else if (k === 'a') { e.preventDefault(); actions.qrTts(); }
 });
+document.addEventListener('change', e => { const k = e.target.dataset?.qro; if (!k || view.name !== 'quickStart') return; qrOpt(e.target.dataset.id)[k] = e.target.checked; save(); render(); });

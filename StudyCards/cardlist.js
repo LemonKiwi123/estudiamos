@@ -7,9 +7,12 @@ const CL_FILTERS = [
   ['level', 'Learning status', [['new', 'Not studied'], ['learning', 'Learning'], ['mastered', 'Mastered']]],
   ['quick', 'Quick review', [['none', 'Not studied'], ['nq', 'Not quite'], ['got', 'Got it']]],
   ['card', 'Card status', [['active', 'Active'], ['frozen', 'Frozen']]],
-  ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front']]],
+  ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front'], ['back', 'Same back']]],
   ['ex', 'Example sentences', [['hasfront', 'Has front sentence'], ['nofront', 'Missing front sentence'], ['hasback', 'Has back translation'], ['noback', 'Missing back translation']]],
 ];
+/* empty lines at the end of a card side (trailing <br>, blank <div>s) are dropped in the list; a <br> with text after it is kept */
+const clTrimEnd = html => String(html || '').replace(/(?:\s|&nbsp;|<br\s*\/?>|<(div|p)>\s*(?:<br\s*\/?>)?\s*<\/\1>)+$/i, '');
+const CHEV = dir => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${dir === 'l' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const activeCardsOf = id => S.cards.filter(c => c.deckId === id && !c.frozen);
 
 /* Remembered per deck while the app is open */
@@ -30,18 +33,26 @@ function dupInfo(deckId) {   // card id -> { kind: 'exact' | 'front', n: how man
     const same = group.filter(x => dupKey(x.back) === dupKey(c.back));
     map.set(c.id, same.length > 1 ? { kind: 'exact', n: same.length, others: group.length - 1 } : { kind: 'front', n: group.length, others: group.length - 1 });
   }
+  const byBack = new Map();   // same back but a different front (two words with one meaning, or a mix-up)
+  for (const c of cs) { const k = dupKey(c.back); if (!k) continue; (byBack.get(k) || byBack.set(k, []).get(k)).push(c); }
+  for (const group of byBack.values()) if (group.length > 1) for (const c of group) {
+    if (!group.some(x => dupKey(x.front) !== dupKey(c.front))) continue;
+    const i = map.get(c.id) || { kind: null }; i.back = group.length; map.set(c.id, i);
+  }
   Object.assign(dupCache, { deck: deckId, map, fresh: true }); queueMicrotask(() => { dupCache.fresh = false; }); return map;
 }
 function dupTag(c, info) {
   const i = info.get(c.id); if (!i) return '';
-  return i.kind === 'exact'
+  const backTag = i.back ? `<span class="dup-tag" title="${i.back - 1} other card${i.back === 2 ? ' has' : 's have'} the same back but a different front.">⚠️ Same back ×${i.back}</span>` : '';
+  if (!i.kind) return backTag;
+  return backTag + (i.kind === 'exact'
     ? `<span class="dup-tag exact" title="This card appears ${i.n} times in this deck with the same front and back.">⚠️ Duplicate ×${i.n}</span>`
-    : `<span class="dup-tag" title="${i.others} other card${i.others === 1 ? ' has' : 's have'} the same front but a different back. That might be on purpose (two meanings).">⚠️ Same front ×${i.n}</span>`;
+    : `<span class="dup-tag" title="${i.others} other card${i.others === 1 ? ' has' : 's have'} the same front but a different back. That might be on purpose (two meanings).">⚠️ Same front ×${i.n}</span>`);
 }
 function dupBanner(d) {
   const info = dupInfo(d.id); if (!info.size) return '';
-  const exact = [...info.values()].filter(i => i.kind === 'exact').length, front = info.size - exact, p = clPref(d.id), on = (p.f.dup || []).length;
-  const parts = [exact ? `<b>${exact}</b> card${exact === 1 ? ' is an exact duplicate' : 's are exact duplicates'}` : '', front ? `<b>${front}</b> share${front === 1 ? 's' : ''} a front with a different back` : ''].filter(Boolean).join(' and ');
+  const vals = [...info.values()], exact = vals.filter(i => i.kind === 'exact').length, front = vals.filter(i => i.kind === 'front').length, back = vals.filter(i => i.back).length, p = clPref(d.id), on = (p.f.dup || []).length;
+  const parts = [exact ? `<b>${exact}</b> card${exact === 1 ? ' is an exact duplicate' : 's are exact duplicates'}` : '', front ? `<b>${front}</b> share${front === 1 ? 's' : ''} a front with a different back` : '', back ? `<b>${back}</b> share${back === 1 ? 's' : ''} a back with a different front` : ''].filter(Boolean).join(', ').replace(/, ([^,]*)$/, ' and $1');
   return `<div class="banner dup-banner"><span>⚠️ ${parts}.</span>${on ? '<button type="button" class="btn sm" data-act="clReset">Show all cards</button>' : '<button type="button" class="btn sm" data-act="dupShow">Show only duplicates</button>'}</div>`;
 }
 
@@ -50,7 +61,7 @@ function clMatches(c, p) {
   if (f.level.length && !f.level.includes(cardLevel(c))) return false;
   if (f.quick.length && !f.quick.includes(c.fr || 'none')) return false;
   if (f.card.length && !f.card.includes(c.frozen ? 'frozen' : 'active')) return false;
-  if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.includes(i.kind)) return false; }
+  if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.some(k => k === 'back' ? i.back : i.kind === k)) return false; }
   if (f.ex?.length && !f.ex.some(v => (v.endsWith('front') ? clExF(c) : clExB(c)) === v.startsWith('has'))) return false;
   return true;
 }
@@ -234,7 +245,7 @@ function clPreviewRender() {
       <span class="pv-count"><b>${clPv.i + 1}</b>/${n}${n < total ? ` <span class="muted">shown</span>` : ' cards'}</span>
     </div>
     <div class="pv-row">
-      <button type="button" class="pv-nav" data-act="clPvPrev" ${clPv.i ? '' : 'disabled'} title="Previous card (←)" aria-label="Previous card">‹</button>
+      <button type="button" class="pv-nav" data-act="clPvPrev" ${clPv.i ? '' : 'disabled'} title="Previous card (←)" aria-label="Previous card">${CHEV('l')}</button>
       <div class="pv-card ${c.frozen ? 'frozen' : ''}">
         <div class="pv-side" lang="${esc(d.frontLang || '')}"><div class="rich">${sideHtml(c, 'front', d)}${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}</div>${big(c.front, d.frontLang)}</div>
         <hr>
@@ -243,13 +254,13 @@ function clPreviewRender() {
         ${c.notes ? `<div class="pv-extra muted">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}
         <div class="pv-status">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c)}</div>
       </div>
-      <button type="button" class="pv-nav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} title="Next card (→)" aria-label="Next card">›</button>
+      <button type="button" class="pv-nav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} title="Next card (→)" aria-label="Next card">${CHEV('r')}</button>
     </div>
     <div class="pv-bottom">
       <button type="button" class="pv-round pv-close" data-act="clPvClose" title="Close (Esc)" aria-label="Close">✕</button>
       <div class="pv-mid">
-        <button type="button" class="pv-round pv-mnav" data-act="clPvPrev" ${clPv.i ? '' : 'disabled'} aria-label="Previous card">‹</button>
-        <button type="button" class="pv-round pv-mnav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} aria-label="Next card">›</button>
+        <button type="button" class="pv-round pv-mnav" data-act="clPvPrev" ${clPv.i ? '' : 'disabled'} aria-label="Previous card">${CHEV('l')}</button>
+        <button type="button" class="pv-round pv-mnav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} aria-label="Next card">${CHEV('r')}</button>
       </div>
       <button type="button" class="pv-round ${c.frozen ? 'on' : ''}" data-act="clPvFreeze" title="${c.frozen ? 'Unfreeze' : 'Freeze (skip when studying)'}" aria-label="Freeze">❄️</button>
       <button type="button" class="pv-round" data-act="clPvEdit" title="Edit card (E)" aria-label="Edit card">${ICON.edit}</button>
@@ -273,7 +284,7 @@ Object.assign(actions, {
   clPvFreeze: () => { const c = clPv && S.cards.find(x => x.id === clPv.ids[clPv.i]); if (!c) return; if (c.frozen) delete c.frozen; else c.frozen = true; save(); clPreviewRender(); toast(c.frozen ? 'Card frozen ❄️ (skipped when studying)' : 'Card unfrozen'); },
   clSort: () => clSortDialog(),
   clFilter: () => clFilterDialog(),
-  dupShow: () => { const p = clPref(view.deckId); p.f.dup = ['exact', 'front']; p.sort = 'az'; renderCardTable(); },
+  dupShow: () => { const p = clPref(view.deckId); p.f.dup = ['exact', 'front', 'back']; p.sort = 'az'; renderCardTable(); },
   clReset: () => { clPref(view.deckId).f = { level: [], quick: [], card: [] }; renderCardTable(); },
   clFreeze: el => { const c = S.cards.find(x => x.id === el.dataset.id); if (c) clToggleFreeze([c], !c.frozen); },
   bulkFreeze: el => { const cs = S.cards.filter(c => bulkSel.has(c.id)); if (cs.length) clToggleFreeze(cs, el.dataset.on === '1'); },

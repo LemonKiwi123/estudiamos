@@ -142,3 +142,22 @@ document.addEventListener('change', e => {
   e.target.value = ''; if (typeof renderCardTable === 'function') renderCardTable(); renderBulkBar();
   toast(`Selected ${n} ${(POS_GROUPS.find(([g]) => g === k)?.[1] || k)}${n === 1 ? '' : 's'}`);
 });
+
+/* ================= ⇄ Swap front and back: one card, the selected cards, or a whole deck =================
+   One card or a few: only the two sides change places (the deck's languages stay, for cards typed the wrong way round).
+   A whole deck: the deck's languages swap too, and so do the example sentence and its translation, so voices and games stay right. */
+function swapCardSides(c, withExample) {
+  const sw = (a, b) => { const t = c[a]; c[a] = c[b]; c[b] = t; if (c[a] === undefined) delete c[a]; if (c[b] === undefined) delete c[b]; };
+  sw('front', 'back'); sw('frontHtml', 'backHtml'); sw('frontRaw', 'backRaw');
+  if (c.pos && typeof c.pos === 'object') { const t = c.pos.front; c.pos.front = c.pos.back; c.pos.back = t; }
+  if (withExample) sw('example', 'exampleTr');
+}
+Object.assign(actions, {
+  swapCard: el => { const c = S.cards.find(x => x.id === el.dataset.id); if (!c) return; swapCardSides(c, false); save(); if ($('#dlg').open) $('#dlg').close(); cardDialog(c); toast('⇄ Front and back swapped'); },
+  bulkSwap: () => { const ids = [...(bulkSel || [])]; if (!ids.length) return; ids.forEach(id => { const c = S.cards.find(x => x.id === id); if (c) swapCardSides(c, false); }); save(); render(); toast(`⇄ Swapped front and back on ${ids.length} card${ids.length === 1 ? '' : 's'}`); },
+  swapDeck: el => {
+    const d = deckById(el.dataset.id); if (!d) return; const cs = cardsOf(d.id);
+    if (!confirm(`Swap the front and back of all ${cs.length} cards in “${d.name}”?\n\nThe deck’s languages swap too (${langName(d.frontLang)} ⇄ ${langName(d.backLang)}). Your study progress is kept. You can swap back the same way.`)) return;
+    cs.forEach(c => swapCardSides(c, true)); const t = d.frontLang; d.frontLang = d.backLang; d.backLang = t; save(); render(); toast('⇄ Deck swapped');
+  },
+});

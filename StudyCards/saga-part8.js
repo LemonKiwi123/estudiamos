@@ -412,16 +412,17 @@ function sgCampTalk(n) {
       sgSay(`${who}: ${tales[told[key] ?? 0]}`, () => sgCampTalk(n)); } },
     ...(inst ? [{ label: `🎵 Ask for a song (${inst[0]})`, fn: () => { sgJingle(inst[1]); sgSay(`${who} plays a little tune on the ${inst[0].replace(/^\S+ /, '')}. 🎶`, () => sgCampTalk(n)); } }] : []),
     inParty ? { label: '🪑 Stay at camp (wait)', sub: 'They’ll wait at camps, taverns and shrines.', fn: () => { const i = s.party.indexOf(h); s.party.splice(i, 1); s.bench.push(h); sgSaveNow(true); sgSay(`${who}: I’ll keep the fire warm.`, () => sgCampTalk(n)); } }
-      : { label: '🚶 Travel with me', disabled: s.party.length >= SG_PARTY_MAX, sub: s.party.length >= SG_PARTY_MAX ? 'Your party is full: ask someone to stay first.' : 'Join the party again.', fn: () => { s.bench.splice(s.bench.indexOf(h), 1); while (h.lv < s.party[0].lv - 2) h.lv++; h.hp = Math.max(h.hp, 1); s.party.push(h); sgSaveNow(true); sgSay(`${who}: Let’s go!`, () => sgCampTalk(n)); } },
+      : { label: '🚶 Travel with me', disabled: s.party.length >= SG_PARTY_MAX, sub: s.party.length >= SG_PARTY_MAX ? 'Your party is full: ask someone to stay first.' : 'Join the party again.', fn: () => { s.bench.splice(s.bench.indexOf(h), 1); while (h.lv < s.party[0].lv - 2) h.lv++; s.party.push(h); sgSaveNow(true); sgSay(`${who}: Let’s go!`, () => sgCampTalk(n)); } },
     { label: 'Leave', fn: () => {} }], () => {});
 }
 function sgCampFire() {
   const s = sgS();
   sgMenu('🔥 The campfire crackles.', [
     { label: '😴 Rest until morning', sub: 'Everyone gets back all their HP and MP, and the poison is gone. The game is saved.', fn: () => {
-      for (const h of s.party) { h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); if (h.st) delete h.st.poison; }
+      const down = s.party.filter(h => h.hp <= 0);   // a campfire rests the living; it can't wake the fallen (a priest, an inn or Ember down can)
+      for (const h of s.party) { if (h.hp <= 0) continue; h.hp = sgMax(h, 'hp'); h.mp = sgMax(h, 'mp'); if (h.st) delete h.st.poison; }
       sg.flash = 20; sgJingle('sg_inn'); s.campN = (s.campN || 0) + 1; sgSaveNow(true);
-      sgSay(['You all fall asleep to the sound of the fire…', '☀️ Good morning! Everyone is rested and ready.', ...(s.party.some(h => h.st?.curse) ? ['A curse still lingers. A priest or Holy water will lift it.'] : [])]); } },
+      sgSay(['You all fall asleep to the sound of the fire…', '☀️ Good morning! Everyone is rested and ready.', ...(s.party.some(h => h.st?.curse) ? ['A curse still lingers. A priest or Holy water will lift it.'] : []), ...(down.length ? [`${down.map(h => esc(h.name)).join(' and ')} ${down.length === 1 ? 'is' : 'are'} still knocked out. A priest, an inn or Ember down can wake ${down.length === 1 ? 'them' : 'them all'}.`] : [])]); } },
     { label: '👥 Change who travels with me', disabled: !s.bench.length && s.party.length <= 1, fn: () => sgRosterAt(() => { sgCampSet(); sgCampFire(); }, 'at camp') },
     { label: '🏕️ Break camp', fn: () => { const f = s.campFrom || SG_MAPS.camp.exitTo; sgWarp(f.map, f.x, f.y, 'down'); } },
     { label: 'Sit a while', fn: () => {} }], () => {});

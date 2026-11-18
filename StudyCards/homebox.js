@@ -16,13 +16,16 @@ const remWhen = t => { const d = new Date(t), today = new Date(), tom = new Date
   const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   return d.toDateString() === today.toDateString() ? `Today ${time}` : d.toDateString() === tom.toDateString() ? `Tomorrow ${time}` : `${d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ${time}`; };
 function localInput(t) { const d = new Date(t - new Date(t).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); }
+const hbMin = () => (S.settings.hbMin ||= {});   // which boxes are minimized: { rem: true, notes: false }
+const hbToggle = (k, label) => `<button type="button" class="hb-min" data-hb="min" data-k="${k}" aria-expanded="${!hbMin()[k]}" title="${hbMin()[k] ? 'Show' : 'Minimize'} ${label}" aria-label="${hbMin()[k] ? 'Show' : 'Minimize'} ${label}">${hbMin()[k] ? '▸' : '▾'}</button>`;
 function remindersHtml() {
   const list = remList().filter(r => !r.done).sort((a, b) => a.at - b.at), now = Date.now(), perm = typeof Notification === 'undefined' ? 'none' : Notification.permission;
   const soon = new Date(); soon.setMinutes(0, 0, 0); soon.setHours(soon.getHours() + 1);
-  return `<section class="panel home-box rem-box">
-    <div class="row-between"><h3 style="margin:0">🔔 Reminders</h3>
-      ${perm === 'default' ? `<button type="button" class="btn sm ghost" data-hb="notifOn" title="Get a pop-up notification when a reminder is due">🔔 Turn on notifications</button>` : perm === 'denied' ? '<span class="muted small" title="Allow notifications for this site in your browser settings">Notifications are blocked</span>' : ''}</div>
-    <form class="rem-add" data-hb-form="rem">
+  const min = hbMin().rem, dueN = list.filter(r => r.at <= now).length;
+  return `<section class="panel home-box rem-box ${min ? 'min' : ''}">
+    <div class="row-between"><h3 style="margin:0" class="hb-title"><span data-hb="min" data-k="rem">🔔 Reminders</span>${min && list.length ? `<span class="hb-count ${dueN ? 'due' : ''}">${dueN ? `⏰ ${dueN} due` : list.length}</span>` : ''}</h3>
+      <span class="hb-right">${min ? '' : perm === 'default' ? `<button type="button" class="btn sm ghost" data-hb="notifOn" title="Get a pop-up notification when a reminder is due">🔔 Turn on notifications</button>` : perm === 'denied' ? '<span class="muted small" title="Allow notifications for this site in your browser settings">Notifications are blocked</span>' : ''}${hbToggle('rem', 'reminders')}</span></div>
+    <div class="hb-body"><form class="rem-add" data-hb-form="rem">
       <input class="inp" name="text" maxlength="140" placeholder="e.g. Study Spanish verbs" required>
       <input class="inp" type="datetime-local" name="at" value="${localInput(soon.getTime())}" required aria-label="When">
       <select class="inp" name="repeat" aria-label="Repeat">${Object.entries(REM_REPEATS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
@@ -33,17 +36,18 @@ function remindersHtml() {
         <button type="button" class="btn sm ghost" data-hb="remDel" data-id="${r.id}" title="Delete" aria-label="Delete">✕</button></li>`; }).join('')}</ul>
       ${list.length > 8 ? `<div class="muted small">and ${list.length - 8} more</div>` : ''}`
     : '<p class="muted small" style="margin:6px 0 0">No reminders yet. Add one above, like “Review my flashcards” at 7 pm every day.</p>'}
-    <p class="muted small" style="margin:6px 0 0">Reminders ring while Estudiamos is open.</p></section>`;
+    <p class="muted small" style="margin:6px 0 0">Reminders ring while Estudiamos is open.</p></div></section>`;
 }
 function stickiesHtml() {
   const list = noteList();
-  return `<section class="panel home-box note-box">
-    <div class="row-between"><h3 style="margin:0">🗒️ Sticky notes</h3><button type="button" class="btn sm" data-hb="noteAdd" ${list.length >= 30 ? 'disabled' : ''}>＋ New note</button></div>
-    ${list.length ? `<div class="note-grid">${list.map(n => `<div class="sticky" style="--c:${n.color}">
+  const min = hbMin().notes;
+  return `<section class="panel home-box note-box ${min ? 'min' : ''}">
+    <div class="row-between"><h3 style="margin:0" class="hb-title"><span data-hb="min" data-k="notes">🗒️ Sticky notes</span>${min && list.length ? `<span class="hb-count">${list.length}</span>` : ''}</h3><span class="hb-right">${min ? '' : `<button type="button" class="btn sm" data-hb="noteAdd" ${list.length >= 30 ? 'disabled' : ''}>＋ New note</button>`}${hbToggle('notes', 'sticky notes')}</span></div>
+    <div class="hb-body">${list.length ? `<div class="note-grid">${list.map(n => `<div class="sticky" style="--c:${n.color}">
         <textarea data-note="${n.id}" maxlength="600" placeholder="Write something…" aria-label="Sticky note">${esc(n.text)}</textarea>
         <div class="sticky-foot">${NOTE_COLORS.map(c => `<button type="button" class="sticky-c ${c === n.color ? 'on' : ''}" style="background:${c}" data-hb="noteColor" data-id="${n.id}" data-c="${c}" aria-label="Color"></button>`).join('')}
           <button type="button" class="sticky-del" data-hb="noteDel" data-id="${n.id}" title="Delete note" aria-label="Delete note">🗑️</button></div></div>`).join('')}</div>`
-      : '<p class="muted small" style="margin:6px 0 0">Jot down quick thoughts, words to look up, or homework. Notes save as you type.</p>'}</section>`;
+      : '<p class="muted small" style="margin:6px 0 0">Jot down quick thoughts, words to look up, or homework. Notes save as you type.</p>'}</div></section>`;
 }
 function homeBoxesHtml() { return `<div class="home-boxes">${remindersHtml()}${stickiesHtml()}</div>`; }
 function homeBoxesRedraw() { document.querySelectorAll('.home-boxes').forEach(el => { const t = document.createElement('div'); t.innerHTML = homeBoxesHtml(); el.replaceWith(t.firstElementChild); }); }   // home and the wide-window right column can both have a copy
@@ -56,6 +60,7 @@ document.addEventListener('submit', e => {
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-hb]'); if (!b) return; const id = b.dataset.id;
   switch (b.dataset.hb) {
+    case 'min': { const m = hbMin(); m[b.dataset.k] = !m[b.dataset.k]; save(); return homeBoxesRedraw(); }
     case 'notifOn': try { const p = await Notification.requestPermission(); toast(p === 'granted' ? '🔔 Notifications are on' : 'Notifications stay off'); } catch {} return homeBoxesRedraw();
     case 'remDone': { const r = remList().find(x => x.id === id); if (!r) return; if (r.repeat !== 'none') { r.at = remNext(r); r.rung = false; toast(`✓ Next one: ${remWhen(r.at)}`); } else r.done = true; save(); return homeBoxesRedraw(); }
     case 'remDel': { const l = remList(), i = l.findIndex(x => x.id === id); if (i < 0) return; const [gone] = l.splice(i, 1); save(); homeBoxesRedraw();

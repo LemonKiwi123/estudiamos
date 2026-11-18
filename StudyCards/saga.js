@@ -269,7 +269,7 @@ function sgArrive(prev) {
   }
   if (typeof sgArriveMore === 'function' && sgArriveMore(prev, t)) return;
   // random battles
-  const rate = { '.': 18, h: 14, f: 9, d: 15, C: 13, c: 12, W: 16 }[t];
+  const rate = ({ '.': 18, h: 14, f: 9, d: 15, C: 13, c: 12, W: 16 }[t] || 0) * (typeof sgBigMap === 'function' && sgBigMap(s.map) ? 1.6 : 1);   // the lands are twice as big (saga-part9.js), so battles come a little less often there
   if (rate && m.zone && --sg.grace <= 0 && Math.random() < 1 / rate) { sg.held = null; sg.grace = 4; sgEncounter(s.boat ? (m.seaZone || 'sea') : m.zone(s.x, s.y)); }
 }
 function sgWarp(map, x, y, dir, quiet) {

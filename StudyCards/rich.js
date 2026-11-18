@@ -240,13 +240,13 @@ const EDITOR_SIZES = [['', 'Size'], ['2', 'Small'], ['3', 'Normal'], ['4', 'Medi
 function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '' } = {}) {
   const rich = deckRich(deck), pics = deckPics(deck), canSpeak = lang && ttsOn(deck);
   if (!rich && !pics) {
-    return `<div class="inp-wrap" style="margin-top:5px"><textarea id="${id}" rows="2" placeholder="${esc(placeholder)}" lang="${esc(lang)}">${esc(text)}</textarea><button type="button" class="icon-btn scan-btn" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>${canSpeak ? `<button type="button" class="icon-btn speak" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>` : ''}</div>`;
+    return `<div class="inp-wrap" style="margin-top:5px"><textarea id="${id}" rows="2" placeholder="${esc(placeholder)}" lang="${esc(lang)}">${esc(text)}</textarea><button type="button" class="icon-btn scan-btn" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>${typeof txCanDeck === 'function' && lang && txCanDeck(deck) ? `<button type="button" class="icon-btn scan-btn" data-act="edTranslate" data-ed="${id}" title="Translate into the other side">🌐</button>` : ''}${canSpeak ? `<button type="button" class="icon-btn speak" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>` : ''}</div>`;
   }
   const tb = (cmd, label, title) => `<button type="button" class="tool" data-act="fmt" data-ed="${id}" data-cmd="${cmd}" title="${title}">${label}</button>`;
   const tools = [];
   if (rich) tools.push(
     tb('bold', '<b>B</b>', 'Bold (Ctrl+B)'), tb('italic', '<i>I</i>', 'Italic (Ctrl+I)'), tb('underline', '<u>U</u>', 'Underline (Ctrl+U)'), tb('strikeThrough', '<s>S</s>', 'Strikethrough'),
-    `<button type="button" class="tool" data-act="palette" data-ed="${id}" data-cmd="foreColor" title="Text color"><span style="border-bottom:3px solid #d64545;line-height:1.1">A</span><span class="caret">▾</span></button>`,
+    `<button type="button" class="tool" data-act="palette" data-ed="${id}" data-cmd="foreColor" title="Text color"><span style="border-bottom:3px solid #cf6b6b;line-height:1.1">A</span><span class="caret">▾</span></button>`,
     `<button type="button" class="tool" data-act="palette" data-ed="${id}" data-cmd="hiliteColor" title="Highlight"><span class="hl">ab</span><span class="caret">▾</span></button>`,
     `<select class="tool-sel" data-ed="${id}" data-cmd="fontName" title="Font">${EDITOR_FONTS.map(([v, l]) => `<option value="${v}"${v ? ` style="font-family:'${v}'"` : ''}>${l}</option>`).join('')}</select>`,
     `<select class="tool-sel" data-ed="${id}" data-cmd="fontSize" title="Text size">${EDITOR_SIZES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`,
@@ -254,7 +254,9 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
     `<button type="button" class="tool dock-only" data-act="edMenu" data-ed="${id}" data-cmd="fontSize" title="Text size">Size<span class="caret">▾</span></button>`,
     tb('removeFormat', 'Tx', 'Clear formatting').replace('class="tool"', 'class="tool clear"'));
   if (pics) tools.push(`<button type="button" class="tool" data-act="edPic" data-ed="${id}" title="Add a picture (you can also paste or drag one in)">🖼️</button>`);
+  if (pics) tools.push(`<button type="button" class="tool" data-act="edWebPic" data-ed="${id}" title="Find a free picture online (Creative Commons)">🔎</button>`);
   tools.push(`<button type="button" class="tool" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>`);
+  if (typeof txCanDeck === 'function' && lang && txCanDeck(deck)) tools.push(`<button type="button" class="tool" data-act="edTranslate" data-ed="${id}" title="Translate into the other side">🌐</button>`);
   if (canSpeak) tools.push(`<span class="tool-sp"></span><button type="button" class="tool" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>`);
   return `<div class="editor"><div class="ed-tools">${tools.join('')}</div><div class="ed-area" id="${id}" contenteditable="true" role="textbox" aria-multiline="true"
     data-rich="${rich ? 1 : 0}" data-pics="${pics ? 1 : 0}" data-placeholder="${esc(placeholder)}" lang="${esc(lang)}">${html}</div></div>`;
@@ -343,32 +345,63 @@ Object.assign(actions, {
 
 /* ---------- Color palettes for highlight and text color ---------- */
 const HILITE_COLORS = [['#fff176', 'Yellow'], ['#b9f6ca', 'Green'], ['#b3e5fc', 'Blue'], ['#f8bbd0', 'Pink'], ['#ffcc80', 'Orange'], ['#e1bee7', 'Purple'], ['#ff8a80', 'Red'], ['#cfd8dc', 'Gray']];
-const TEXT_COLORS = [['#1c1b19', 'Black'], ['#6c6963', 'Gray'], ['#d64545', 'Red'], ['#e8730c', 'Orange'], ['#c99a06', 'Gold'], ['#23905a', 'Green'], ['#2b74c9', 'Blue'], ['#3b54e8', 'Indigo'], ['#8e44ad', 'Purple'], ['#d63384', 'Pink'], ['#8b5a2b', 'Brown'], ['#16a085', 'Teal']];
+const TEXT_COLORS = [['#3a3936', 'Black'], ['#85817a', 'Gray'], ['#cf6b6b', 'Red'], ['#dd8a48', 'Orange'], ['#c4a23e', 'Gold'], ['#4c9a74', 'Green'], ['#5288c4', 'Blue'], ['#6473d2', 'Indigo'], ['#9468ab', 'Purple'], ['#cc6898', 'Pink'], ['#97714f', 'Brown'], ['#409d8c', 'Teal']];   // softer shades, still easy to read
 let palRange = null;
+/* the full palette: a row of grays, a row of main colors, then three lighter and three darker shades of each (like a
+   word processor's color picker), plus your own custom colors */
+const palHex = (h, s, l) => { s /= 100; l /= 100; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))).toString(16).padStart(2, '0'); return '#' + f(0) + f(8) + f(4); };
+const PAL_HUES = [[355, 'Berry'], [4, 'Red'], [28, 'Orange'], [48, 'Yellow'], [135, 'Green'], [185, 'Cyan'], [213, 'Sky blue'], [228, 'Blue'], [272, 'Purple'], [318, 'Magenta']];
+const PAL_GRID = (() => {
+  const grays = [['#000000', 'Black'], ['#3d3d3d', 'Dark gray 4'], ['#5e5e5e', 'Dark gray 3'], ['#8a8a8a', 'Dark gray 2'], ['#ababab', 'Dark gray 1'], ['#c6c6c6', 'Gray'], ['#d8d8d8', 'Light gray 1'], ['#e8e8e8', 'Light gray 2'], ['#f3f3f3', 'Light gray 3'], ['#ffffff', 'White']];
+  const main = PAL_HUES.map(([h, n], i) => [palHex(h, i ? 66 : 58, i ? (h === 48 ? 56 : 54) : 40), n]);
+  const shade = (l, s, w) => PAL_HUES.map(([h, n]) => [palHex(h, s, l), `${n} (${w})`]);
+  return [grays, main, shade(91, 70, 'lightest'), shade(82, 66, 'lighter'), shade(70, 62, 'light'), shade(40, 58, 'dark'), shade(30, 60, 'darker'), shade(20, 62, 'darkest')];
+})();
+const palCustom = () => (S.settings.palCustom ||= []);
+function palAddCustom(c) { const l = palCustom(), i = l.indexOf(c); if (i >= 0) l.splice(i, 1); l.unshift(c); l.length = Math.min(l.length, 10); save(); }
+const palSw = (c, n) => `<button type="button" class="pal-sw" style="background:${c}" title="${esc(n)}" aria-label="${esc(n)}" data-color="${c}"></button>`;
+const palPlus = () => `<label class="pal-add" title="Pick a custom color" aria-label="Pick a custom color">＋<input type="color" data-pal-custom></label>`;
+/* the same palette as a form field (radio buttons), for things like a folder's color */
+function palFieldHtml(name, current) {
+  const cur = (current || '').toLowerCase(), all = PAL_GRID.flat().map(([c]) => c);
+  const custom = [...(all.includes(cur) || !/^#[0-9a-f]{6}$/.test(cur) ? [] : [cur]), ...palCustom().filter(c => c !== cur)].slice(0, 10);
+  const sw = (c, n) => `<label class="pal-sw pal-pick" style="background:${c}" title="${esc(n)}"><input type="radio" name="${name}" value="${c}" ${c === cur ? 'checked' : ''} aria-label="${esc(n)}"></label>`;
+  return `<div class="pal-field" data-pal-field="${name}">${PAL_GRID.map((row, r) => `<div class="pal-grid10${r === 1 ? ' main' : ''}">${row.map(([c, n]) => sw(c, n)).join('')}</div>`).join('')}
+    <div class="pal-sub">Custom</div><div class="pal-grid10 pal-cust">${custom.map(c => sw(c, 'Custom ' + c)).join('')}${palPlus()}</div></div>`;
+}
+document.addEventListener('change', e => {
+  const i = e.target.closest?.('.pal-field [data-pal-custom]'); if (!i) return;
+  const box = i.closest('.pal-field'), name = box.dataset.palField, c = i.value.toLowerCase(); palAddCustom(c);
+  let r = [...box.querySelectorAll('input[type=radio]')].find(x => x.value === c);
+  if (!r) { const l = document.createElement('label'); l.className = 'pal-sw pal-pick'; l.style.background = c; l.title = 'Custom ' + c; l.innerHTML = `<input type="radio" name="${name}" value="${c}" aria-label="Custom ${c}">`; box.querySelector('.pal-cust').prepend(l); r = l.querySelector('input'); }
+  r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true }));
+});
 function openPalette(btn) {
   closePalette();
   palRange = edRange && edId === btn.dataset.ed ? edRange.cloneRange() : null;   // remember the selected text now
   const id = btn.dataset.ed, cmd = btn.dataset.cmd, hl = cmd === 'hiliteColor', list = hl ? HILITE_COLORS : TEXT_COLORS;
-  const m = document.createElement('div'); m.className = 'palette'; m.id = 'palette';
+  const m = document.createElement('div'); m.className = 'palette pal-big'; m.id = 'palette';
+  const custom = palCustom().map(c => palSw(c, 'Custom ' + c)).join('');
   m.innerHTML = `<div class="pal-title">${hl ? 'Highlight color' : 'Text color'}</div>
-    <div class="pal-grid">${list.map(([c, n]) => `<button type="button" class="pal-sw" style="background:${c}" title="${n}" data-color="${c}"></button>`).join('')}</div>
-    <button type="button" class="pal-none" data-color="${hl ? 'transparent' : 'reset'}">${hl ? '⌫ No highlight' : '↺ Default color'}</button>`;
+    <button type="button" class="pal-none" data-color="${hl ? 'transparent' : 'reset'}">${hl ? '⌫ No highlight' : '↺ Default color'}</button>
+    ${PAL_GRID.map((row, r) => `<div class="pal-grid10${r === 1 ? ' main' : ''}">${row.map(([c, n]) => palSw(c, n)).join('')}</div>`).join('')}
+    <div class="pal-sub">Custom</div><div class="pal-grid10">${custom}${palPlus()}</div>`;
   if (btn.closest('.ed-tools.docked')) {
     m.className = `palette pal-strip ${hl ? 'hl' : 'text'}`;
     m.innerHTML = `<button type="button" class="pal-off" data-color="${hl ? 'transparent' : 'reset'}" title="${hl ? 'No highlight' : 'Default color'}" aria-label="${hl ? 'No highlight' : 'Default color'}"></button><span class="pal-div"></span>`
-      + list.map(([c, n]) => `<button type="button" class="pal-sw" style="background:${c}" title="${n}" aria-label="${n}" data-color="${c}"></button>`).join('');
+      + palPlus() + custom + list.map(([c, n]) => palSw(c, n)).join('') + '<span class="pal-div"></span>' + PAL_GRID.slice(1).flat().map(([c, n]) => palSw(c, n)).join('');
   }
   (btn.closest('dialog[open]') || document.body).appendChild(m);
   palShow(m, btn);
-  m.addEventListener('click', e => {
-    const b = e.target.closest('[data-color]'); if (!b) return;
-    const c = b.dataset.color;
+  const use = c => {
     if (palRange) { edRange = palRange; edId = id; }
     if (c === 'reset') applyFormat(id, 'foreColor', getComputedStyle(document.getElementById(id)).color);
     else applyFormat(id, cmd, c);
     btn.querySelector(hl ? '.hl' : 'span').style[hl ? 'background' : 'borderBottomColor'] = c === 'transparent' || c === 'reset' ? '' : c;
     closePalette();
-  });
+  };
+  m.addEventListener('click', e => { const b = e.target.closest('[data-color]'); if (b) use(b.dataset.color); });
+  m.querySelector('[data-pal-custom]').addEventListener('change', e => { const c = e.target.value; palAddCustom(c); use(c); });
 }
 function closePalette() { $('#palette')?.remove(); document.querySelectorAll('.ed-tools .tool.on').forEach(b => b.classList.remove('on')); }
 /* a strip sits across the screen right on top of the docked toolbar; anything else pops up next to its button */
@@ -417,12 +450,13 @@ actions.palette = el => { if ($('#palette')?._btn === el) { closePalette(); retu
    out of the way of the phone's copy / paste bubble. It goes back in place when you leave the field. ---------- */
 const edDockable = () => !!window.visualViewport && matchMedia('(pointer: coarse)').matches;
 let edDocked = null;
+const edUnder = t => parseFloat(getComputedStyle(t).getPropertyValue('--ed-under')) || 0;
 function edPlace() {
   const d = edDocked; if (!d) return;
   if (!d.tools.isConnected) { edDocked = null; return; }
   const vv = window.visualViewport, t = d.tools;
   // only the keyboard's own numbers: Safari measures elements from the visible part of the page, so measuring would double the shift
-  t.style.width = vv.width + 'px'; t.style.left = vv.offsetLeft + 'px'; t.style.top = (vv.offsetTop + vv.height - t.offsetHeight) + 'px';
+  t.style.width = vv.width + 'px'; t.style.left = vv.offsetLeft + 'px'; t.style.top = (vv.offsetTop + vv.height - (t.offsetHeight - edUnder(t))) + 'px';   // the white part below the buttons hangs down behind the keyboard
   const strip = document.querySelector('#palette.pal-strip'); if (strip) palStripPlace(strip);
 }
 function edUndock() {

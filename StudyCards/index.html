@@ -168,6 +168,7 @@ nav button[hidden]{display:none!important}
 .seg-bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--surface2);width:100%}
 .seg-bar>div{height:100%;transition:width .3s}
 .seg-bar .g{background:var(--good)} .seg-bar .n{background:var(--hard)} .seg-bar .m{background:var(--accent)}
+:root{--qr-got:#2f6fe0;--qr-nq:#e0453a} .seg-bar.qr-seg .g{background:var(--qr-got)} .seg-bar.qr-seg .n{background:var(--qr-nq)} .qr-opts{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;max-width:520px}
 .seg-bar.tall{height:16px}
 .cl-head{display:flex;flex-direction:column;gap:12px}
 .cl-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
@@ -446,6 +447,16 @@ body.bld-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .pal-sw:hover{transform:scale(1.1);border-color:var(--accent)}
 .pal-none{margin-top:10px;width:100%;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:6px;cursor:pointer;font-size:13px}
 .pal-none:hover{border-color:var(--accent)}
+.palette.pal-big{width:252px;padding:10px 12px 12px} .pal-big .pal-none{margin:0 0 8px}
+.pal-grid10{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;margin-bottom:3px} .pal-grid10.main{margin:6px 0 9px}
+.pal-grid10 .pal-sw{border-radius:4px;border:1px solid rgba(0,0,0,.12)} .pal-grid10 .pal-sw:hover{transform:scale(1.18);border-color:var(--text);position:relative;z-index:1}
+.pal-sub{font-size:12px;font-weight:700;color:var(--muted);margin:9px 0 5px}
+.pal-add{display:grid;place-items:center;aspect-ratio:1;border-radius:4px;border:1px dashed var(--muted);color:var(--muted);font-size:14px;line-height:1;cursor:pointer;position:relative;overflow:hidden}
+.pal-add:hover{border-color:var(--accent);color:var(--accent)} .pal-add input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
+.pal-field{max-width:300px} .pal-field .pal-sw{border-radius:4px;border:1px solid rgba(0,0,0,.12)} .pal-pick{display:block;position:relative;cursor:pointer}
+.pal-pick input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none} .pal-pick:hover{transform:scale(1.15);z-index:1}
+.pal-pick:has(input:checked){box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--text);z-index:2} .pal-pick:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.pal-strip .pal-add{flex:none;width:34px;height:34px;aspect-ratio:auto;border-radius:9px;font-size:18px}
 .ed-tools .tool .caret{font-size:9px;margin-left:2px;color:var(--muted)}
 /* Folders, deck menu, safe delete */
 .deck{position:relative}
@@ -565,6 +576,8 @@ section.folder.dragging{opacity:.5}
 table.cards th.sel,table.cards td.sel{width:34px;padding-right:0}
 table.cards td.sel input,table.cards th.sel input{width:17px;height:17px;cursor:pointer}
 table.cards tr.sel-on td{background:color-mix(in srgb,var(--accent) 9%,transparent)}
+table.cards td.sel{cursor:pointer;transition:background .12s} table.cards td.sel:hover{background:color-mix(in srgb,var(--accent) 16%,transparent)} table.cards tr.sel-on td.sel{background:color-mix(in srgb,var(--accent) 42%,transparent);box-shadow:inset 3px 0 0 var(--accent)}
+table.cards td.sel input{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none} table.cards td.sel{position:relative;width:26px;min-width:26px;padding:0;background:color-mix(in srgb,var(--accent) 5%,transparent)} table.cards td.sel:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px} table.cards td.sel{border-right:1px solid var(--border)}
 #bulkBar{display:none;position:sticky;top:8px;z-index:5;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 12px;margin-bottom:8px;border-radius:12px;background:var(--surface);border:2px solid var(--accent);box-shadow:0 4px 14px #0002}
 #bulkBar.show{display:flex}
 .cl-opts.cl-opts-pos{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
@@ -618,6 +631,24 @@ table.cards tr.sel-on td{background:color-mix(in srgb,var(--accent) 9%,transpare
 .tour-dots i{width:7px;height:7px;border-radius:50%;background:var(--border)}
 .tour-dots i.on{background:var(--accent);width:18px;border-radius:4px}
 .tour-btns{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tour-dots i.gap{margin-left:6px}
+/* 🌐 translate (translate.js) */
+.tr-pop .ed-menu-list button{white-space:normal;text-align:left} .tr-pop{max-width:min(320px,92vw)}
+.tr-rows{display:grid;gap:6px;max-height:55vh;overflow:auto;margin-top:8px}
+.tr-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto minmax(0,1.3fr);gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)}
+.tr-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)} .tr-src{overflow-wrap:anywhere} .tr-arrow{color:var(--muted)}
+.tr-pick{display:flex;flex-direction:column;gap:2px;min-width:0} .tr-pick .inp{margin:0;min-width:0}
+@media (max-width:560px){ .tr-row{grid-template-columns:auto minmax(0,1fr)} .tr-arrow{display:none} .tr-row>.tr-pick,.tr-row>.muted{grid-column:2} }
+/* 💡 rotating tips (tips.js) */
+.tip-rot{position:relative;overflow:hidden;transition:opacity .25s ease,transform .25s ease} .tip-rot.fade{opacity:0;transform:translateY(4px)}
+.tip-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px} .tip-top h3{margin:0}
+.tip-nav{display:flex;align-items:center;gap:2px;flex:none} .tip-nav .icon-btn{font-size:20px;line-height:1;width:30px;height:30px} .tip-n{min-width:44px;text-align:center}
+.tip-bar{position:absolute;left:0;bottom:0;height:3px;width:100%;background:color-mix(in srgb,var(--accent) 45%,transparent);transform-origin:left;animation:tipBar linear forwards}
+.tip-rot.paused .tip-bar{animation-play-state:paused} @keyframes tipBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.tour-chs{display:grid;gap:6px;max-height:min(52vh,420px);overflow:auto;margin-top:10px}
+.tour-ch{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:12px;padding:8px 12px;cursor:pointer;font:inherit}
+.tour-ch:hover,.tour-ch:focus-visible{border-color:var(--accent);background:var(--accent-soft)} .tour-ch>span:last-child{display:flex;flex-direction:column;gap:1px}
+.tour-ch-ic{font-size:22px;width:30px;text-align:center;flex:none}
 /* Progress: by part of speech */
 .pos-rows{display:grid;gap:12px;margin-top:10px}
 .pos-row{display:grid;grid-template-columns:minmax(150px,220px) 1fr;gap:12px;align-items:center}
@@ -826,9 +857,9 @@ table.cards tr.dup-row td+td{box-shadow:none}
 @media (max-width:640px){ .tw-players{grid-template-columns:1fr} .tblock{font-size:11px;height:34px} }
 /* Avatar builder */
 .avatar .avsvg{display:block;width:100%;height:100%}
-.av-layout{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+.av-layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
 .av-preview{display:flex;flex-direction:column;align-items:center;gap:12px;position:sticky;top:70px;text-align:center}
-.av-big .avsvg{border-radius:50%;box-shadow:var(--shadow)}
+.av-big .avsvg{border-radius:50%;box-shadow:var(--shadow)} .av-big .avsvg.avfull{border-radius:16px}
 .av-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px}
 .av-tabs button{border:0;background:none;padding:8px 12px;border-radius:9px;cursor:pointer;font-weight:600;color:var(--muted)}
 .av-tabs button.on{background:var(--accent-soft);color:var(--text)}
@@ -837,11 +868,18 @@ table.cards tr.dup-row td+td{box-shadow:none}
 .av-opt{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:2px solid var(--border);border-radius:12px;background:var(--surface);cursor:pointer}
 .av-opt:hover{border-color:var(--accent)}
 .av-opt.on{border-color:var(--accent);background:var(--accent-soft)}
-.av-opt .avsvg{border-radius:50%}
+.av-opt .avsvg{border-radius:50%} .av-opt .avsvg.avlegs{border-radius:12px}
 .av-swatches{display:flex;flex-wrap:wrap;gap:8px}
 .av-sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);cursor:pointer}
 .av-sw.on{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--accent)}
-@media (max-width:760px){ .av-layout{grid-template-columns:1fr} .av-preview{position:static} }
+.av-adj{display:grid;gap:8px}
+.av-adj-row{display:grid;grid-template-columns:84px auto minmax(0,1fr) auto 44px;align-items:center;gap:6px} .av-adj-row input[type=range]{width:100%;accent-color:var(--accent)} .av-adj-row .btn{min-width:32px;padding:4px 0}
+.av-adj-v{text-align:right}
+.av-sw.av-auto{width:auto;padding:0 10px;border-radius:17px;background:var(--surface2);font-size:12px;font-weight:700;color:var(--text)}
+.av-sw.av-custom{position:relative;display:grid;place-items:center;font-weight:700;color:var(--muted);overflow:hidden;background:var(--surface2)} .av-sw.av-custom input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.av-tabs button{white-space:nowrap}
+@media (max-width:760px){ .av-layout{grid-template-columns:minmax(0,1fr)} .av-layout>section{min-width:0} .av-preview{position:sticky;top:56px;z-index:5;flex-direction:row;flex-wrap:wrap;justify-content:center;gap:8px;padding:8px} .av-preview .av-big .avsvg{width:88px;height:auto} .av-preview>.muted{display:none}
+  .av-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none} .av-adj-row{grid-template-columns:64px auto minmax(0,1fr) auto 38px} }
 /* Background themes */
 #scene{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:center bottom;pointer-events:none}
 #scene[hidden]{display:none}
@@ -895,8 +933,9 @@ details.theme-colors>summary{cursor:pointer;list-style:revert}
 .run-word{font-size:24px}
 .options.run-opts{grid-template-columns:repeat(3,1fr);margin-top:10px;min-height:60px}
 @media (max-width:640px){ .options.run-opts{grid-template-columns:1fr} .runner-wrap{overflow:visible;border:0;box-shadow:none} .runner-wrap canvas{border-radius:14px;border:1px solid var(--border)} .run-over{position:static;background:none;backdrop-filter:none;margin-top:12px} .run-card{max-width:100%} }
-.qr-nq{color:var(--hard);border-color:color-mix(in srgb,var(--hard) 40%,var(--border))}
-.qr-got{color:var(--good);border-color:color-mix(in srgb,var(--good) 40%,var(--border))}
+.qr-nq{color:var(--qr-nq);border-color:color-mix(in srgb,var(--qr-nq) 40%,var(--border))}
+.qr-got{color:var(--qr-got);border-color:color-mix(in srgb,var(--qr-got) 40%,var(--border))}
+.pill.learn.qr-nq-pill{color:var(--qr-nq);background:color-mix(in srgb,var(--qr-nq) 14%,transparent);border-color:color-mix(in srgb,var(--qr-nq) 40%,transparent)}
 .deck-actions .btn{flex:1}
 
 .empty{text-align:center;padding:48px 20px;color:var(--muted)}
@@ -939,7 +978,7 @@ table.cards td.txt{position:relative;padding-bottom:46px}
 table.cards td.txt .cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
 table.cards td.txt .cell>.rich{flex:none;width:auto;max-width:100%}
 /* empty lines at the end of a card don't push the speaker further down */
-table.cards .cell>.rich>:is(div,p):last-child:is(:empty,:has(>br:only-child)),table.cards .cell>.rich>br:last-child{display:none}
+table.cards .cell>.rich>:is(div,p):last-child:is(:empty,:has(>br:only-child)){display:none}
 table.cards td.txt .cell>.speak{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);float:none;margin:0!important}
 table.cards td.txt .cell>:not(.rich):not(.speak){order:3}
 /* on touch screens a tapped button keeps its grey "hover" box; don't show it on the list's speakers */
@@ -953,6 +992,8 @@ table.cards td.txt .cell>:not(.rich):not(.speak){order:3}
 .flash .word{font-size:clamp(26px,5vw,44px);font-weight:600;line-height:1.2;word-break:break-word;white-space:pre-wrap}
 .flash .word.sm{font-size:clamp(20px,3.6vw,30px);font-weight:500}
 .flash .side{display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.flash .side:has(>.speak){display:grid;grid-template-columns:minmax(52px,1fr) minmax(0,auto) minmax(52px,1fr);gap:12px;width:100%} .flash .side:has(>.speak)>.word{grid-column:2;text-align:center} .flash .side:has(>.speak)>.speak{grid-column:3;justify-self:start}   /* the speaker no longer pushes the text off center */
+.flash>.pill{align-self:center}
 .flash hr{width:60%;border:0;border-top:1px dashed var(--border);margin:8px 0}
 .flash .notes{color:var(--muted);font-size:15px;max-width:560px;white-space:pre-wrap}
 .flash .prompt-label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.05em}
@@ -1035,13 +1076,17 @@ dialog h3{font-size:18px;margin-bottom:14px}
 .ed-tools.docked::-webkit-scrollbar{display:none}
 .ed-tools.docked{gap:6px;padding:6px 10px;background:var(--surface)}.ed-tools.docked .tool{flex:none;min-width:44px;height:44px;font-size:19px;border-radius:10px}.ed-tools.docked .tool svg{width:22px;height:22px}.ed-tools.docked .tool-sel{flex:none;height:44px}.ed-tools.docked .tool:active{background:var(--accent-soft)}
 .ed-tools.docked .tool-sp{display:none}
-.ed-tools.docked [data-act=edPic]{order:-3}.ed-tools.docked [data-act=edScan]{order:-2}.ed-tools.docked [data-act=speakField]{order:-1}
+.ed-tools.docked [data-act=edPic]{order:-4}.ed-tools.docked [data-act=edWebPic]{order:-3}.ed-tools.docked [data-act=edScan],.ed-tools.docked [data-act=edTranslate]{order:-2}.ed-tools.docked [data-act=speakField]{order:-1}
+/* rounded top corners; the white carries on down so no page shows between the bar and the keyboard */
+.ed-tools.docked{border-radius:16px 16px 0 0;padding-top:14px;will-change:transform;box-shadow:0 40px 0 var(--surface),0 80px 0 var(--surface),0 120px 0 var(--surface),0 160px 0 var(--surface),0 200px 0 var(--surface),0 240px 0 var(--surface),0 -4px 14px rgba(0,0,0,.12)} :root{--ed-under:0px}
+/* iPhone Safari won't draw an element past the bottom of the visible page while the keyboard is up, but it does draw its shadow:
+   so the white below the bar is a stack of white shadows, on the bar's own layer so it moves with the bar while you scroll */
 .ed-tools .dock-only{display:none}.ed-tools.docked .dock-only{display:inline-grid;grid-auto-flow:column;align-items:center;font-size:14px}.ed-tools.docked .tool-sel{display:none}
 .pal-strip{display:flex;align-items:center;gap:10px;overflow-x:auto;overscroll-behavior:contain;scrollbar-width:none;box-sizing:border-box;border:0;border-top:1px solid var(--border);border-radius:0;box-shadow:0 -4px 14px rgba(0,0,0,.08);padding:8px 12px;z-index:61}
 .pal-strip::-webkit-scrollbar{display:none}
-.pal-strip .pal-sw{flex:none;width:34px;height:34px;aspect-ratio:auto;border-radius:9px}.pal-strip.text .pal-sw{border-radius:50%}
+.pal-strip .pal-sw{flex:none;width:34px;height:34px;aspect-ratio:auto;border-radius:9px}
 .pal-strip .pal-off{flex:none;width:34px;height:34px;border-radius:9px;border:2px solid var(--accent);cursor:pointer;background:linear-gradient(to top right,transparent 45%,var(--muted) 46% 54%,transparent 55%),var(--surface)}
-.pal-strip.text .pal-off{border-radius:50%;background:var(--text);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+.pal-strip.text .pal-off{background:var(--text);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
 .pal-strip .pal-div{flex:none;width:1px;height:26px;background:var(--border)}
 .pal-strip.chips button{flex:none;border:1px solid var(--border);background:var(--surface2);border-radius:18px;padding:8px 14px;font-size:15px;color:var(--text);white-space:nowrap;cursor:pointer}
 .ed-tools.docked .tool.on{background:var(--accent-soft)}
@@ -1376,8 +1421,10 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .deck-list .folder-name{font-size:17px;cursor:pointer}
 .deck-list .folder .deck-grid,.deck-list .folder .folder-empty{margin-left:20px;padding-left:16px;border-left:0}
 /* a folder's whole title box takes a soft tint of the folder's color */
-.folder.colored .folder-head,.deck-list .folder.colored .folder-head{background:color-mix(in srgb,var(--fc) 22%,var(--surface));border:1px solid color-mix(in srgb,var(--fc) 40%,var(--border));color:var(--text)}
-.deck-list .folder.colored .folder-icon,.folder.colored .folder-icon{background:color-mix(in srgb,var(--fc) 30%,var(--surface))}
+/* a folder's label shows its color at full strength (light and dark), with black or white text to suit it */
+.folder.colored .folder-head,.deck-list .folder.colored .folder-head{background:var(--fc);border:1px solid color-mix(in srgb,var(--fc) 80%,#000);color:var(--fc-ink)}
+.folder.colored .folder-head .muted,.folder.colored .folder-head .folder-toggle,.folder.colored .folder-head .icon-btn{color:var(--fc-ink);opacity:.85}
+.deck-list .folder.colored .folder-icon,.folder.colored .folder-icon{background:color-mix(in srgb,var(--fc-ink) 22%,transparent)}
 .folder.colored .folder-head.drop-on{outline:3px solid color-mix(in srgb,var(--fc) 70%,transparent)}
 /* dark mode: bold, solid folder colors (text color picked so it stays readable) */
 :root[data-theme=dark] .folder.colored .folder-head,:root[data-theme=dark] .deck-list .folder.colored .folder-head{background:var(--fc);border-color:color-mix(in srgb,var(--fc) 80%,#000);color:var(--fc-ink)}
@@ -1487,7 +1534,7 @@ nav .ni{display:none}
 .q-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .q-l{font-weight:600;font-size:14px}
 .q-bar{position:relative;height:16px;border-radius:99px;background:var(--surface2);overflow:hidden}
-.q-bar>div{height:100%;background:var(--hard);border-radius:99px}
+.q-bar>div{height:100%;background:var(--good);border-radius:99px}
 .q-bar>span{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--muted)}
 /* 📚 Subjects (subjects.js) */
 .subj-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 14px}
@@ -2047,6 +2094,19 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
 /* 🐞 report-a-problem strip under tool pages (toolfb.js) */
 .tool-fb{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:22px auto 6px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;max-width:760px;font-size:13.5px;color:var(--muted);text-align:center}
 
+/* text cursor: black with a white edge everywhere text can be typed or selected (Windows' own one turns white over dark colors) */
+:root{--ibeam:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='24' viewBox='0 0 16 24'%3E%3Cpath d='M4 2h3l1 1 1-1h3M8 3v18M4 22h3l1-1 1 1h3' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M4 2h3l1 1 1-1h3M8 3v18M4 22h3l1-1 1 1h3' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") 8 12, text}
+:is(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=button],[type=submit],[type=file]),textarea,[contenteditable="true"],[contenteditable=""]){cursor:var(--ibeam)}
+:where(p,li,td,th,h1,h2,h3,h4,blockquote,.word,.rich,.notes,.muted,.small,.cm-t):not(:is(button,a,[data-act],label,summary) *):not(button,a,[data-act],label,summary){cursor:var(--ibeam)}
+/* 🔎 free picture search (imgsearch.js) */
+.pic-dlg{border:0;border-radius:18px;padding:16px;width:min(760px,94vw);max-height:88vh;background:var(--surface);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.35);display:none;flex-direction:column}
+.pic-dlg[open]{display:flex} .pic-dlg::backdrop{background:rgba(0,0,0,.45)}
+.pic-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.pic-search{display:flex;gap:8px} .pic-search .inp{margin:0;flex:1}
+.pic-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;overflow:auto;min-height:120px;max-height:56vh;padding:2px}
+.pic-item{position:relative;border:2px solid transparent;border-radius:10px;padding:0;overflow:hidden;cursor:pointer;background:var(--surface2);aspect-ratio:1}
+.pic-item:hover,.pic-item:focus-visible{border-color:var(--accent)} .pic-item img{width:100%;height:100%;object-fit:cover;display:block}
+.pic-item span{position:absolute;left:4px;bottom:4px;font-size:10.5px;font-weight:700;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:1px 6px}
 /* 💻 Code lab (code.js) */
 .mono,.pg-code,.code-box,.code-card,.rx-out{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace}
 .pg{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:860px){ .pg{grid-template-columns:1fr} }
@@ -2082,9 +2142,15 @@ kbd{display:inline-block;min-width:22px;text-align:center;padding:2px 7px;border
 /* 🔔 reminders + 🗒️ sticky notes on the home page (homebox.js) */
 .home-boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px} @media (max-width:860px){ .home-boxes{grid-template-columns:1fr} }
 .home-box{display:flex;flex-direction:column;gap:8px}
+.hb-title{display:flex;align-items:center;gap:6px} .hb-title [data-hb="min"]{cursor:pointer}
+.hb-min{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:13px;line-height:1;padding:0;flex:none}
+.hb-right{display:flex;align-items:center;gap:8px;margin-left:auto} .hb-min:hover{border-color:var(--accent)} .home-box.min .hb-body{display:none}
+.sp-min,.sp-min-sum{display:none} @media (max-width:640px){ .sp-min{display:block;align-self:flex-start} .streak-panel.min .sp-goal,.streak-panel.min .sp-msg{display:none} .streak-panel.min .sp-min-sum{display:block} .streak-panel.min .sp-main{margin:0} } .home-box.min{gap:0}
+.hb-count{font-size:12px;font-weight:700;background:var(--surface2);color:var(--muted);border-radius:99px;padding:2px 9px} .hb-count.due{background:var(--accent);color:#fff}
 #rail .home-boxes{grid-template-columns:1fr;gap:14px;margin:0} #rail .note-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))} #rail .home-box.panel{background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:16px 18px;margin:0;box-shadow:none}
 .rem-add{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:6px} .rem-add .inp{margin:0;min-width:0} .rem-add .inp:first-child{grid-column:1/-1}   /* text on its own line, then when / repeat / Add */
 .rem-box{container-type:inline-size} @container (max-width:520px){ .rem-add{grid-template-columns:minmax(0,1fr) auto} .rem-add [name=at]{grid-column:1/-1} }   /* narrow box (right column, phones): the date gets its own line */
+.rem-add [name=at]{-webkit-appearance:none;appearance:none;display:block;width:100%;max-width:100%;box-sizing:border-box;height:44px;min-height:44px;line-height:normal;text-align:left;padding-top:0;padding-bottom:0} .rem-add [name=at]::-webkit-date-and-time-value{text-align:left;margin:0;line-height:42px;min-height:42px;display:flex;align-items:center} .rem-add [name=at]::-webkit-datetime-edit{padding:0;line-height:42px} .rem-add [name=at]::-webkit-calendar-picker-indicator{margin-left:auto}   /* phones draw their own date box: same size as the text box, the date on the left and centered top to bottom */
 .rem-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
 .rem-list li{display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"c t x" "c w x";gap:0 8px;align-items:center;padding:6px 8px;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
 .rem-list li.due{border-color:var(--hard);background:color-mix(in srgb,var(--hard) 10%,var(--surface))}
@@ -2337,7 +2403,7 @@ function migrate(s) {
   }
   return s;
 }
-const APP_VERSION = '1.6.1';
+const APP_VERSION = '1.7.0';
 let S = load();
 function save() {
   S.savedAt = Date.now();
@@ -2546,6 +2612,7 @@ function cardDialog(card, after) {
   openDialog({
     title: 'Edit card',
     body: `
+      <div class="row-between" style="margin:-4px 0 2px"><span></span><button type="button" class="btn sm ghost" data-act="swapCard" data-id="${card.id}" title="Swap this card’s front and back (unsaved changes in this window are left out)">⇄ Swap sides</button></div>
       <div class="field">Front <span class="hint muted">(${esc(langName(d.frontLang))})</span>
         ${editorHtml('ef', d, { html: sideHtml(card, 'front', d), text: card.front, lang: d.frontLang })}</div>
       <div class="field">Back <span class="hint muted">(${esc(langName(d.backLang))})</span>
@@ -3011,7 +3078,7 @@ views.deck = () => {
     <div id="cardListHead" style="margin-top:26px"></div>
     <div class="row-between" style="margin:10px 0">
       <span class="muted small" id="cardCount"></span>
-      <div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm ghost" data-act="duplicateDeck" data-id="${d.id}" title="Make a copy of this whole deck">📄 Duplicate deck</button>${typeof deckSelTools === 'function' ? deckSelTools(d) : ''}<button type="button" class="btn sm ghost" data-act="mergeDeck" data-id="${d.id}">🔗 Merge…</button>${d.merged?.length ? `<button type="button" class="btn sm ghost" data-act="unmergeDeck" data-id="${d.id}">✂️ Unmerge…</button>` : ''}<button type="button" class="btn sm ghost" style="color:var(--again)" data-act="deleteDeck" data-id="${d.id}">Delete deck</button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm ghost" data-act="duplicateDeck" data-id="${d.id}" title="Make a copy of this whole deck">📄 Duplicate deck</button><button type="button" class="btn sm ghost" data-act="swapDeck" data-id="${d.id}" title="Swap the front and back of every card in this deck">⇄ Swap front &amp; back</button>${typeof deckSelTools === 'function' ? deckSelTools(d) : ''}<button type="button" class="btn sm ghost" data-act="mergeDeck" data-id="${d.id}">🔗 Merge…</button>${d.merged?.length ? `<button type="button" class="btn sm ghost" data-act="unmergeDeck" data-id="${d.id}">✂️ Unmerge…</button>` : ''}<button type="button" class="btn sm ghost" style="color:var(--again)" data-act="deleteDeck" data-id="${d.id}">Delete deck</button></div>
     </div>
     <div id="cardTable"></div>`;
 };
@@ -3032,8 +3099,8 @@ function renderCardTable() {
   const st = renderCardTable.st = { deckId: d.id, q, cs, n: Math.min(cs.length, Math.max(CL_CHUNK, keep)), row: null };
   const row = st.row = c => `<tr class="${bulkSel?.has(c.id) ? 'sel-on' : ''}${c.frozen ? ' frozen' : ''}${dups.get(c.id)?.kind === 'exact' ? ' dup-row' : ''}">
       <td class="sel"><input type="checkbox" class="cardSel" data-id="${c.id}" ${bulkSel?.has(c.id) ? 'checked' : ''} title="Select card"></td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${sideHtml(c, 'front', d)}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${sideHtml(c, 'back', d)}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'front', d))}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'back', d))}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
       <td class="hide-sm">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c, now)}</td>
       <td class="act"><div class="act-stack"><button type="button" class="icon-btn" data-act="editCard" data-id="${c.id}" title="Edit">${ICON.edit}</button><button type="button" class="icon-btn ${c.frozen ? 'on' : ''}" data-act="clFreeze" data-id="${c.id}" title="${c.frozen ? 'Unfreeze: study this card again' : 'Freeze: skip this card when studying'}">❄️</button><button type="button" class="icon-btn" data-act="duplicateCard" data-id="${c.id}" title="Duplicate this card">📄</button><button type="button" class="icon-btn" data-act="deleteCard" data-id="${c.id}" title="Delete">${ICON.trash}</button></div></td>
     </tr>`;
@@ -3500,6 +3567,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part7.js"></script>
 <script src="saga-part8.js"></script>
 <script src="saga.js"></script>
+<script src="saga-part9.js"></script>
 <script src="numgame.js"></script>
 <script src="speakgame.js"></script>
 <script src="bulkedit.js"></script>
@@ -3550,5 +3618,9 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="lib/fzstd.js"></script>
 <script src="anki.js"></script>
 <script src="toolfb.js"></script>
+<script src="imgsearch.js"></script>
+<script src="popquiz.js"></script>
+<script src="tips.js"></script>
+<script src="translate.js"></script>
 </body>
 </html>
