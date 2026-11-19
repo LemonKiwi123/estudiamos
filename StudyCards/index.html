@@ -1231,9 +1231,9 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .tr-console.gbc.clear .tr-dpad::before{content:'';position:absolute;inset:-12%;border-radius:50%;z-index:-1;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.28) 55%,rgba(255,255,255,0) 72%);border:3px solid color-mix(in srgb,var(--s2) 55%,rgba(255,255,255,.4));box-shadow:0 0 0 2px rgba(255,255,255,.35),inset 0 0 0 2px rgba(255,255,255,.3)}
 .tr-console.gbc.clear .tr-ab{box-shadow:0 0 0 3px color-mix(in srgb,var(--s2) 50%,rgba(255,255,255,.4)),0 0 0 5px rgba(255,255,255,.3),inset 0 1px 3px rgba(0,0,0,.25)}
 .tr-console.gbc.clear .tr-small{box-shadow:0 0 0 4px color-mix(in srgb,var(--s2) 30%,rgba(255,255,255,.35)),0 0 0 6px color-mix(in srgb,var(--s2) 55%,transparent),0 2px 0 #18181d}
-.tr-console.gbc.clear .tr-speaker{display:block;width:54px;height:54px;right:20px;bottom:14px;border-radius:13px;border:5px solid color-mix(in srgb,var(--s1) 22%,rgba(232,237,240,.95));box-shadow:inset 0 2px 5px rgba(0,0,0,.45);background:radial-gradient(circle,#d9a46a 0 13%,#a8703a 14% 22%,#5a4a40 23% 26%,#3d3d44 27% 100%)}   /* a dark round speaker with a copper middle, under the case's plastic */
+.tr-console.gbc.clear .tr-speaker{display:block;width:44px;height:44px;right:21px;bottom:9px;border-radius:50%;background:radial-gradient(circle,#d9a46a 0 13%,#a8703a 14% 22%,#5a4a40 23% 26%,#3d3d44 27% 100%)}   /* a dark round speaker with a copper middle, under the case's plastic */
 .tr-console.gbc.clear .tr-speaker i{display:none}
-.tr-console.gbc.clear .tr-speaker::after{content:'';position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(150deg,rgba(255,255,255,.5),rgba(255,255,255,.15) 60%),color-mix(in srgb,var(--s1) 22%,rgba(232,237,240,.95));-webkit-mask:radial-gradient(circle,transparent 1.25px,#000 1.75px) 0 0/7px 7px,radial-gradient(circle,transparent 1.25px,#000 1.75px) 3.5px 3.5px/7px 7px;-webkit-mask-composite:source-in;mask:radial-gradient(circle,transparent 1.25px,#000 1.75px) 0 0/7px 7px,radial-gradient(circle,transparent 1.25px,#000 1.75px) 3.5px 3.5px/7px 7px;mask-composite:intersect}   /* the case's plastic over the speaker, with rows of holes (every other row offset); the speaker shows through */
+.tr-console.gbc.clear .tr-speaker::after{content:'';position:absolute;inset:-2px;border-radius:50%;background:color-mix(in srgb,var(--s1) 22%,rgba(232,237,240,.62));-webkit-mask:radial-gradient(circle at 10px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 22px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 34px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 10px 28px,transparent 3px,#000 3.6px),radial-gradient(circle at 22px 28px,transparent 3px,#000 3.6px),radial-gradient(circle at 34px 28px,transparent 3px,#000 3.6px);-webkit-mask-composite:source-in;mask:radial-gradient(circle at 10px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 22px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 34px 16px,transparent 3px,#000 3.6px),radial-gradient(circle at 10px 28px,transparent 3px,#000 3.6px),radial-gradient(circle at 22px 28px,transparent 3px,#000 3.6px),radial-gradient(circle at 34px 28px,transparent 3px,#000 3.6px);mask-composite:intersect}   /* the case's plastic over the speaker, with the same six round holes as the colored cases; the speaker shows through */
 
 /* ---------- 🗺️ game maps (Wordling Trails and Lexicon Saga) ---------- */
 .map-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
@@ -3591,6 +3591,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part10.js"></script>
 <script src="saga-part11.js"></script>
 <script src="saga-part12.js"></script>
+<script src="saga-part13.js"></script>
 <script src="numgame.js"></script>
 <script src="speakgame.js"></script>
 <script src="bulkedit.js"></script>
