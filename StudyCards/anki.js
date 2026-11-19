@@ -297,7 +297,7 @@ function importSummary(res, fileName, targetDeck) {
       ${anyProgress ? `<label class="check"><input type="checkbox" name="progress" checked><span>Keep study progress (when cards are due, intervals, ease)</span></label>` : ''}
       <label class="check"><input type="checkbox" name="skipDup" checked><span>Skip cards whose front already exists in the deck</span></label>
       ${blanks ? `<label class="check"><input type="checkbox" name="autoTr" ${typeof txSuggest === 'function' ? 'checked' : 'disabled'}><span><b>🌐 Translate the ${blanks} card${blanks === 1 ? '' : 's'} with no back</b>
-        <span class="muted small" style="display:block">${blanks === total ? 'This file is a list of words.' : `${blanks} row${blanks === 1 ? ' has' : 's have'} only one column.`} Each word is translated from the front language into the back language and put on the back. The words are sent to Wiktionary or MyMemory (free translators); you can fix any translation afterwards.</span></span></label>` : ''}`,
+        <span class="muted small" style="display:block">${blanks === total ? 'This file is a list of words.' : `${blanks} row${blanks === 1 ? ' has' : 's have'} only one column.`} Each word is translated from the front language into the back language and put on the back. Several sources vote on each word (Wiktionary, built-in words, your other cards, and MyMemory when they don’t agree); you can fix any translation afterwards.</span></span></label>${typeof txLimitsHtml === 'function' ? txLimitsHtml() : ''}` : ''}`,
     onOk: f => {
       const toTr = [];
       let added = 0, dup = 0, decksMade = 0;
@@ -344,9 +344,10 @@ async function importTranslate(list) {
   const draw = () => { const b = $('#dlg .dlg-body'); if (b && $('#dlg').open) b.innerHTML = msg(); };
   for (const { c, deck } of todo) {
     if (stop) break;
+    { const w = typeof txWaitAt === 'function' ? txWaitAt('wik') : 0; if (w && w - Date.now() < 600000) { err = `Wiktionary asked us to slow down. Carrying on by itself in ${txCountdown(w - Date.now())}…`; draw(); while (!stop && Date.now() < w) await new Promise(res => setTimeout(res, 500)); err = ''; if (stop) break; } }
     try {
       const r = await txSuggest(c.front, deck.frontLang, deck.backLang), t = r.list[0]?.ins;
-      if (t && !String(c.back || '').trim()) { c.back = t; got++; }
+      if (t && !String(c.back || '').trim()) { c.back = t; c.autoTr = 1; got++; }
     } catch (e) { err = txErrText(e); if (e?.message === 'limit') { done = todo.length; break; } }
     done++; draw(); if (done % 10 === 0) save();
     await new Promise(res => setTimeout(res, 250));   // be gentle with the free services

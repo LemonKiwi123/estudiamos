@@ -9,6 +9,7 @@ const CL_FILTERS = [
   ['card', 'Card status', [['active', 'Active'], ['frozen', 'Frozen']]],
   ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front'], ['back', 'Same back']]],
   ['blank', 'Blank sides', [['front', 'Front is blank'], ['back', 'Back is blank']]],
+  ['tr', 'Translations', [['auto', 'Auto-translated'], ['grammar', 'Grammar note instead of a translation']]],
   ['ex', 'Example sentences', [['hasfront', 'Has front sentence'], ['nofront', 'Missing front sentence'], ['hasback', 'Has back translation'], ['noback', 'Missing back translation']]],
 ];
 /* a blank side: no text and no picture */
@@ -21,8 +22,8 @@ const activeCardsOf = id => S.cards.filter(c => c.deckId === id && !c.frozen);
 
 /* Remembered per deck while the app is open */
 const clPrefs = {};
-const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; p.f.blank ||= []; return p; };
-const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length + (p.f.blank || []).length;
+const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; p.f.blank ||= []; p.f.tr ||= []; return p; };
+const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length + (p.f.blank || []).length + (p.f.tr || []).length;
 
 /* ---------- Duplicates: cards in the same deck with the same front (and maybe the same back) ----------
    "exact" = same front AND same back (almost certainly an extra copy); "front" = same front, different back (maybe two meanings). */
@@ -66,6 +67,7 @@ function clMatches(c, p) {
   if (f.quick.length && !f.quick.includes(c.fr || 'none')) return false;
   if (f.card.length && !f.card.includes(c.frozen ? 'frozen' : 'active')) return false;
   if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.some(k => k === 'back' ? i.back : i.kind === k)) return false; }
+  if (f.tr?.length && !f.tr.some(k => k === 'auto' ? !!c.autoTr : typeof txIsGrammar === 'function' && (txIsGrammar(c.back) || txIsGrammar(c.front)))) return false;
   if (f.blank?.length && !f.blank.some(side => clBlank(c, side))) return false;
   if (f.ex?.length && !f.ex.some(v => (v.endsWith('front') ? clExF(c) : clExB(c)) === v.startsWith('has'))) return false;
   return true;
