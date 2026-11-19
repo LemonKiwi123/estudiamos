@@ -1220,7 +1220,16 @@ function sgDrawWorld(g) {
   for (const n of sgNpcs(s.map)) g.drawImage(sgPersonArt(n.look, n.dir, 0), ox(n.x), oy(n.y) - 2);
   // party: followers walk behind the leader
   const party = s.party;
-  for (let i = party.length - 1; i >= 1; i--) { const t = sg.trail[i - 1]; if (!t || s.boat || s.fly || SG_MAPS[s.map].camp || sgTile(s.map, t.x, t.y) === 'W') continue; if (party[i].hp <= 0) sg.coffins.push([ox(t.x), oy(t.y) - 2]); else g.drawImage(sgPersonArt(party[i].key, t.dir, step), ox(t.x), oy(t.y) - 2); }
+  for (let i = party.length - 1; i >= 1; i--) {
+    const t = sg.trail[i - 1]; if (!t || s.boat || s.fly || SG_MAPS[s.map].camp || sgTile(s.map, t.x, t.y) === 'W') continue;
+    let fx = t.x, fy = t.y, dir = t.dir;
+    if (sg.moving) {   // walk toward the spot the one in front is leaving
+      const to = i === 1 ? { x: sg.moving.fx, y: sg.moving.fy } : sg.trail[i - 2], k = Math.min(1, sg.moving.t);
+      if (to && Math.abs(to.x - t.x) + Math.abs(to.y - t.y) === 1) { fx = t.x + (to.x - t.x) * k; fy = t.y + (to.y - t.y) * k; dir = to.x > t.x ? 'right' : to.x < t.x ? 'left' : to.y > t.y ? 'down' : 'up'; }
+    }
+    const X = Math.round(fx * 16 - camX), Y = Math.round(fy * 16 - camY) - 2;
+    if (party[i].hp <= 0) sg.coffins.push([X, Y]); else g.drawImage(sgPersonArt(party[i].key, dir, step), X, Y);
+  }
   if (s.fly && typeof sgAirshipArt === 'function') { const X = Math.round(px * 16 - camX), Y = Math.round(py * 16 - camY); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(X + 3, Y + 15, 10, 2); g.drawImage(sgAirshipArt(s.dir), X, Y - 8 + Math.round(Math.sin(sg.frame / 12) * 1.5)); }
   else if (s.boat || (sg.moving && sgTile(s.map, sg.moving.tx, sg.moving.ty) === 'W' && s.flags.ship)) g.drawImage(sgShipArt(s.dir === 'right' ? 'right' : 'left'), Math.round(px * 16 - camX), Math.round(py * 16 - camY) - 2 + Math.round(Math.sin(sg.frame / 10)));
   else g.drawImage(sgPersonArt(party[0].key, s.dir, step), Math.round(px * 16 - camX), Math.round(py * 16 - camY) - 2);
@@ -1326,13 +1335,15 @@ function sgWander() {
     sg.np[key] = ok ? { x: nx, y: ny, dir: d } : { ...cur, dir: d };
   }
 }
+const SG_STEP_MS = 8000 / 60;   // one tile takes the same time on every screen: 8 frames at 60 frames a second
 function sgFrame() {
   if (!sg || view.name !== 'saga' || !document.body.contains($('#sgCanvas'))) { if (sg) { sg.loop = 0; if (view.name !== 'saga') sgFinish(); } return; }
   sg.frame++;
+  const now = performance.now(), dt = Math.min(50, Math.max(0, now - (sg.lastT || now))); sg.lastT = now;
   if (sg.frame % 10 === 0) sgMusicSync();
   if (sg.frame % 70 === 0 && !sg.ui && !sg.bt) sgWander();
   if (sg.moving) {
-    sg.moving.t += 1 / 8;
+    sg.moving.t += dt / SG_STEP_MS;
     if (sg.moving.t >= 1) { const s = sgS(); sg.trail.unshift({ x: sg.moving.fx, y: sg.moving.fy, dir: s.dir }); sg.trail.length = Math.min(sg.trail.length, Math.max(2, s.party.length - 1)); const prev = { x: sg.moving.fx, y: sg.moving.fy }; s.x = sg.moving.tx; s.y = sg.moving.ty; sg.moving = null; sgArrive(prev); }
   } else sgStep();
   if (sg.frame % 6 === 0 && !sg.bt) sgUnoverlap();

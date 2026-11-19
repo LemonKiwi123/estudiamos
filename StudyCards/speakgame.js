@@ -74,7 +74,8 @@ const SK_WAIT = 15000, SK_PAUSE = 2500;
 function skListen(lang, h) {
   const sup = skSupport();
   if (!sup.ok) { h.error('unsupported'); return { stop() {} }; }
-  const deadline = Date.now() + SK_WAIT;
+  const WAIT = h.wait || SK_WAIT, PAUSE = h.pause || SK_PAUSE;   // a game can ask for more time to speak
+  const deadline = Date.now() + WAIT;
   let finished = false, userStop = false, meter = null, cap = null;
   const finish = (fn, arg) => { if (finished) return; finished = true; clearTimeout(cap); meter?.stop(); fn(arg); };
   const uniq = list => [...new Set(list.map(x => String(x || '').trim()).filter(Boolean))];
@@ -96,7 +97,7 @@ function skListen(lang, h) {
       if (silent && !userStop && Date.now() < deadline) setTimeout(again, 250); else finish(h.error, silent ? (userStop ? 'stopped' : 'no-speech') : code);
     };
     window.__androidSpeechLevel = db => { if (!finished) h.level(Math.max(0, Math.min(1, (Number(db) + 2) / 11))); };
-    cap = setTimeout(() => { userStop = true; try { AndroidSpeech.stop(); } catch {} setTimeout(() => finish(h.error, 'no-speech'), 2000); }, SK_WAIT + 5000);
+    cap = setTimeout(() => { userStop = true; try { AndroidSpeech.stop(); } catch {} setTimeout(() => finish(h.error, 'no-speech'), 2000); }, WAIT + 5000);
     again();
     return { stop() { if (finished) return; userStop = true; try { AndroidSpeech.stop(); } catch {} setTimeout(() => finish(h.error, 'stopped'), 2500); } };
   }
@@ -116,7 +117,7 @@ function skListen(lang, h) {
     }
     const list = heard(); h.live(list[0] || '');
     if (h.check(list)) { finish(h.done, list); try { r.abort(); } catch {} return; }
-    clearTimeout(pause); pause = setTimeout(() => { try { r.stop(); } catch { wrapUp(); } }, SK_PAUSE);   // they stopped talking: check what we have
+    clearTimeout(pause); pause = setTimeout(() => { try { r.stop(); } catch { wrapUp(); } }, PAUSE);   // they stopped talking: check what we have
   };
   r.onerror = e => { if (finished || e.error === 'no-speech' || e.error === 'aborted') return; finish(h.error, e.error || 'error'); };
   r.onend = () => {
@@ -124,7 +125,7 @@ function skListen(lang, h) {
     if (!heard().length && !userStop && Date.now() < deadline) { try { r.start(); return; } catch {} }   // the browser gave up early: keep listening
     wrapUp();
   };
-  cap = setTimeout(() => { try { r.stop(); } catch {} setTimeout(wrapUp, 1500); }, SK_WAIT + 5000);
+  cap = setTimeout(() => { try { r.stop(); } catch {} setTimeout(wrapUp, 1500); }, WAIT + 5000);
   try { r.start(); } catch { finish(h.error, 'busy'); return { stop() {} }; }
   meter = skMeter(h.level, r);
   return { stop() { if (finished) return; userStop = true; if (running) { try { r.stop(); } catch { wrapUp(); } setTimeout(wrapUp, 2000); } else wrapUp(); } };

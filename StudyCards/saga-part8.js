@@ -328,8 +328,8 @@ function sgSayHtml(q, done) {
   if (done) return '';
   const l = sgLang(), T = t => l ? gtLine(t, l, []) : t;   // these buttons are outside the parts of the box the translator reads
   return `<div class="sg-say"><button type="button" class="sg-mic ${q.listening ? 'on' : ''}" data-act="sgMic">${q.listening ? T('⏹ Stop') : T('🎤 Speak')}</button>
-    <div class="sg-lvl" aria-hidden="true"><i id="sgLvl"></i></div>
-    <div class="sg-live" id="sgLive">${q.heard ? `${T('I heard:')} “${esc(q.heard)}” · ${T('Try again!')} (${3 - q.tries})` : q.err ? esc(q.err) : q.listening ? T('👂 Listening… say it now') : T('Say the word out loud.')}</div>
+    <div class="sg-lvl-row" title="${T('Volume')}"><span aria-hidden="true">🎚️</span><div class="sg-lvl" role="meter" aria-label="${T('Volume')}" aria-valuemin="0" aria-valuemax="100"><i id="sgLvl"></i></div></div>
+    <div class="sg-live" id="sgLive">${q.heard ? `${T('I heard:')} “${esc(q.heard)}” · ${T('Try again!')} (${3 - q.tries})` : q.err ? esc(q.err) : q.listening ? T('👂 Listening… take your time') : T('Say the word out loud. You have up to 25 seconds.')}</div>
     <button type="button" class="sg-saytype" data-act="sgSayType">${T('⌨️ Type it instead')}</button></div>`;
 }
 function sgSayFinish(q, grade, heard) {
@@ -347,6 +347,7 @@ Object.assign(actions, {
     q.listening = true; q.heard = null; q.err = null; trMusic.setDuck?.(0.05); sgBox();
     const base = skLang(sg.d), card = { front: q.answer, back: q.prompt };
     q.rec = skListen(q.lang, {
+      wait: 25000, pause: 3200,   // plenty of time: up to 25 seconds, and a 3-second pause before it checks
       check: list => skMatch(list, card, base).ok,
       done: list => { if (sg?.ui?.q !== q || q.given != null) return; const m = skMatch(list, card, base); q.tries++;
         if (m.ok) return sgSayFinish(q, m.close ? 'close' : 'exact', m.heard);
@@ -354,7 +355,7 @@ Object.assign(actions, {
         q.listening = false; q.heard = m.heard; trMusic.setDuck?.(0.4); sgBox(); },
       error: err => { if (sg?.ui?.q !== q || q.given != null) return; q.listening = false; q.err = SK_ERRORS[err] || `The microphone had a problem (${err}).`; trMusic.setDuck?.(0.4); sgBox(); },
       live: text => { const el = $('#sgLive'); if (el && text) el.textContent = `“${text}”`; },
-      level: lv => { const el = $('#sgLvl'); if (el) el.style.width = Math.round(lv * 100) + '%'; },
+      level: lv => { const el = $('#sgLvl'); if (el) { el.style.width = Math.round(lv * 100) + '%'; el.style.backgroundColor = lv < 0.55 ? '#5fe08a' : lv < 0.82 ? '#f4c542' : '#e74c3c'; el.parentNode?.setAttribute('aria-valuenow', Math.round(lv * 100)); } },   // green, yellow, red as it gets louder
     });
   },
   sgSayType: () => { const q = sg?.ui?.q; if (!q || q.mode !== 'say' || q.given != null) return; q.rec?.stop(); q.listening = false; q.mode = 'type'; sgBox(); setTimeout(() => $('#sgType')?.focus(), 60); },

@@ -1204,18 +1204,30 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
     radial-gradient(120% 55% at 8% 0%,rgba(255,255,255,.62) 0%,rgba(255,255,255,.22) 28%,rgba(255,255,255,0) 52%),
     linear-gradient(118deg,rgba(255,255,255,0) 26%,rgba(255,255,255,.26) 34%,rgba(255,255,255,0) 44%),
     radial-gradient(60% 30% at 92% 100%,rgba(255,255,255,.3) 0%,rgba(255,255,255,0) 60%),
+    repeating-linear-gradient(90deg,rgba(110,50,15,.4) 0 1px,transparent 1px 5px) 58% 8px/46% 11px no-repeat,   /* the copper ribbon cable above the screen, seen through the plastic */
+    linear-gradient(180deg,rgba(242,178,122,.92) 0,rgba(207,128,68,.9) 35%,rgba(169,90,38,.9) 72%,rgba(212,140,82,.9) 100%) 58% 8px/46% 11px no-repeat,
     linear-gradient(116deg,rgba(255,255,255,0) 26%,rgba(255,255,255,.3) 34%,rgba(255,255,255,.18) 42%,rgba(255,255,255,0) 50%) 0 100%/100% 36% no-repeat,
     linear-gradient(90deg,rgba(255,255,255,.35) 0,rgba(255,255,255,0) 4%,rgba(255,255,255,0) 96%,rgba(255,255,255,.25) 100%),
     linear-gradient(165deg,color-mix(in srgb,var(--s1) calc(var(--tint) * 100%),transparent),color-mix(in srgb,var(--s2) calc(var(--tint) * 115%),transparent)),
     linear-gradient(165deg,color-mix(in srgb,var(--s1) 85%,transparent),color-mix(in srgb,var(--s2) 85%,transparent)),
-    url(console-guts.svg) 0 0/100% 100% no-repeat, #cfd5d9;
-  background-blend-mode:normal,normal,normal,normal,normal,normal,color,normal,normal}
-.tr-console.gbc.clear[data-shell=clear]{background-blend-mode:normal,normal,normal,normal,normal,normal,soft-light,normal,normal}
+    linear-gradient(#dde2e5,#d3d9dc) 0 0/100% var(--gscreen,0px) no-repeat,   /* plain plastic around the screen: the board only shows below it (--gscreen: saga-part10.js) */
+    url(console-guts.svg) var(--gx,0px) var(--gy,0px)/var(--gw,100%) var(--gh,100%) no-repeat, #cfd5d9;   /* --g*: fitted to the real buttons (saga-part10.js) */
+  background-blend-mode:normal,normal,normal,normal,normal,normal,normal,normal,color,normal,normal,normal}
+.tr-console.gbc.clear[data-shell=clear]{background-blend-mode:normal,normal,normal,normal,normal,normal,normal,normal,soft-light,normal,normal,normal}
 .tr-console.gbc.clear .tr-bezel{background:linear-gradient(116deg,rgba(255,255,255,0) 6%,rgba(255,255,255,.26) 10%,rgba(255,255,255,.05) 16%,rgba(255,255,255,0) 20%,rgba(255,255,255,0) 74%,rgba(255,255,255,.12) 77%,rgba(255,255,255,0) 80%),radial-gradient(80% 50% at 6% 0%,rgba(255,255,255,.2),rgba(255,255,255,0) 60%),linear-gradient(180deg,#2c2c36,#1d1d24);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4),inset 0 -1px 0 rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.35)}
 .tr-console.gbc.clear{box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--s2) 45%,transparent),inset 0 0 16px color-mix(in srgb,var(--s2) 40%,transparent),inset 0 2px 0 rgba(255,255,255,.95),inset 2px 0 0 rgba(255,255,255,.55),inset -2px 0 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.6),inset 0 0 26px rgba(255,255,255,.3),inset 0 -7px 0 rgba(0,0,0,.22),inset 0 -9px 6px rgba(255,255,255,.18),0 14px 32px rgba(0,0,0,.3),0 2px 4px rgba(0,0,0,.15)}
 .tr-console.gbc.clear .tr-brand,.tr-console.gbc.clear .tr-ab span,.tr-console.gbc.clear .tr-mid span{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7)}
 .tr-console.gbc.clear .tr-ab{background:rgba(0,0,0,.25)}
 .tr-console.gbc.clear .tr-speaker i{background:rgba(0,0,0,.6)}
+/* molded rings around every control (like a real see-through handheld), drawn on the controls so they always line up */
+.tr-console.gbc.clear{isolation:isolate}
+.tr-console.gbc.clear .tr-dpad{position:relative}
+.tr-console.gbc.clear .tr-dpad::before{content:'';position:absolute;inset:-12%;border-radius:50%;z-index:-1;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.28) 55%,rgba(255,255,255,0) 72%);border:3px solid color-mix(in srgb,var(--s2) 55%,rgba(255,255,255,.4));box-shadow:0 0 0 2px rgba(255,255,255,.35),inset 0 0 0 2px rgba(255,255,255,.3)}
+.tr-console.gbc.clear .tr-ab{box-shadow:0 0 0 3px color-mix(in srgb,var(--s2) 50%,rgba(255,255,255,.4)),0 0 0 5px rgba(255,255,255,.3),inset 0 1px 3px rgba(0,0,0,.25)}
+.tr-console.gbc.clear .tr-small{box-shadow:0 0 0 4px color-mix(in srgb,var(--s2) 30%,rgba(255,255,255,.35)),0 0 0 6px color-mix(in srgb,var(--s2) 55%,transparent),0 2px 0 #18181d}
+.tr-console.gbc.clear .tr-speaker{display:block;width:54px;height:54px;right:20px;bottom:14px;border-radius:13px;border:5px solid color-mix(in srgb,var(--s1) 22%,rgba(232,237,240,.95));box-shadow:inset 0 2px 5px rgba(0,0,0,.45);background:radial-gradient(circle,#d9a46a 0 13%,#a8703a 14% 22%,#5a4a40 23% 26%,#3d3d44 27% 100%)}   /* a dark round speaker with a copper middle, under the case's plastic */
+.tr-console.gbc.clear .tr-speaker i{display:none}
+.tr-console.gbc.clear .tr-speaker::after{content:'';position:absolute;inset:-1px;border-radius:10px;background:linear-gradient(150deg,rgba(255,255,255,.5),rgba(255,255,255,.15) 60%),color-mix(in srgb,var(--s1) 22%,rgba(232,237,240,.95));-webkit-mask:radial-gradient(circle,transparent 1.25px,#000 1.75px) 0 0/7px 7px,radial-gradient(circle,transparent 1.25px,#000 1.75px) 3.5px 3.5px/7px 7px;-webkit-mask-composite:source-in;mask:radial-gradient(circle,transparent 1.25px,#000 1.75px) 0 0/7px 7px,radial-gradient(circle,transparent 1.25px,#000 1.75px) 3.5px 3.5px/7px 7px;mask-composite:intersect}   /* the case's plastic over the speaker, with rows of holes (every other row offset); the speaker shows through */
 
 /* ---------- 🗺️ game maps (Wordling Trails and Lexicon Saga) ---------- */
 .map-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;font-size:14px}
@@ -1291,8 +1303,9 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 .sg-mic{font:inherit;font-size:16px;font-weight:700;padding:8px 18px;border-radius:6px;border:2px solid #fff;background:#f4c542;color:#0a1450;cursor:pointer}
 .sg-mic.on{background:#e74c3c;color:#fff;animation:sgPulse 1s infinite}
 @keyframes sgPulse{50%{opacity:.7}}
-.sg-lvl{width:80%;height:6px;border:1px solid #fff;border-radius:3px;overflow:hidden}
-.sg-lvl i{display:block;height:100%;width:0;background:#7fff7f;transition:width .08s}
+.sg-lvl-row{display:flex;align-items:center;gap:6px;width:86%} .sg-lvl-row>span{font-size:14px}
+.sg-lvl{flex:1;height:12px;border:2px solid #fff;border-radius:6px;overflow:hidden;background:rgba(0,0,0,.35)}
+.sg-lvl i{display:block;height:100%;width:0;background:#5fe08a;transition:width .08s,background-color .2s}
 .sg-live{font-size:13px;min-height:1.3em;text-align:center}
 .sg-saytype{font:inherit;font-size:12px;background:none;border:0;color:#fff;text-decoration:underline;cursor:pointer;opacity:.85}
 .sg-typeform input{flex:1;min-width:0;font:inherit;font-size:16px;padding:8px 10px;border-radius:6px;border:2px solid #fff;background:#fff;color:#0a1450}
@@ -3569,6 +3582,8 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part8.js"></script>
 <script src="saga.js"></script>
 <script src="saga-part9.js"></script>
+<script src="saga-part10.js"></script>
+<script src="saga-part11.js"></script>
 <script src="numgame.js"></script>
 <script src="speakgame.js"></script>
 <script src="bulkedit.js"></script>
