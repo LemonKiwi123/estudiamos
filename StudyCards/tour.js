@@ -1,6 +1,6 @@
 'use strict';
 /* ================= Guided tour of the main features =================
-   Chapters you can take one at a time or all in a row. Each step lights up a real button and Ollie explains it;
+   Chapters you can take one at a time or all in a row. Each step lights up a real button and the elephant mascot explains it;
    a step whose button isn't on screen (a phone layout, a deck without pictures) just shows its card in the middle.
    - Someone brand new: the full tour starts by itself once their profile is set up.
    - Someone who already used the app: asked once whether they'd like to see the new tour.

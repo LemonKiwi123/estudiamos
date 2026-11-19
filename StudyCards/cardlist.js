@@ -8,8 +8,12 @@ const CL_FILTERS = [
   ['quick', 'Quick review', [['none', 'Not studied'], ['nq', 'Not quite'], ['got', 'Got it']]],
   ['card', 'Card status', [['active', 'Active'], ['frozen', 'Frozen']]],
   ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front'], ['back', 'Same back']]],
+  ['blank', 'Blank sides', [['front', 'Front is blank'], ['back', 'Back is blank']]],
   ['ex', 'Example sentences', [['hasfront', 'Has front sentence'], ['nofront', 'Missing front sentence'], ['hasback', 'Has back translation'], ['noback', 'Missing back translation']]],
 ];
+/* a blank side: no text and no picture */
+const clBlank = (c, side) => !String(c[side] || '').replace(/\u00a0/g, ' ').trim() && !/<img\b/i.test(c[side + 'Html'] || '');
+const clBlankTag = (c, side) => clBlank(c, side) ? `<span class="blank-tag" title="This side of the card is empty">⚠️ Blank ${side}</span>` : '';
 /* empty lines at the end of a card side (trailing <br>, blank <div>s) are dropped in the list; a <br> with text after it is kept */
 const clTrimEnd = html => String(html || '').replace(/(?:\s|&nbsp;|<br\s*\/?>|<(div|p)>\s*(?:<br\s*\/?>)?\s*<\/\1>)+$/i, '');
 const CHEV = dir => `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${dir === 'l' ? 'M15 5l-7 7 7 7' : 'M9 5l7 7-7 7'}" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -17,8 +21,8 @@ const activeCardsOf = id => S.cards.filter(c => c.deckId === id && !c.frozen);
 
 /* Remembered per deck while the app is open */
 const clPrefs = {};
-const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; return p; };
-const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length;
+const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; p.f.blank ||= []; return p; };
+const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length + (p.f.blank || []).length;
 
 /* ---------- Duplicates: cards in the same deck with the same front (and maybe the same back) ----------
    "exact" = same front AND same back (almost certainly an extra copy); "front" = same front, different back (maybe two meanings). */
@@ -62,6 +66,7 @@ function clMatches(c, p) {
   if (f.quick.length && !f.quick.includes(c.fr || 'none')) return false;
   if (f.card.length && !f.card.includes(c.frozen ? 'frozen' : 'active')) return false;
   if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.some(k => k === 'back' ? i.back : i.kind === k)) return false; }
+  if (f.blank?.length && !f.blank.some(side => clBlank(c, side))) return false;
   if (f.ex?.length && !f.ex.some(v => (v.endsWith('front') ? clExF(c) : clExB(c)) === v.startsWith('has'))) return false;
   return true;
 }

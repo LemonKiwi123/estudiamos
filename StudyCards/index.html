@@ -632,6 +632,8 @@ table.cards td.sel input{position:absolute;opacity:0;width:1px;height:1px;margin
 .tour-dots i.on{background:var(--accent);width:18px;border-radius:4px}
 .tour-btns{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .tour-dots i.gap{margin-left:6px}
+.blank-tag{display:inline-block;font-size:11.5px;font-weight:700;color:#b45309;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+:root[data-theme=dark] .blank-tag{color:#fcd34d;background:rgba(252,211,77,.12);border-color:rgba(252,211,77,.4)}
 /* 🌐 translate (translate.js) */
 .tr-pop .ed-menu-list button{white-space:normal;text-align:left} .tr-pop{max-width:min(320px,92vw)}
 .tr-rows{display:grid;gap:6px;max-height:55vh;overflow:auto;margin-top:8px}
@@ -1169,6 +1171,7 @@ button,a,.opt,label,[data-act]{touch-action:manipulation}
 @media (hover:none){ .muted.small:has(kbd),.small.muted:has(kbd){display:none} }
 #main{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
 /* ---------- Color handheld skin (original design; pick the shell color in each game's menu) ---------- */
+.tr-console[data-shell=gold]{--s1:#f6d36b;--s2:#b8860b;--ink:#4a3505;--lab:#fff6d6}   /* 🌟 secret: unlocked with the old cheat code (saga-part12.js) */
 .tr-console[data-shell=grape]{--s1:#9a7ad6;--s2:#5d3f96;--ink:#2a174d;--lab:#efe7ff}
 .tr-console[data-shell=teal]{--s1:#4fd1cc;--s2:#1c8a87;--ink:#083a39;--lab:#e6fffe}
 .tr-console[data-shell=berry]{--s1:#ef5b93;--s2:#a8124f;--ink:#45061f;--lab:#ffe6f0}
@@ -3113,8 +3116,8 @@ function renderCardTable() {
   const st = renderCardTable.st = { deckId: d.id, q, cs, n: Math.min(cs.length, Math.max(CL_CHUNK, keep)), row: null };
   const row = st.row = c => `<tr class="${bulkSel?.has(c.id) ? 'sel-on' : ''}${c.frozen ? ' frozen' : ''}${dups.get(c.id)?.kind === 'exact' ? ' dup-row' : ''}">
       <td class="sel"><input type="checkbox" class="cardSel" data-id="${c.id}" ${bulkSel?.has(c.id) ? 'checked' : ''} title="Select card"></td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'front', d))}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'back', d))}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'front', d))}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'front') : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'back', d))}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'back') : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
       <td class="hide-sm">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c, now)}</td>
       <td class="act"><div class="act-stack"><button type="button" class="icon-btn" data-act="editCard" data-id="${c.id}" title="Edit">${ICON.edit}</button><button type="button" class="icon-btn ${c.frozen ? 'on' : ''}" data-act="clFreeze" data-id="${c.id}" title="${c.frozen ? 'Unfreeze: study this card again' : 'Freeze: skip this card when studying'}">❄️</button><button type="button" class="icon-btn" data-act="duplicateCard" data-id="${c.id}" title="Duplicate this card">📄</button><button type="button" class="icon-btn" data-act="deleteCard" data-id="${c.id}" title="Delete">${ICON.trash}</button></div></td>
     </tr>`;
@@ -3584,6 +3587,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="saga-part9.js"></script>
 <script src="saga-part10.js"></script>
 <script src="saga-part11.js"></script>
+<script src="saga-part12.js"></script>
 <script src="numgame.js"></script>
 <script src="speakgame.js"></script>
 <script src="bulkedit.js"></script>

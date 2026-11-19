@@ -1221,7 +1221,7 @@ function sgDrawWorld(g) {
   // party: followers walk behind the leader
   const party = s.party;
   for (let i = party.length - 1; i >= 1; i--) {
-    const t = sg.trail[i - 1]; if (!t || s.boat || s.fly || SG_MAPS[s.map].camp || sgTile(s.map, t.x, t.y) === 'W') continue;
+    const t = sg.trail[i - 1]; if (!t || s.boat || s.fly || SG_MAPS[s.map].camp || SG_MAPS[s.map].solo || sgTile(s.map, t.x, t.y) === 'W') continue;   // solo: maps the hero goes into alone (your tent)
     let fx = t.x, fy = t.y, dir = t.dir;
     if (sg.moving) {   // walk toward the spot the one in front is leaving
       const to = i === 1 ? { x: sg.moving.fx, y: sg.moving.fy } : sg.trail[i - 2], k = Math.min(1, sg.moving.t);

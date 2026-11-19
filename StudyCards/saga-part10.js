@@ -72,7 +72,8 @@ for (const name of ['sgItemMenu', 'sgEquipMenu']) {
 /* ---------- ⛺ Your tent ---------- */
 // at camp, the tent on the top left is yours (a blue tent with a little flag)
 { const r = SG_MAPS.camp.rows; r[3] = r[3].slice(0, 4) + '8' + r[3].slice(5); }
-SG_MAPS.mytent = { name: 'Your tent', song: 'sg_camp', inside: true, theme: 'field', npcs: [], objs: [],
+SG_MAPS.mytent = { name: 'Your tent', song: 'sg_camp', inside: true, solo: true,   // your companions stay by the fire
+  theme: 'field', npcs: [], objs: [],
   rows: ['1111111111', '1405227961', '1222222221', '1223333221', '1223333221', '1222222221', '1222222221', '1111221111'],   // bed, lantern, table, plant, chest; rug; door at the bottom
   exitTo: { map: 'camp', x: 4, y: 4, dir: 'down' }, entry: { x: 4, y: 6 } };
 SG_WALK.add('2'); SG_WALK.add('3');
