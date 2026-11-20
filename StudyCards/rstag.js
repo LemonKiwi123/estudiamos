@@ -91,13 +91,14 @@ function rsTagWord(w, i, low, lang) {
   if (RS_DICT_GET(lang, w)) return RS_DICT_GET(lang, w)[0];   // the word list for the built-in sentences (rsdict.js)
   if (lex.has(w)) return lex.get(w);
   if (lang === 'es') {
+    const pv = low[i - 1] || '', afterNounMarker = C.art.has(pv) || C.det.has(pv) || C.clArt.has(pv) || (C.prep.has(pv) && pv !== 'a');   // "la panadería", "una librería": nouns, not verbs
     if (/mente$/.test(w) && w.length > 6) return 'adv';
     if (/(ando|iendo|yendo)$/.test(w) && w.length > 5) return 'verb';
-    if (/(aron|ieron|asteis|isteis|ábamos|aremos|eremos|iremos)$/.test(w)) return 'verb';
-    if (/[aei]r(é|ás|á|emos|án|ía|ías|íamos|ían)$/.test(w) && w.length > 5) return 'verb';
-    if (/(aba|abas|aban)$/.test(w) && w.length > 4) return 'verb';
+    if (!afterNounMarker && /(aron|ieron|asteis|isteis|ábamos|aremos|eremos|iremos)$/.test(w)) return 'verb';
+    if (!afterNounMarker && /[aei]r(é|ás|á|emos|án|ía|ías|íamos|ían)$/.test(w) && w.length > 5) return 'verb';
+    if (!afterNounMarker && /(aba|abas|aban)$/.test(w) && w.length > 4) return 'verb';
     if (/(ar|er|ir|ír)$/.test(w) && w.length > 3 && !/^(lugar|hogar|collar|placer|taller|mujer|altar|dólar|azúcar|ayer|mar|bar|sur|par|amor|mejor|peor|mayor|menor|señor|color|calor|dolor|favor|flor|olor|valor|honor|error|interior|exterior|alrededor)$/.test(w)) return 'verb';
-    if (/[^aeiouáéíóú](ó|é)$/.test(w) && !/^(café|bebé|puré|josé)$/.test(w)) return 'verb';
+    if (!afterNounMarker && /[^aeiouáéíóú](ó|é)$/.test(w) && !/^(café|bebé|puré|josé)$/.test(w)) return 'verb';
   }
   if (lang === 'fr') {
     const prev = low[i - 1] || '', prev2 = low[i - 2] || '';
@@ -108,13 +109,37 @@ function rsTagWord(w, i, low, lang) {
   }
   return null;
 }
+const RS_ES_NUM = RS_W('uno dos tres cuatro cinco seis siete ocho nueve diez once doce cien mil');
+/* a capitalized first word that isn't in any list: is it a verb form (Tomo, Escucho, Llegamos) rather than a name?
+   Yes when the same stem shows up as a verb (tomar, tomamos, tomó…) in the word lists or the sentences, when it ends
+   in -amos/-emos/-imos, or when it ends in -o and the next word isn't a verb, a name or "y" ("Pedro come" stays a name). */
+function rsEsVocab() {
+  const D = RS_DATA?.es; if (!D?.items) return null;
+  if (!D._vocab) { const v = new Set(); for (const it of D.items) for (const t of String(it[1]).toLowerCase().split(/[^\p{L}]+/u)) if (t) v.add(t); D._vocab = v; }
+  return D._vocab;
+}
+function rsEsVerbLike(w, raw, nextTag, nextRaw) {
+  const vocab = rsEsVocab(), lex = rsLex('es');
+  const known = x => lex.get(x) === 'verb' || RS_DICT_GET('es', x)?.[0] === 'verb' || RS_CLOSED.es.verb.has(x) || !!vocab?.has(x);
+  if (/(amos|emos|imos|áis|éis)$/.test(w) && w.length > 5) return true;
+  if (/o$/.test(w) && w.length >= 4 && !/[,;:]$/.test(raw || '') && nextTag !== 'verb' && nextTag !== 'conj' && nextRaw && !/^[A-ZÁÉÍÓÚÑ]/.test(nextRaw)) return true;
+  const forms = { ar: ['ar', 'amos', 'ando', 'ó', 'aba', 'aron'], er: ['er', 'emos', 'iendo', 'ió', 'ieron'], ir: ['ir', 'imos', 'iendo', 'ió', 'ieron'] };   // endings only verbs have (not -ado/-ido: rosado, querido are adjectives too)
+  for (const [end, infs] of [['amos', ['ar']], ['emos', ['er']], ['imos', ['ir']], ['an', ['ar']], ['en', ['er', 'ir']], ['as', ['ar']], ['es', ['er', 'ir']], ['a', ['ar']], ['e', ['er', 'ir']], ['o', ['ar', 'er', 'ir']]]) {
+    if (!w.endsWith(end) || w.length < end.length + 2) continue;
+    const stem = w.slice(0, -end.length);
+    if (infs.some(x => forms[x].some(f => known(stem + f)))) return true;
+  }
+  return false;
+}
 function rsTagSentence(words, lang) {
   const C = RS_CLOSED[lang]; if (!C) return words.map(() => null);
   const low = words.map(w => w.toLowerCase().replace(/[.,!?¿¡;:«»"“”()]/g, ''));
   const out = words.map((_, i) => rsTagWord(low[i], i, low, lang));
   for (let i = 0; i < words.length; i++) {   // words that depend on their neighbours
     const w = low[i], next = out[i + 1], prev = out[i - 1];
-    if (out[i] == null && C.clArt?.has(w)) out[i] = next === 'verb' ? 'pron' : 'det';
+    if (out[i] == null && lang === 'es' && i === 0 && !C.flex.has(w) && !C.clArt.has(w) && rsEsVerbLike(w, words[0], out[1], words[1])) out[i] = 'verb';   // "Tomo el desayuno…": a verb, not a name
+    if (out[i] == null && C.clArt?.has(w)) out[i] = lang === 'es' && C.prep.has(low[i - 1] || '') ? 'det' : next === 'verb' ? 'pron' : 'det';   // Spanish: after a preposition it's always the article (French "pour la voir" is a pronoun)
+    if (lang === 'es' && out[i] === 'det' && RS_ES_NUM.has(w) && C.art.has(low[i - 1] || '') && out[i + 1] !== 'noun' && out[i + 1] !== 'adj') out[i] = 'noun';   // "a las ocho": the number stands alone
     if (out[i] == null && C.flex?.has(w)) out[i] = next === 'noun' || next === 'adj' || next === 'det' ? 'det' : next === 'pron' ? 'pron' : 'adv';
     if (out[i] == null && lang !== 'ja' && i === 0 && /^[A-ZÁÉÍÓÚÑÀÂÇÈÊËÎÏÔÛÙÜ]/.test(words[0]) && RS_DATA[lang]?.lower && !RS_DATA[lang].lower.has(w)) out[i] = 'noun';   // a name starting the sentence
     if (out[i] == null && lang !== 'ja' && i > 0 && /^[A-ZÁÉÍÓÚÑÀÂÇÈÊËÎÏÔÛÙÜ]/.test(words[i])) out[i] = 'noun';   // a name in the middle of the sentence
