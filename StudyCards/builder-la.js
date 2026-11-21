@@ -613,7 +613,7 @@ function laWordList() {
   const out = [];
   for (const n of LA_NOUN) for (const f of laNounForms(n)) out.push([f.w, f.n === 'p' ? n[6] || n[5] : n[5], 'noun']);
   for (const a of LA_ADJ) for (const f of laAdjForms(a)) out.push([f.w, a[3], 'adj']);
-  for (const v of LA_VERB) { out.push([v[1], 'to ' + v[6], 'verb']); laForms(v).forEach((f, i) => out.push([f, i === 2 ? v[7] : v[6], 'verb'])); }
+  for (const v of LA_VERB) { out.push([v[1], 'to ' + v[6], 'verb']); laForms(v).forEach((f, i) => out.push([f, v[0] === 'sum' ? ['am', 'are', 'is', 'are', 'are', 'are'][i] : i === 2 ? v[7] : v[6], 'verb'])); }
   for (const p of LA_PRON) out.push([p[0], p[4], 'pron']);
   for (const p of LA_PREP) out.push([p[0], p[2], 'prep']);
   for (const a of LA_ADV) out.push([a[0], a[1], 'adv']);

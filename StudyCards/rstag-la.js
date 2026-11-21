@@ -39,7 +39,7 @@ function laRsTag(w, i, low) {
   const C = RS_CLOSED.la, k = laF(w), nx = laF(low[i + 1] || '');
   if (!k || /^\d+$/.test(k)) return null;
   if (k === 'cum') return /(o|a|e|i|is|ibus|ubus|u|me|te|nobis|uobis)$/.test(nx) && !/^(non|ad|in|ex)$/.test(nx) ? 'prep' : null;   // cum + ablative = with; cum + a verb = when
-  if (LA_RS_TWO[k] === 'det') { const t = nx ? laRsTag(low[i + 1], i + 1, low) : null; return t === 'noun' || t === 'adj' ? 'det' : null; }   // "hic liber" = this book; "hic" alone could be "here" or "he"
+  if (LA_RS_TWO[k] === 'det') { const t = nx ? laRsTag(low[i + 1], i + 1, low) : null; return t === 'noun' ? 'det' : null; }   // "hic liber" = this book; "hic" alone could be "here" or "he"
   if (LA_RS_TWO[k]) return null;
   if (C.prep.has(k)) return 'prep'; if (C.conj.has(k)) return 'conj'; if (C.pron.has(k)) return 'pron'; if (C.adv.has(k)) return 'adv'; if (C.det.has(k)) return 'det'; if (C.verb.has(k)) return 'verb';
   const d = laRsDict(k); if (d) return d[0];
