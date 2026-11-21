@@ -156,7 +156,7 @@ function rsDecoys(blanks, words) {
 /* 🎺 the fanfare lives in fanfare.js (shared with other games); then the sentence is read out and "Next sentence" waits for it */
 const rsFanfare = () => playFanfare();
 function rsReadOut(delay = 0) {
-  const d = deckById(rs.deckId), voice = langBase(d?.frontLang || '') === rs.lang ? d.frontLang : ({ es: 'es-ES', fr: 'fr-FR', ja: 'ja-JP' })[rs.lang];
+  const d = deckById(rs.deckId), voice = langBase(d?.frontLang || '') === rs.lang ? d.frontLang : ({ es: 'es-ES', fr: 'fr-FR', ja: 'ja-JP' })[rs.lang] || BLD_LANGS[rs.lang]?.voice;
   const text = rsPlain(rs.s.text, rs.lang), round = rs.s;
   rs.reading = true; clearInterval(rs.readT);
   const done = () => { clearInterval(rs.readT); if (rs?.s !== round || !rs.reading) return; rs.reading = false; if (view.name === 'realsent') render(); };
