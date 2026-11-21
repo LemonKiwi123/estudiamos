@@ -26,6 +26,7 @@ function renderBulkBar() {
     <button type="button" class="btn sm" data-act="deckFromSel" title="Make a new deck with copies of only these cards">📦 New deck from these</button>
     <button type="button" class="btn sm" data-act="bulkFreeze" data-on="1" title="Skip these cards when studying">❄️ Freeze</button>
     <button type="button" class="btn sm" data-act="bulkFreeze" data-on="0">Unfreeze</button>
+    <button type="button" class="btn sm danger" data-act="bulkDelete" title="Delete only the selected cards">🗑️ Delete selected</button>
     <button type="button" class="btn sm ghost" data-act="bulkClear">Clear selection</button></div>` : '';
   const fromSel = $('#deckFromSelBtn'); if (fromSel) fromSel.textContent = `📦 New deck from selected${n ? ` (${n})` : ''}`;
   const all = $('#selAll'), shown = [...document.querySelectorAll('.cardSel')];
@@ -180,6 +181,15 @@ Object.assign(actions, {
   bulkAdd: () => openBulkAdd(),
   bulkStrip: () => openBulkStrip(),
   bulkExamples: () => { const d = deckById(view.deckId); if (d && typeof fillMissingExamples === 'function') fillMissingExamples(d, new Set(bulkSel)); },
+  bulkDelete: () => {   // delete only the ticked cards (with Undo)
+    const ids = new Set(bulkSel), gone = S.cards.filter(c => ids.has(c.id)), n = gone.length; if (!n) return;
+    const txt = v => typeof plainSent === 'function' ? plainSent(v || '') : String(v || ''), list = gone.slice(0, 5).map(c => `<li>${esc(txt(c.front))} → ${esc(txt(c.back))}</li>`).join('') + (n > 5 ? `<li class="muted">…and ${n - 5} more</li>` : '');
+    openDialog({ title: `Delete ${n} card${n === 1 ? '' : 's'}?`, ok: 'Delete', danger: true, body: `<ul style="margin:0;padding-left:18px">${list}</ul><p class="muted small" style="margin:8px 0 0">Only the selected cards are deleted. The rest of the deck stays.</p>`, onOk: () => {
+      const keep = S.cards.map((c, i) => [c, i]).filter(([c]) => ids.has(c.id));
+      S.cards = S.cards.filter(c => !ids.has(c.id)); bulkSel.clear(); save(); render();
+      undoToast(`Deleted ${n} card${n === 1 ? '' : 's'}`, () => { for (const [c, i] of keep) S.cards.splice(Math.min(i, S.cards.length), 0, c); save(); render(); toast('Cards restored'); });
+    } });
+  },
   bulkClear: () => { bulkSel.clear(); document.querySelectorAll('.cardSel').forEach(x => x.checked = false); renderBulkBar(); },
 });
 document.addEventListener('change', e => {

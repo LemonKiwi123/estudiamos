@@ -62,12 +62,12 @@ function deckViewToggle() {
 function railHtml() {
   const now = Date.now(), parts = [];
   if (typeof displayStreak === 'function') {
-    const s = displayStreak(), act = dayActivity(), goal = dailyGoal(), done = act >= goal, st = streakState();
+    const s = displayStreak(), act = dayActivity(), goal = dailyGoal(), done = act >= goal, st = streakState(), kept = typeof streakDoneToday === 'function' ? streakDoneToday() : done;
     parts.push(`<section class="rail-card">
       <div class="row-between"><b>Daily streak</b><a class="small" data-act="streakCalendar">CALENDAR</a></div>
-      <div class="rail-big"><span style="filter:${done ? 'none' : 'grayscale(1)'}">🔥</span><span>${s.n}</span><span class="muted small">day${s.n === 1 ? '' : 's'}</span></div>
-      <div class="muted small">${done ? 'Goal reached today ✓' : `Study ${goal - Math.min(act, goal)} more card${goal - act === 1 ? '' : 's'} today to ${s.n ? 'keep it going' : 'start a streak'}.`}</div>
-      <div class="muted small">❄️ ${st.freezes} freeze${st.freezes === 1 ? '' : 's'} · best ${st.best || 0}</div></section>`);
+      <div class="rail-big"><span style="filter:${kept ? 'none' : 'grayscale(1)'}">🔥</span><span>${s.n}</span><span class="muted small">day${s.n === 1 ? '' : 's'}</span></div>
+      <div class="muted small">${done ? 'Goal reached today ✓' : kept ? `Streak kept today ✓ · ${goal - act} more for your daily goal` : typeof freezePlan === 'function' && freezePlan().kind === 'todayFrozen' ? '❄️ Today is covered by a streak freeze.' : (typeof streakRule === 'function' && streakRule() === 'any' ? `Study a card, play a game or take a quiz to ${s.n ? 'keep your streak' : 'start a streak'}.` : `Study ${goal - Math.min(act, goal)} more card${goal - act === 1 ? '' : 's'} today to ${s.n ? 'keep it going' : 'start a streak'}.`)}</div>
+      <div class="muted small row-between" style="gap:6px"><span>❄️ ${st.freezes} freeze${st.freezes === 1 ? '' : 's'} · best ${st.best || 0}</span>${typeof freezeUseBtn === 'function' ? freezeUseBtn() : ''}</div></section>`);
   }
   if (typeof rw === 'function' && typeof TROPHY_TIERS !== 'undefined') {
     const r = rw(), lvl = r.trophy.level, tier = TROPHY_TIERS[lvl - 1] || ['Trophy'];

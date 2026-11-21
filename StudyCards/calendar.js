@@ -5,7 +5,7 @@ const DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const keyOf = (y, m, d) => dateKey(new Date(y, m, d, 12).getTime());
 function dayState(k) {
   const l = S.log[k] || {}, act = (l.reviews || 0) + (l.practice || 0);
-  const met = !!l.goalMet || act >= dailyGoal(), frozen = !met && (streakState().frozen || []).includes(k);
+  const met = !!l.goalMet || !!l.kept || (typeof streakKeptOn === 'function' ? streakKeptOn(k) && k !== dateKey() : act >= dailyGoal()), frozen = !met && (streakState().frozen || []).includes(k);
   const games = (S.history || []).filter(h => dateKey(h.when) === k);
   return { act, met, frozen, some: act > 0 || games.length > 0, points: l.points || 0, reviews: l.reviews || 0, practice: l.practice || 0, games };
 }

@@ -163,6 +163,7 @@ views.progress = () => {
         <span class="muted">Mastered = remembered for ${MASTERED_DAYS}+ days in Study</span></div>
     </section>
     ${posStandingHtml()}
+    ${typeof gameRetentionHtml === 'function' ? gameRetentionHtml() : ''}
     <section class="stats six" style="margin-top:16px">
       <div class="stat"><div class="n">${streak()}</div><div class="l">Day streak</div></div>
       <div class="stat"><div class="n">${last7}</div><div class="l">Reviews, last 7 days</div></div>

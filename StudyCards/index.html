@@ -3353,7 +3353,13 @@ views.settings = () => {
     </section>
     <section class="panel">
       <h3>Study &amp; quizzes</h3>
-      <div class="set-row"><div><b>Daily goal 🔥</b><div class="muted small">Cards to study or answer each day (Study, Quick review, quizzes and games) to keep your streak</div></div>
+      <div class="set-row"><div><b>Keep my streak when 🔥</b><div class="muted small">Any study keeps it going: one card in Study, a quick review, a quiz or a game. Or make it harder: only days you reach your daily goal.</div></div>
+        <div class="ctl"><select class="inp" id="setStreakRule" style="margin:0;min-width:140px">
+          <option value="any" ${st.streakRule !== 'goal' ? 'selected' : ''}>I study anything</option><option value="goal" ${st.streakRule === 'goal' ? 'selected' : ''}>I reach my daily goal</option></select></div></div>
+      <div class="set-row"><div><b>Streak warning ⏳</b><div class="muted small">If you haven’t kept your streak yet, show a countdown to midnight from this time</div></div>
+        <div class="ctl"><select class="inp" id="setStreakWarn" style="margin:0;min-width:140px">
+          ${[[16, '4 pm'], [18, '6 pm'], [20, '8 pm'], [21, '9 pm'], [22, '10 pm'], [0, 'Off']].map(([v, l]) => `<option value="${v}" ${(st.streakWarnAt ?? 18) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>
+      <div class="set-row"><div><b>Daily goal 🎯</b><div class="muted small">Cards to study or answer each day (Study, Quick review, quizzes and games). Reaching it earns a points bonus.</div></div>
         <div class="ctl"><select class="inp" id="setGoal" style="margin:0;min-width:140px">
           ${[5, 10, 20, 30, 50, 100].map(n => `<option value="${n}" ${(st.dailyGoal || 10) === n ? 'selected' : ''}>${n} cards</option>`).join('')}</select></div></div>
       <div class="set-row"><div><b>Next question countdown</b><div class="muted small">In quizzes, after you answer, move on to the next question by itself</div></div>
@@ -3508,6 +3514,8 @@ document.addEventListener('change', e => {
   else if (t.id === 'setAutoNext') { S.settings.quizAutoNext = +t.value; save(); toast(+t.value ? `Quizzes move to the next question after ${t.value} seconds` : 'Next question countdown is off'); }
   else if (t.id === 'setFriends') { S.settings.friends = t.checked; save(); render(); }
   else if (t.id === 'setMascotSound') { S.settings.mascotSound = t.checked; save(); if (t.checked) trumpet(); }
+  else if (t.id === 'setStreakWarn') { S.settings.streakWarnAt = +t.value; save(); streakWarnTick?.(); toast(+t.value ? `⏳ Streak warning from ${t.selectedOptions[0].text}` : 'Streak warning off'); }
+  else if (t.id === 'setStreakRule') { S.settings.streakRule = t.value; save(); renderStreakChip?.(); toast(t.value === 'goal' ? '🔥 Your streak now needs your daily goal' : '🔥 Any study now keeps your streak'); }
   else if (t.id === 'setGoal') { S.settings.dailyGoal = +t.value; save(); renderStreakChip?.(); toast(`Daily goal: ${t.value} cards`); }
   else if (t.id === 'setTheme') { S.settings.theme = t.value; save(); applyTheme(); }
   else if (t.id === 'setSteps') {
@@ -3550,6 +3558,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 <script src="profiles.js"></script>
 <script src="quick.js"></script>
 <script src="progress.js"></script>
+<script src="retention.js"></script>
 <script src="streak.js"></script>
 <script src="rewards.js"></script>
 <script src="runner.js"></script>
