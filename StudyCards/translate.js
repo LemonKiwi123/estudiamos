@@ -23,7 +23,7 @@ function txSplit(s) { const parts = []; let cur = '', depth = 0; for (const ch o
    that appears more often in those sentences wins, then the one with more meanings. */
 const txCorpusCache = {};
 async function txCorpus(lang) {
-  if (!['es', 'fr', 'ja'].includes(lang)) return null;
+  if (!['es', 'fr', 'ja', 'pt'].includes(lang)) return null;
   return (txCorpusCache[lang] ||= fetch(`data/real-${lang}.json`).then(r => r.ok ? r.json() : null).then(j => (j?.items || []).map(it => ({ src: String(it[1] || '').toLowerCase(), en: String(it[2] || '').toLowerCase() }))).catch(() => null));
 }
 const txWords = s => String(s || '').toLowerCase().split(/[^\p{L}\p{M}]+/u).filter(Boolean);

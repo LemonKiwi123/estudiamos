@@ -6,7 +6,7 @@
    Setting: S.settings.gameLang = 'en', 'target' (the deck's language, when we have a phrase book for it), or a language
    with a phrase book ('es', 'fr', 'ja'), which then works with any deck. */
 const GT_BOOKS = {};   // lang -> { lines: {english template: translation}, names: {English name: translation} }
-const gtBase = l => String(l || '').toLowerCase().split(/[-_]/)[0];
+const gtBase = l => { const s = String(l || '').replace('_', '-'); return Object.keys(GT_BOOKS).find(k => k.includes('-') && k.toLowerCase() === s.toLowerCase()) || s.toLowerCase().split('-')[0]; };   // pt-PT has its own book
 function gtWant(deckLang) { const g = S.settings?.gameLang; if (g && g !== 'target' && g !== 'en') return GT_BOOKS[g] ? g : null; return g === 'target' && GT_BOOKS[gtBase(deckLang)] ? gtBase(deckLang) : null; }
 /* the 🌐 Game language menu, shared by both games: English, then every language we have a phrase book for (any deck can use any of them) */
 function gtLangItems(deckLang, reopen) {
