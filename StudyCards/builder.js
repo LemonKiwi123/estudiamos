@@ -814,7 +814,7 @@ function bldCandidates(deckId) {
 }
 function bldWordsDialog() {
   const cands = bldCandidates(bld.deckId), d = deckById(bld.deckId), lang = bldSides(d)?.[2] || 'es', L = BLD_MINE[lang], mine = (S.bldWords || []).filter(m => (m.lang || 'es') === lang);
-  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with Spanish, French and Japanese decks that have English on the other side. Set this deck's front and back languages in Deck settings (for example French and English), then come back.</p>`, onOk: () => {} }); return; }
+  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with ${Object.values(BLD_MINE).map(l => l.name).join(', ').replace(/, ([^,]*)$/, ' and $1')} decks that have English on the other side. Set this deck's front and back languages in Deck settings (for example French and English), then come back.</p>`, onOk: () => {} }); return; }
   // words you already added (from any deck) come first, with what you picked last time
   const rows = [...mine.filter(m => !cands.some(c => c.w === m.w)).map(m => ({ ...m, saved: true })), ...cands.map(c => ({ ...c, ...(mine.find(m => m.w === c.w) || {}), saved: mine.some(m => m.w === c.w) }))];
   const opt = (v, cur, label) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
