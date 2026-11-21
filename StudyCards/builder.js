@@ -814,7 +814,7 @@ function bldCandidates(deckId) {
 }
 function bldWordsDialog() {
   const cands = bldCandidates(bld.deckId), d = deckById(bld.deckId), lang = bldSides(d)?.[2] || 'es', L = BLD_MINE[lang], mine = (S.bldWords || []).filter(m => (m.lang || 'es') === lang);
-  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with Spanish, French and Japanese decks that have English on the other side. Set this deck's front and back languages in Deck settings (for example French and English), then come back.</p>`, onOk: () => {} }); return; }
+  if (!cands) { openDialog({ title: '📚 Words from your deck', ok: 'OK', body: `<p style="margin:0">This works with Spanish, French, Japanese and Romanian decks that have English on the other side. Set this deck's front and back languages in Deck settings (for example French and English), then come back.</p>`, onOk: () => {} }); return; }
   // words you already added (from any deck) come first, with what you picked last time
   const rows = [...mine.filter(m => !cands.some(c => c.w === m.w)).map(m => ({ ...m, saved: true })), ...cands.map(c => ({ ...c, ...(mine.find(m => m.w === c.w) || {}), saved: mine.some(m => m.w === c.w) }))];
   const opt = (v, cur, label) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`;
@@ -823,7 +823,7 @@ function bldWordsDialog() {
         <input type="hidden" name="w${i}" value="${esc(r.w)}"><input type="hidden" name="en${i}" value="${esc(r.en)}"></div>
       <select class="inp" name="k${i}" aria-label="Kind of word">${opt('', r.k, r.saved ? '✖ Take it out' : 'Don’t use')}${opt('noun', r.k, 'Noun')}${r.verbOK !== false || r.k === 'verb' ? opt('verb', r.k, 'Verb') : ''}${opt('adj', r.k, 'Adjective')}</select>
       <div class="bldw-f f-noun">
-        ${L.noGender ? '' : `<select class="inp" name="g${i}" aria-label="Gender">${opt('m', r.g, L.m)}${opt('f', r.g, L.f)}</select>`}<input type="hidden" name="read${i}" value="${esc(r.read || '')}">
+        ${L.noGender ? '' : `<select class="inp" name="g${i}" aria-label="Gender">${opt('m', r.g, L.m)}${opt('f', r.g, L.f)}${L.n ? opt('n', r.g, L.n) : ''}</select>`}<input type="hidden" name="read${i}" value="${esc(r.read || '')}">
         <select class="inp" name="cat${i}" aria-label="What it is">${BLD_KINDS.map(([v, l]) => opt(v, r.cat || 'thing', 'It is ' + l)).join('')}</select>
         ${L.noGender ? '' : `<label class="row small" style="gap:6px;font-weight:400"><input type="checkbox" name="pl${i}" ${r.k !== 'noun' || r.pl !== null ? 'checked' : ''}> Plural:</label>
         <input class="inp" name="plw${i}" value="${esc(r.pl || L.pl(r.w))}" aria-label="${L.name} plural" style="width:9em">`}
