@@ -98,7 +98,7 @@ function cleanHtml(html, { rich = true, pictures = true, marks = true } = {}) { 
       const inner = walk(n), list = /^(UL|OL)$/.test(t) && /^(bullet|dash|num)$/.test(n.getAttribute('data-list') || '') ? ` data-list="${n.getAttribute('data-list')}"` : '';
       const block = (BLOCK_TAGS.has(t) || (!rich && list)) && !(rich && (t === 'LI'));
       const focus = marks && t === 'SPAN' && n.hasAttribute('data-focus') && !n.parentElement.closest('[data-focus]') && (/<img /.test(inner) || /\S/.test(inner.replace(/<[^>]*>/g, '')));
-      const fv = focus && (n.getAttribute('data-focus') === '2' ? '2' : '1');
+      const fv = focus && (/^[1-4]$/.test(n.getAttribute('data-focus')) ? n.getAttribute('data-focus') : '1');
       if (focus && !rich) { s += `<span data-focus="${fv}">${inner}</span>`; continue; }
       if (!rich || !KEEP_TAGS.has(t)) {
         if (block && inner) s += (s && !/(<br>|<\/[uo]l>)$/.test(s) && !/^<[uo]l[ >]/.test(inner) ? '<br>' : '') + inner + (list ? '<br>' : '');
@@ -271,7 +271,7 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
 function readEditor(id) {
   const el = document.getElementById(id); if (!el) return { text: '', html: '' };
   if (!el.isContentEditable) return { text: el.value.trim(), html: '' };
-  const inner = cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' }).replace(/<span data-focus="[12]"/g, `<span data-focus="${el.dataset.fmode === '2' ? 2 : 1}"`);
+  const inner = cfNormMarks(cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' }), el.dataset.fmode);
   const html = el.dataset.rich === '1' ? cfWrap(cfAlign(inner) ? CF_ALIGN.exec(inner)[2] : inner, el.dataset.align) : inner;
   return { text: sideText(html), html: isPlainHtml(html) ? '' : html };
 }
@@ -297,8 +297,8 @@ function applyFormat(id, cmd, val) {
   document.execCommand('styleWithCSS', false, true);
   document.execCommand(cmd, false, val ?? null);
 }
-document.addEventListener('mousedown', e => { if (e.target.closest('.ed-tools button, .palette button')) e.preventDefault(); });
-document.addEventListener('pointerdown', e => { if (e.target.closest('.ed-tools button, .palette button')) e.preventDefault(); });
+document.addEventListener('mousedown', e => { if (e.target.closest('.ed-tools button, .palette button, .ed-focus button')) e.preventDefault(); });
+document.addEventListener('pointerdown', e => { if (e.target.closest('.ed-tools button, .palette button, .ed-focus button')) e.preventDefault(); });
 document.addEventListener('input', e => { const t = e.target; if (t.matches?.('.ed-tools input[type=color]')) applyFormat(t.dataset.ed, t.dataset.cmd, t.value); });
 document.addEventListener('change', e => {
   const t = e.target;

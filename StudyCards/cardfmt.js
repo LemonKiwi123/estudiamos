@@ -5,9 +5,11 @@
    - alignment:  the whole side sits in <div data-align="left|right">   (no div = centered)
    - focus:      <span data-focus="1">…</span> around the focused text. card.front / card.back then hold ONLY the focused text,
                  so review, read-aloud, typed answers, quizzes and games all use it. The whole text stays in the HTML.
-                 data-focus="2" = sound only: the whole side shows everywhere (card.front / card.back hold it all), and only the marked text is read aloud. */
-const hasFocus = h => /<span data-focus="1"/.test(h || '');
-const hasMark = h => /<span data-focus="[12]"/.test(h || ''), hasSound = h => /<span data-focus="2"/.test(h || '');
+                 data-focus="2" = sound only: the whole side shows everywhere (card.front / card.back hold it all), and only the marked text is read aloud.
+                 data-focus="3" and "4" = pick both: only the marked text shows (card.front / card.back hold it), "4" is also read aloud and "3" is not
+                 (with no "4" on the side, everything that shows is read). */
+const hasFocus = h => /<span data-focus="[134]"/.test(h || '');
+const hasMark = h => /<span data-focus="[1-4]"/.test(h || ''), hasPick = h => /<span data-focus="[34]"/.test(h || ''), hasSound = h => /<span data-focus="2"/.test(h || '');
 const CF_ALIGN = /^<div data-align="(left|right)">([\s\S]*)<\/div>$/;
 const cfAlign = h => (CF_ALIGN.exec(h || '') || [])[1] || '';
 const cfWrap = (h, align) => h && align ? `<div data-align="${align}">${h}</div>` : h;
@@ -17,9 +19,10 @@ const alignShow = h => { const m = CF_ALIGN.exec(h); return m ? `<div class="al 
 /* only the focused parts of a side, as HTML (the same HTML when nothing is focused) */
 function focusHtml(h, sound) {   // sound: also the marks that are only for reading aloud
   if (!(sound ? hasMark(h) : hasFocus(h))) return h;
+  const keep = sound && /<span data-focus="4"/.test(h) ? '[data-focus="4"]' : '[data-focus]';
   const GAP = '\u0001', m = CF_ALIGN.exec(h), box = cfBody(m ? m[2] : h);
-  for (const n of cfLeaves(box)) if (!n.parentElement.closest('[data-focus]')) n.replaceWith(GAP);
-  const blank = el => !el.querySelector('[data-focus]') && !el.closest('[data-focus]');
+  for (const n of cfLeaves(box)) if (!n.parentElement.closest(keep)) n.replaceWith(GAP);
+  const blank = el => !el.querySelector(keep) && !el.closest(keep);
   for (const el of [...box.querySelectorAll('li')]) if (blank(el)) el.remove();
   for (const el of [...box.querySelectorAll('*')].reverse()) if (el.tagName !== 'BR' && blank(el)) el.replaceWith(el.querySelector('br') ? document.createElement('br') : GAP);
   for (const el of [...box.querySelectorAll('[data-focus]')]) { if (el.getAttribute('style')) el.removeAttribute('data-focus'); else el.replaceWith(...el.childNodes); }
@@ -31,12 +34,12 @@ const cfSpoken = html => htmlToText(focusHtml(html, true));
 const sideText = html => htmlToText(focusHtml(html));
 /* the whole text of a side, also the part outside the focus (for the editor, search and text exports) */
 const cardFull = (c, side) => hasFocus(c[side + 'Html']) ? htmlToText(c[side + 'Html']) : c[side];
-/* Sound-only focus: wherever a card's text is read aloud (study, quick review, quizzes, games), say only its marked part */
+/* Focus with its own sound (data-focus 2 and 4): wherever a card's text is read aloud (study, quick review, quizzes, games), say only its marked part */
 function cfSayText(text, lang) {
   const key = t => String(t || '').replace(/\s+/g, ' ').trim(), k = key(text); if (!k) return text;
   let hit = '';
   for (const c of S.cards || []) for (const side of ['front', 'back']) {
-    const h = c[side + 'Html']; if (!hasSound(h) || key(c[side]) !== k || deckById(c.deckId)?.[side + 'Lang'] !== lang) continue;
+    const h = c[side + 'Html']; if (!/<span data-focus="[24]"/.test(h || '') || key(c[side]) !== k || deckById(c.deckId)?.[side + 'Lang'] !== lang) continue;
     const t = cfSpoken(h); if (!t) continue;
     if (c.deckId === currentDeckId()) return t;
     hit ||= t;
@@ -75,9 +78,19 @@ function cfTools(id, align) {
     ...['left', 'center', 'right'].map(a => b('edAlign', a, CF_SVG(`<path d="${CF_LINES[a]}"/>`), a === 'center' ? 'Center the text on this side (normal)' : `Move the text on this side to the ${a}`, (align || 'center') === a)),
     b('edFocus', '', '🎯', 'Focus select: in review, show or read aloud only the selected text. The rest stays on the card.')];
 }
-const CF_MODES = [['1', '🎯 Show only the marked text', 'In review, only the marked text shows and is read aloud'], ['2', '🔊 Show all, read only the marked text', 'In review, all the text shows, but only the marked text is read aloud']];
-const cfMode = html => hasSound(html) ? '2' : hasFocus(html) ? '1' : S.settings?.focusMode === '2' ? '2' : '1';   // a new focus starts with the choice you made last
-const cfFocusBar = (id, mode) => `<div class="ed-focus"><span>In review:</span><div class="seg-mini" role="group" aria-label="In review">${CF_MODES.map(([v, l, t]) => `<button type="button" class="${v === mode ? 'on' : ''}" data-act="edFocusMode" data-ed="${id}" data-v="${v}" title="${t}" aria-pressed="${v === mode}">${l}</button>`).join('')}</div><button type="button" class="btn sm" data-act="edFocusReset" data-ed="${id}" title="Show all the text of this side in review again">Reset focus</button></div>`;
+const CF_MODES = [['1', '🎯 Show only the marked text', 'In review, only the marked text shows and is read aloud'], ['2', '🔊 Show all, read only the marked text', 'In review, all the text shows, but only the marked text is read aloud'],
+  ['3', '👁️ Pick what shows and what is read', 'In review, only the text you mark shows. You pick which of it is also read aloud.']];
+const cfMode = html => hasPick(html) ? '3' : hasSound(html) ? '2' : hasFocus(html) ? '1' : ['2', '3'].includes(S.settings?.focusMode) ? S.settings.focusMode : '1';   // a new focus starts with the choice you made last
+/* make every mark on a side fit the option picked for it. Switching options keeps the marks: plain marks count as "read aloud" under option 3. */
+function cfNormMarks(html, mode) {
+  if (!hasMark(html)) return html;
+  const to = f => html.replace(/<span data-focus="([1-4])"/g, (m, v) => { const x = f(v); return x ? `<span data-focus="${x}"` : '<span'; });
+  if (mode === '3') return to(v => v === '3' ? '3' : '4');
+  if (mode === '2') return /<span data-focus="[124]"/.test(html) ? cleanHtml(to(v => v === '3' ? '' : '2')) : to(() => '2');
+  return to(() => '1');
+}
+const cfFocusBar = (id, mode) => `<div class="ed-focus"><span>In review:</span><div class="seg-mini" role="group" aria-label="In review">${CF_MODES.map(([v, l, t]) => `<button type="button" class="${v === mode ? 'on' : ''}" data-act="edFocusMode" data-ed="${id}" data-v="${v}" title="${t}" aria-pressed="${v === mode}">${l}</button>`).join('')}</div><button type="button" class="btn sm" data-act="edFocusReset" data-ed="${id}" title="Show all the text of this side in review again">Reset focus</button>
+  <div class="ed-fmark"><span>Select text, then mark it:</span><button type="button" class="btn sm" data-act="edFocus" data-ed="${id}" data-k="3" title="Show the selected text in review, but don’t read it aloud. Press again to unmark it."><span class="fm fm3">👁️ Show only</span></button><button type="button" class="btn sm" data-act="edFocus" data-ed="${id}" data-k="4" title="Show the selected text in review and read it aloud. Press again to unmark it."><span class="fm fm4">🔊 Show and read aloud</span></button></div></div>`;
 function cfSetAlign(id, a) {
   const ed = document.getElementById(id); if (!ed) return;
   if (a === 'left' || a === 'right') ed.dataset.align = a; else { a = 'center'; delete ed.dataset.align; }
@@ -103,9 +116,15 @@ function cfSelected(root, r) {
   }
   return out;
 }
+/* the selection on screen right now wins: edRange can be a moment behind, or the only one left when focus moved away */
+function cfLive(id, ed) {
+  const s = getSelection();
+  if (s.rangeCount && !s.isCollapsed && ed.contains(s.getRangeAt(0).commonAncestorContainer)) { edRange = s.getRangeAt(0).cloneRange(); edId = id; }
+}
 /* Work on a copy of the field, then put it back in one step, so Ctrl+Z in the editor undoes it like typing */
 function cfEdit(id, change, needSel = true) {
   const ed = document.getElementById(id); if (!ed?.isContentEditable) return;
+  cfLive(id, ed);
   const r = edRange && edId === id && ed.contains(edRange.commonAncestorContainer) && !edRange.collapsed ? edRange : null;
   if (needSel && !(r && cfSelected(ed, r).length)) { toast('Select some text on the card first'); return; }
   const copy = ed.cloneNode(true);
@@ -135,26 +154,27 @@ function cfCase(id, up) {
     return t;
   }));
 }
-const cfMark = n => { const sp = document.createElement('span'); sp.dataset.focus = '1'; n.replaceWith(sp); sp.append(n); };
-/* take the focus marks off; any color or size the browser put on the same span stays. Returns the pieces that were marked. */
+const cfMark = (n, v) => { const sp = document.createElement('span'); sp.dataset.focus = v; n.replaceWith(sp); sp.append(n); };
+/* take the focus marks off; any color or size the browser put on the same span stays. Returns the pieces that were marked, with their kind of mark. */
 function cfUnmark(root) {
-  const was = [...root.querySelectorAll('[data-focus]')].flatMap(cfLeaves);
+  const was = [...root.querySelectorAll('[data-focus]')].flatMap(el => cfLeaves(el).map(n => [n, el.dataset.focus]));
   for (const el of [...root.querySelectorAll('[data-focus]')]) { if (el.getAttribute('style')) el.removeAttribute('data-focus'); else el.replaceWith(...el.childNodes); }
-  return new Set(was);
+  return new Map(was);
 }
-function cfFocus(id) {
-  cfEdit(id, (root, sel) => {
-    const off = sel.every(x => x.n.parentElement.closest('[data-focus]') || (x.n.nodeType === 3 && !x.n.nodeValue.slice(x.a, x.b).trim()));   // already all in focus: the button takes it out again
+function cfFocus(id, kind) {   // kind (option 3): '3' = show, '4' = show and read aloud
+  cfEdit(id, (root, sel, ed) => {
+    const pick = ed.dataset.fmode === '3', k = pick ? kind || '3' : '1', same = el => el && (!pick || (el.dataset.focus === '3' ? '3' : '4') === k);
+    const off = sel.every(x => same(x.n.parentElement.closest('[data-focus]')) || (x.n.nodeType === 3 && !x.n.nodeValue.slice(x.a, x.b).trim()));   // already all marked this way: the button takes it out again
     const pieces = sel.map(cfCut), marked = cfUnmark(root);   // cut the pieces out first, then rebuild the marks one piece of text at a time
-    for (const n of pieces) off ? marked.delete(n) : marked.add(n);
-    marked.forEach(cfMark);
-    for (const el of [...root.querySelectorAll('[data-focus]')]) if (el.isConnected || root.contains(el)) while (el.nextSibling?.nodeType === 1 && el.nextSibling.hasAttribute('data-focus')) { const b = el.nextSibling; el.append(...b.childNodes); b.remove(); }   // join neighbors
+    for (const n of pieces) off ? marked.delete(n) : marked.set(n, k);
+    marked.forEach((v, n) => cfMark(n, v));
+    for (const el of [...root.querySelectorAll('[data-focus]')]) if (el.isConnected || root.contains(el)) while (el.nextSibling?.nodeType === 1 && el.nextSibling.dataset.focus === el.dataset.focus) { const b = el.nextSibling; el.append(...b.childNodes); b.remove(); }   // join neighbors
     return pieces;
   });
 }
 function cfList(id, kind) {
   const ed = document.getElementById(id); if (!ed?.isContentEditable) return;
-  restoreRange(id);
+  cfLive(id, ed); restoreRange(id);
   const here = () => { const r = getSelection().getRangeAt(0), n = r.commonAncestorContainer, up = (n.nodeType === 1 ? n : n.parentElement).closest('ul,ol'); return up && ed.contains(up) ? [up] : [...ed.querySelectorAll('ul,ol')].filter(l => r.intersectsNode(l)); };
   const now = here(), tag = kind === 'num' ? 'OL' : 'UL', kindOf = l => l.dataset.list || (l.tagName === 'OL' ? 'num' : 'bullet');
   if (now.length && now.every(l => l.tagName === tag) && !now.every(l => kindOf(l) === kind)) { now.forEach(l => { l.dataset.list = kind; }); return; }   // bullets <-> dashes
@@ -165,7 +185,7 @@ Object.assign(actions, {
   edCase: el => cfCase(el.dataset.ed, el.dataset.v === 'up'),
   edList: el => cfList(el.dataset.ed, el.dataset.v),
   edAlign: el => cfSetAlign(el.dataset.ed, el.dataset.v),
-  edFocus: el => cfFocus(el.dataset.ed),
+  edFocus: el => cfFocus(el.dataset.ed, el.dataset.k),
   edFocusMode: el => {
     const ed = document.getElementById(el.dataset.ed), v = el.dataset.v; if (!ed) return;
     ed.dataset.fmode = v; S.settings.focusMode = v; save();

@@ -268,7 +268,7 @@ function clPreviewRender() {
         <div class="pv-side" lang="${esc(d.backLang || '')}"><div class="rich">${sideHtml(c, 'back', d, { full: true })}${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${big(c.back, d.backLang)}</div>
         ${c.example ? `<div class="pv-extra"><div>“${esc(plainSent(c.example))}”</div>${c.exampleTr ? `<div class="muted">${esc(c.exampleTr)}</div>` : ''}</div>` : ''}
         ${c.notes ? `<div class="pv-extra muted">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}
-        ${hasFocus(c.frontHtml) || hasFocus(c.backHtml) ? '<div class="pv-extra muted small">🎯 In review, only the marked text shows.</div>' : ''}${hasSound(c.frontHtml) || hasSound(c.backHtml) ? '<div class="pv-extra muted small">🔊 All the text shows in review, but only the marked text is read aloud.</div>' : ''}
+        ${/data-focus="1"/.test(c.frontHtml + c.backHtml) ? '<div class="pv-extra muted small">🎯 In review, only the marked text shows.</div>' : ''}${hasSound(c.frontHtml) || hasSound(c.backHtml) ? '<div class="pv-extra muted small">🔊 All the text shows in review, but only the marked text is read aloud.</div>' : ''}${hasPick(c.frontHtml) || hasPick(c.backHtml) ? '<div class="pv-extra muted small">In review, only the marked text shows. <span class="fm fm4">🔊 read aloud</span> <span class="fm fm3">👁️ only shown</span></div>' : ''}
         <div class="pv-status">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c)}</div>
       </div>
       <button type="button" class="pv-nav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} title="Next card (→)" aria-label="Next card">${CHEV('r')}</button>
