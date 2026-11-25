@@ -148,8 +148,28 @@ if (typeof txAppIndex === 'function') {
     if (typeof eoWordList === 'function') for (const [w, en] of eoWordList()) add(w, en);
     if (typeof RS_DICT !== 'undefined' && RS_DICT.eo) for (const [w, [, g]] of RS_DICT.eo) add(w, g);
     if (typeof STARTERS !== 'undefined' && STARTERS.eo) for (const [f, b] of STARTERS.eo.cards) add(String(f).replace(/^la\s+/i, ''), String(b).replace(/^(the|a|an)\s+/i, ''));
-    const back = new Map(); for (const [w, list] of fwd) for (const t of list) { const k = txKey(t); if (!k) continue; if (!back.has(k)) back.set(k, []); if (!back.get(k).includes(w)) back.get(k).push(w); }
+    // English to Esperanto offers dictionary forms only (hundo, not hundon; manĝi, not manĝas)
+    const form = w => (/[oa](?:j|n|jn)$/.test(w) && fwd.has(w.replace(/(?:jn|j|n)$/, ''))) || (/(?:as|is|os|us|u)$/.test(w) && fwd.has(w.replace(/(?:[aiou]s|u)$/, 'i')));
+    const back = new Map(); for (const [w, list] of fwd) if (!form(w)) for (const t of list) { const k = txKey(t); if (!k) continue; if (!back.has(k)) back.set(k, []); if (!back.get(k).includes(w)) back.get(k).push(w); }
     return (txAppCache.eo = { fwd, back, esperanto: true });
+  };
+}
+
+/* ---------- 🏷️ Word labels on cards: Esperanto endings say what kind of word it is, so no internet is needed ---------- */
+if (typeof posGuess === 'function' && typeof eoRsEnding === 'function') {
+  const guessAll = posGuess;
+  posGuess = function (text, lang) {
+    if (!eoIs(lang)) return guessAll(text, lang);
+    const w = posWords(eoFromX(text)).map(x => x.toLowerCase()), C = RS_CLOSED.eo;
+    if (w.length === 2 && w[0] === 'la' && eoRsEnding(w[1]) === 'noun') return ['noun'];   // la hundo
+    if (w.length !== 1) return null;
+    const k = w[0];
+    if (/^\d+([.,]\d+)?$/.test(k) || /^(nul|unu|du|tri|kvar|kvin|ses|sep|ok|naŭ|dek|cent|mil|(du|tri|kvar|kvin|ses|sep|ok|naŭ)(dek|cent))$/.test(k)) return ['number'];
+    if (k === 'la') return ['article'];
+    if (/^(saluton|dankon|bonvolu|adiaŭ|ve|ho|ha|jes)$/.test(k)) return ['interjection'];
+    for (const [set, name] of [['pron', 'pronoun'], ['prep', 'preposition'], ['conj', 'conjunction'], ['det', 'determiner']]) if (C[set].has(k)) return [name];
+    const t = EO_TABLE.get(k) || (C.adv.has(k) ? 'adv' : null) || eoRsDict(k)?.[0] || eoRsEnding(k), v = ({ noun: 'noun', verb: 'verb', adj: 'adjective', adv: 'adverb', pron: 'pronoun', det: 'determiner' })[t];
+    return v ? [v] : null;
   };
 }
 
