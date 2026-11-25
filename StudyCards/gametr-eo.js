@@ -941,4 +941,4 @@ GT_BOOKS.eo = {
 };
 GT_BOOKS.eo.suffix = [[' · Tavern', ' · Taverno'], [' · Church', ' · Preĝejo'], [' · Jail', ' · Malliberejo'], [' · 1F', ' · E1'], [' · 2F', ' · E2'], [' · Bank', ' · Banko'],
   [' · Inn', ' · Gastejo'], [' · Item shop', ' · Objektobutiko'], [' · Smithy', ' · Forĝejo'], [' · Old Well', ' · Malnova Puto']];
-GT_BOOKS.eo.frag = [[/(\d+) gold/g, '$1 da oro'], [/(\d+) coins/g, '$1 moneroj'], [/Lv ?(\d+)/g, 'Nv. $1'], [/(\d+) HP/g, '$1 VP'], [/Next:/g, 'Sekva:']];
+GT_BOOKS.eo.frag = [[/(\d+) gold\b/g, '$1 da oro'], [/(\d+) coins\b/g, '$1 moneroj'], [/\bLv ?(\d+)/g, 'Nv. $1'], [/(\d+) HP\b/g, '$1 VP'], [/\bNext:/g, 'Sekva:']];

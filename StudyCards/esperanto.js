@@ -37,7 +37,7 @@ if (typeof voicesFor === 'function') {
     return pl.length ? pl : voicesForAll(EO_VOICE2);
   };
 }
-const eoSpoken = text => { if (typeof voicesFor === 'function') voicesFor('eo'); return eoVoiceLang === EO_VOICE2 ? eoForItalian(text) : eoForPolish(text); };
+const eoSpoken = text => { if (typeof voicesFor === 'function') voicesFor('eo'); return eoVoiceLang === EO_VOICE2 ? eoForItalian(eoFromX(text)) : eoForPolish(eoFromX(text)); };
 if (typeof speak === 'function') {
   const speakAll = speak;
   speak = function (text, lang, rateMul) {
@@ -110,6 +110,21 @@ if (typeof views !== 'undefined' && views.numgame) {
 /* ---------- game text and reports: Esperanto's English name ---------- */
 if (typeof GT_LANG_ENGLISH !== 'undefined') GT_LANG_ENGLISH.eo = 'Esperanto';
 if (typeof GT_LANG_NAMES !== 'undefined') GT_LANG_NAMES.eo = 'Esperanto';
+/* [[name]] in the Esperanto phrase book = this name is the object of the verb, so it takes -n: "Runa Rato B" → "Runan Raton B",
+   "Klingo de la Heroo" → "Klingon de la Heroo". Names that stay as they are in English (Lyra, Fen) don't change. */
+function eoObject(name, book) {
+  const base = name.replace(/ [ABC]$/, '');
+  if (!book || !(book.eoNames ||= new Set(Object.values(book.names))).has(base)) return name;
+  const cut = name.search(/ (?:de|da|por|el|en|kun) | · /), head = cut < 0 ? name : name.slice(0, cut);
+  return head.replace(/(\p{L}[oa]j?)(?![\p{L}])/gu, (w, x, at) => /(?:^|[^\p{L}])[Ll]$/u.test(head.slice(0, at + 1)) && /^[Ll]a$/.test(w) ? w : w + 'n') + (cut < 0 ? '' : name.slice(cut));
+}
+if (typeof gtLine === 'function') {
+  const lineAll = gtLine;
+  gtLine = function (html, lang, names) {
+    const out = lineAll(html, lang, names);
+    return lang === 'eo' && typeof out === 'string' && out.includes('[[') ? out.replace(/\[\[(.*?)\]\]/g, (_, n) => eoObject(n, GT_BOOKS.eo)) : out;
+  };
+}
 
 /* ---------- 🌐 Auto-translate: Wiktionary has Esperanto; the real sentences and the builder's words help ---------- */
 const eoFromX = s => String(s ?? '').replace(/([cghjsuCGHJSU])[xX]/g, (m, c) => ({ c: 'ĉ', g: 'ĝ', h: 'ĥ', j: 'ĵ', s: 'ŝ', u: 'ŭ', C: 'Ĉ', G: 'Ĝ', H: 'Ĥ', J: 'Ĵ', S: 'Ŝ', U: 'Ŭ' })[c]);
