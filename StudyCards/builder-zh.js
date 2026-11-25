@@ -240,6 +240,7 @@ function zhCheck(T) {
         const o = is(peek(), 'pron', '哪儿') ? { q: true, n: T[i++], cat: 'place', start: i - 1, end: i } : NP(); if (isErr(o)) return o;
         if (o.none) return err(`After “${v.w}” comes where: “${v.w}学校”, “${v.w}公园”.`, i);
         if (o.cat !== 'place') return err(`“${v.w}” + a place: “${v.w}学校”. “${npZh(o)}” isn’t a place.`, o.start);
+        if (v.w !== '回' && o.n.w === '家' && !o.owner) return err('“Go home” is 回家. With 去 or 来, say whose home it is: “去我家”, “来我家”.', o.start);
         if (v.w === '回' && !o.q && !['家', '中国', '学校'].includes(o.n.w)) return err('“回” means going back to where you belong: 回家, 回中国, 回学校.', o.start);
         P.obj = o;
       } else if (['tr', 'like'].includes(type) || type === 'have') {
@@ -387,7 +388,7 @@ function zhEnglish(P) {
   }
   // actions (and 有 = have)
   const v = P.verb, objCat = P.obj?.n?.w === '电视' ? 'tv' : P.obj?.cat;
-  let F = v.e[5]; if (v.w === '看') F = zhKanEn(objCat) || F;
+  let F = v.e[5]; if (v.w === '看') F = zhKanEn(objCat) || F; if (v.w === '说' && P.obj?.n?.q === 'what') F = ['say', 'says', 'said', 'saying', 'said'];
   if (v.type === 'go' && v.w === '回' && P.obj?.n?.w === '家') F = ['go', 'goes', 'went', 'going', 'gone'];
   const tense = P.prog ? 'prog' : P.asp?.w === '过' && !pastT && !P.time.some(t => t.w === '今天') ? 'perf' : future ? 'fut' : P.asp?.w === '了' || P.neg?.w === '没' && v.type !== 'have' || pastT ? 'past' : 'pres';
   const generic = tense === 'pres' || tense === 'fut' || tense === 'perf';
@@ -399,7 +400,7 @@ function zhEnglish(P) {
     else if (P.obj.det?.n === 'q') whObj = zhNpEn(P.obj, 'obj');
     else objEn = zhNpEn(P.obj, 'obj', { generic: generic && v.type !== 'have', one: !generic || v.type === 'have' });
   }
-  if (tense === 'perf' && v.type === 'go') F = [F[0], F[1], F[2], F[3], 'been'];
+  if (tense === 'perf' && v.w === '去') F = [F[0], F[1], F[2], F[3], 'been'];
   if (P.place) tail.push(P.place.q ? '' : zhPlaceEn(P.place, 'at'));
   if (P.with) tail.push('with ' + zhNpEn(P.with, 'obj', { one: true }));
   if (tense === 'perf' && !neg && q !== 'yn') tail.push('before');
@@ -493,7 +494,7 @@ function zhGenerate(pref) {
     } else if (kind === 'exist') {
       if (neg) out.push(zhAdv('没'));
       out.push(zhVerb(ZH_VERB.find(x => x[0] === '有'))); extra.push(zhAdv('不'));
-      if (ask === 'wh') out.push(zhQ('什么')); else { const n = RP(ZH_NOUN.filter(x => ['person', 'animal', 'thing', 'read', 'food'].includes(x[2]) && !x[5].includes('f'))); if (!zhMws(n).length) continue; np(n, out, { adj: false, count: !neg, det: R(['一', '一', '两', '三']) }); }
+      if (ask === 'wh') out.push(zhQ('什么')); else { const n = RP(ZH_NOUN.filter(x => ['person', 'animal', 'thing', 'read', 'food'].includes(x[2]) && !x[5].includes('f'))); if (!zhMws(n).length) continue; np(n, out, { adj: false, bare: neg, count: !neg, det: R(['一', '一', '两', '三']) }); }
     } else if (kind === 'have') {
       if (neg) out.push(zhAdv('没')); extra.push(zhAdv('不'));
       out.push(zhVerb(ZH_VERB.find(x => x[0] === '有')));
@@ -519,7 +520,7 @@ function zhGenerate(pref) {
       if (asp) out.push(zhPart(asp)); else extra.push(zhPart(coin(0.5) ? '了' : '过'));
       if (type === 'go') {
         if (ask === 'wh' && whoQ !== 'who') out.push(zhQ('哪儿'));
-        else { const home = R(['家', '家', '中国']), pl = v[0] === '回' ? zhNounBy(home) : subjCat === 'animal' ? zhNounBy(R(['家', '公园'])) : nounOf(['place']); np(pl, out, { adj: false, bare: true }); extra.push(zhPrep('在')); }
+        else { const home = R(['家', '家', '中国']), pl = v[0] === '回' ? zhNounBy(home) : subjCat === 'animal' ? zhNounBy('公园') : RP(ZH_NOUN.filter(n => n[2] === 'place' && n[0] !== '家')); np(pl, out, { adj: false, bare: true }); extra.push(zhPrep('在')); }
       } else if (type !== 'in') {
         if (ask === 'wh' && whoQ !== 'who' && coin(0.7)) out.push(zhQ(v[3].includes('person') && coin(0.5) ? '谁' : '什么'));
         else { const objs = subjCat === 'animal' ? ZH_NOUN.filter(n => ['水', '鱼', '米饭', '面包', '猫', '鸟'].includes(n[0]) && v[3].includes(n[2])) : null; if (objs && !objs.length) continue;
@@ -581,7 +582,7 @@ function zhApplyMine() {
   }
 }
 if (typeof bldApplyMine === 'function') { const prevApply = bldApplyMine; bldApplyMine = function () { prevApply(); zhApplyMine(); }; }
-BLD_MINE.zh = { name: 'Chinese', forms: 'the verb (Chinese verbs don’t change)', nForms: 1, noGender: true, conj: w => [w], pl: w => w, adj: w => [w], minLen: 1, guess: w => 'noun',
+BLD_MINE.zh = { name: 'Chinese', forms: 'the verb (Chinese verbs don’t change)', nForms: 1, noGender: true, conj: w => [w], pl: w => w, adj: w => [w], minLen: 1, guess: (w, en) => /^(hello|hi|thanks?|thank you|bye|goodbye|good|sorry|excuse|please|welcome|you.?re|yes|no|not|how|what|who|where|why|when|which|and|but|or|of|in|on|at)( |$)/i.test(en) ? '' : 'noun',
   known: w => zhKnown(w), gender: () => 'm', isVerb: () => true, refl: () => false,
   // 狗 (gǒu), 狗 gǒu, 狗: the word as the card writes it, with its pinyin kept for the hint
   parse: s => { const read = (s.match(/[（(]([^）)]+)[）)]/) || [])[1] || (s.match(/[a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜü' ]{2,}/i) || [])[0]; const w = s.replace(/[（(][^）)]*[）)]/g, '').replace(/[^一-鿿]/g, '');

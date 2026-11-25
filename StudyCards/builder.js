@@ -807,7 +807,7 @@ function bldCandidates(deckId) {
     const isVerb = L.isVerb(w);   // levantar / levantarse, parler / se laver
     if (lab && (lab !== 'verb' || isVerb)) k = lab;
     else if (m.art) k = 'noun'; else if (toVerb && isVerb) k = 'verb';
-    else if (L.guess && !toVerb) k = L.guess(w);
+    else if (L.guess && !toVerb) k = L.guess(w, en);
     else if (sides[2] === 'ja' && !toVerb) k = /い$/.test(w) ? 'adj' : 'noun';   // Japanese has no articles: most single words are nouns, and many ending in い are adjectives
     out.push({ w, en, k, g, verbOK: isVerb, fromLabel: !!lab && k === lab, lang: sides[2], read: m.read || null });
   }

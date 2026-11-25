@@ -42,7 +42,7 @@ function zhWordPinyin(w) {
   for (const c of w) { const p = ZH_PY_CHAR.get(c); if (p == null) { out += c; continue; } if (out && /^[aeoāáǎàēéěèōóǒò]/.test(p)) out += "'"; out += p; }
   return out;
 }
-function zhPinyin(text, sep = ' ') { return zhSplit(text).map(w => ZH_HAN.test(w) ? zhWordPinyin(w) : w).join(sep); }
+function zhPinyin(text, sep = ' ') { return zhSplit(text).map(w => ZH_HAN.test(w) ? zhWordPinyin(w) : w).reduce((t, p) => !t ? p : t + (sep || (/^[aeoāáǎàēéěèōóǒò]/.test(p) ? "'" : '')) + p, ''); }
 /* pinyin without tones, for comparing: "nǐ hǎo", "ni3 hao3", "nihao" and "Ni hao" are all "nihao"; ü = v = u */
 function zhToneless(s) {
   return String(s || '').toLowerCase().replace(/u:/g, 'u').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/([a-z])[1-5]/g, '$1').replace(/v/g, 'u').replace(/['’\s-]+/g, '');

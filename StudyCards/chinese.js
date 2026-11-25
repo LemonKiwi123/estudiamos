@@ -117,8 +117,8 @@ if (typeof views !== 'undefined' && views.numgame) {
       if (ng.mode === 'liang') h = h.replace(`<div class="ng-big">${ng.q.n}</div>`, `<div class="ng-big word">${esc(ng.q.given == null ? ng.q.phrase : ng.q.phrase.replace('＿', ng.q.answer))}</div><div class="muted">${esc(ng.q.en)}</div>`);
       else if (ng.mode === 'read') h = h.replace(`<div class="ng-big word">${esc(ng.q.word)}</div>`, `<div class="ng-big word">${esc(ng.q.word)}</div><div>${small(ng.q.word)}</div>`);
       if (ng.q.given != null && ng.mode !== 'liang') h = h.replace(/(<div class="ng-verdict[^>]*>)([\s\S]*?)( <button)/, (_, a, b, c) => `${a}${b} ${small(ng.q.say)}${c}`);
-      h = h.replace('Listen to the letter’s name, then pick the letter.', 'Listen to a word, then pick the sound it starts with.').replace('See a letter, then pick its name.', 'See a sound, then pick the character that starts with it.').replace('Hear a letter', 'Hear a sound').replace('Name the letter', 'Find the sound').replace('Hear a number word spelled letter by letter, then pick the word.', 'Hear a number character by character, then pick it.');
     }
+    if (ng?.lang === 'zh') h = h.replace('Listen to the letter’s name, then pick the letter.', 'Listen to a word, then pick the sound it starts with.').replace('See a letter, then pick its name.', 'See a sound, then pick the character that starts with it.').replace('Hear a letter', 'Hear a sound').replace('Name the letter', 'Find the sound').replace('Hear a number word spelled letter by letter, then pick the word.', 'Hear a number character by character, then pick it.');
     if ((ng ? ng.lang : ngLang()) === 'zh') h = h.replace(/(<button type="button" class="ng-cell[^>]*><b>[^<]*<\/b><span>)([一-鿿]+)(<\/span>)/g, (_, a, w, b) => `${a}${w}<br>${small(w)}${b}`);
     return h;
   };
