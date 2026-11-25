@@ -34,13 +34,13 @@ function renderBulkBar() {
 }
 const bulkTextToHtml = t => esc(t).replace(/\n/g, '<br>');
 function bulkApply(cards, field, text, skipDup) {
-  const undo = [], hasDup = c => norm(c[field] || '').includes(norm(text));
+  const undo = [], hasDup = c => norm(cardFull(c, field) || '').includes(norm(text));
   let changed = 0, skipped = 0;
   for (const c of cards) {
     if (skipDup && hasDup(c)) { skipped++; continue; }
     undo.push({ c, v: c[field], h: c[field + 'Html'] });
     c[field] = (c[field] || '').trim() ? `${c[field].replace(/\s+$/, '')}\n${text}` : text;
-    if ((field === 'front' || field === 'back') && c[field + 'Html']) c[field + 'Html'] += '<br>' + bulkTextToHtml(text);
+    if ((field === 'front' || field === 'back') && c[field + 'Html']) { c[field + 'Html'] = cfAppend(c[field + 'Html'], '<br>' + bulkTextToHtml(text)); if (hasFocus(c[field + 'Html'])) c[field] = sideText(c[field + 'Html']); }   // focused text stays the only text in review
     changed++;
   }
   return { undo, changed, skipped };
@@ -53,7 +53,7 @@ function openBulkAdd() {
     const f = $('#bulkForm')?.closest('form'); if (!f) return;
     const field = f.field.value, text = f.text.value.trim(), p = $('#bulkPreview');
     $('#bulkFrontWarn').style.display = field === 'front' ? '' : 'none';
-    const before = sample[field] || '';
+    const before = cardFull(sample, field) || '';
     p.innerHTML = `<div class="muted small">Preview on “${esc(plainSent(sample.front).slice(0, 40))}”</div>
       <div class="bulk-prev">${before ? `<div>${esc(before).replace(/\n/g, '<br>')}</div>` : '<div class="muted small">(empty)</div>'}${text ? `<div class="bulk-new">${bulkTextToHtml(text)}</div>` : ''}</div>`;
   };
@@ -116,12 +116,12 @@ function stripBracketsHtml(html, kinds) {   // the same thing across the text in
 }
 function stripPlan(cards, fields, kinds) {
   const out = [];
-  for (const c of cards) { const ch = {}; for (const f of fields) { const v = c[f] || '', nv = stripText(v, kinds); if (nv !== v) ch[f] = nv; } if (Object.keys(ch).length) out.push({ c, ch }); }
+  for (const c of cards) { const ch = {}; for (const f of fields) { const v = cardFull(c, f) || '', nv = stripText(v, kinds); if (nv !== v) ch[f] = nv; } if (Object.keys(ch).length) out.push({ c, ch }); }
   return out;
 }
 /* Clear formatting: bold, italics, colors, highlights, sizes and fonts go; the words, line breaks and pictures stay */
-const fmtHas = html => !!html && /<(?!\/|br\b|img\b)/i.test(html);
-function fmtClear(c, f) { const h = cleanHtml(c[f + 'Html'], { rich: false, pictures: true }); if (/<img\b/i.test(h)) c[f + 'Html'] = h; else delete c[f + 'Html']; }
+const fmtHas = html => !!html && /<(?!\/|br\b|img\b|span data-focus="1">)/i.test(html);   // a focus mark isn't formatting
+function fmtClear(c, f) { const h = cleanHtml(c[f + 'Html'], { rich: false, pictures: true }); if (/<img\b/i.test(h) || hasFocus(h)) c[f + 'Html'] = h; else delete c[f + 'Html']; }
 function openBulkStrip() {
   const d = deckById(view.deckId), cards = cardsOf(d.id).filter(c => bulkSel.has(c.id));
   if (!cards.length) return toast('Select some cards first');
@@ -139,8 +139,8 @@ function openBulkStrip() {
     if ((o.mode !== 'none' && !o.kinds.length) || !o.fields.length) { p.innerHTML = '<div class="muted small">Pick at least one kind of bracket and one part of the card.</div>'; return; }
     const plan = planFor(o), nb = plan.filter(x => Object.keys(x.ch).length).length, nf = plan.filter(x => x.fm.length).length;
     p.innerHTML = plan.length ? `<div class="small"><b>${plan.length}</b> of ${cards.length} selected card${cards.length === 1 ? '' : 's'} will change${nb && nf ? ` (brackets on ${nb}, formatting on ${nf})` : ''}.</div>` +
-      plan.slice(0, 3).map(({ c, ch, fm }) => `<div class="bulk-prev">${[...new Set([...Object.keys(ch), ...fm])].map(k => { const nv = k in ch ? ch[k] : c[k] || '';
-        return `<div class="muted small">${BULK_FIELDS[k]}${fm.includes(k) ? ' · formatting cleared' : ''}</div>${k in ch ? `<div><s>${esc(c[k]).replace(/\n/g, '<br>')}</s></div>` : `<div class="rich">${typeof sideHtml === 'function' ? sideHtml(c, k, d) : esc(c[k] || '')}</div>`}<div class="bulk-new" ${fm.includes(k) ? 'style="font-weight:400;color:inherit"' : ''}>${nv ? esc(nv).replace(/\n/g, '<br>') : '<i>(empty)</i>'}</div>`; }).join('')}</div>`).join('') +
+      plan.slice(0, 3).map(({ c, ch, fm }) => `<div class="bulk-prev">${[...new Set([...Object.keys(ch), ...fm])].map(k => { const nv = k in ch ? ch[k] : cardFull(c, k) || '';
+        return `<div class="muted small">${BULK_FIELDS[k]}${fm.includes(k) ? ' · formatting cleared' : ''}</div>${k in ch ? `<div><s>${esc(cardFull(c, k)).replace(/\n/g, '<br>')}</s></div>` : `<div class="rich">${typeof sideHtml === 'function' ? sideHtml(c, k, d, { full: true }) : esc(c[k] || '')}</div>`}<div class="bulk-new" ${fm.includes(k) ? 'style="font-weight:400;color:inherit"' : ''}>${nv ? esc(nv).replace(/\n/g, '<br>') : '<i>(empty)</i>'}</div>`; }).join('')}</div>`).join('') +
       (plan.length > 3 ? `<div class="muted small">…and ${plan.length - 3} more.</div>` : '') +
       (plan.some(x => Object.values(x.ch).some(v => !v)) ? '<div class="banner"><span>⚠️ Some cards would become empty because everything on them is inside brackets.</span></div>' : '')
       : `<div class="muted small">None of the selected cards have ${o.kinds.length ? 'that kind of bracket' : ''}${o.kinds.length && o.fmt ? ' or ' : ''}${o.fmt ? 'any text formatting' : ''} in those parts.</div>`;
@@ -167,7 +167,7 @@ function openBulkStrip() {
       const undo = plan.map(({ c }) => ({ c, v: Object.fromEntries([...fields, ...fields.map(f => f + 'Html')].map(k => [k, c[k]])) }));
       let nb = 0, nf = 0;
       for (const { c, ch, fm } of plan) {
-        for (const [f, nv] of Object.entries(ch)) { c[f] = nv; if (c[f + 'Html']) c[f + 'Html'] = stripBracketsHtml(c[f + 'Html'], kinds); }
+        for (const [f, nv] of Object.entries(ch)) { c[f] = nv; if (c[f + 'Html']) { const foc = hasFocus(c[f + 'Html']); c[f + 'Html'] = stripBracketsHtml(c[f + 'Html'], kinds); if (foc) c[f] = sideText(c[f + 'Html']); } }
         for (const f of fm) fmtClear(c, f);
         if (Object.keys(ch).length) nb++; if (fm.length) nf++;
       }
@@ -190,12 +190,12 @@ Object.assign(actions, {
       undoToast(`Deleted ${n} card${n === 1 ? '' : 's'}`, () => { for (const [c, i] of keep) S.cards.splice(Math.min(i, S.cards.length), 0, c); save(); render(); toast('Cards restored'); });
     } });
   },
-  bulkClear: () => { bulkSel.clear(); document.querySelectorAll('.cardSel').forEach(x => x.checked = false); renderBulkBar(); },
+  bulkClear: () => { bulkSel.clear(); document.querySelectorAll('.cardSel').forEach(x => x.checked = false); clSelChanged(); renderBulkBar(); },
 });
 document.addEventListener('change', e => {
   const t = e.target;
-  if (t.classList?.contains('cardSel')) { t.checked ? bulkSel.add(t.dataset.id) : bulkSel.delete(t.dataset.id); t.closest('tr')?.classList.toggle('sel-on', t.checked); renderBulkBar(); }
-  else if (t.id === 'selAll') { for (const c of renderCardTable.st?.cs || []) t.checked ? bulkSel.add(c.id) : bulkSel.delete(c.id); document.querySelectorAll('.cardSel').forEach(x => { x.checked = t.checked; t.checked ? bulkSel.add(x.dataset.id) : bulkSel.delete(x.dataset.id); x.closest('tr')?.classList.toggle('sel-on', t.checked); }); renderBulkBar(); }
+  if (t.classList?.contains('cardSel')) { t.checked ? bulkSel.add(t.dataset.id) : bulkSel.delete(t.dataset.id); t.closest('tr')?.classList.toggle('sel-on', t.checked); clSelChanged(); renderBulkBar(); }
+  else if (t.id === 'selAll') { for (const c of renderCardTable.st?.cs || []) t.checked ? bulkSel.add(c.id) : bulkSel.delete(c.id); document.querySelectorAll('.cardSel').forEach(x => { x.checked = t.checked; t.checked ? bulkSel.add(x.dataset.id) : bulkSel.delete(x.dataset.id); x.closest('tr')?.classList.toggle('sel-on', t.checked); }); clSelChanged(); renderBulkBar(); }
 });
 // the whole selection strip beside a card is a click target, not only the little box
 document.addEventListener('click', e => {

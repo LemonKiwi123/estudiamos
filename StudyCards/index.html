@@ -216,6 +216,8 @@ body.pv-open{overflow:hidden}
 .pv-round.on{background:color-mix(in srgb,var(--easy) 30%,var(--surface))}
 .pv-mnav{font-size:30px;display:none}
 @media (max-width:760px){ .pv-nav{display:none} .pv-mnav{display:grid} .pv-card{padding:22px 16px} }
+/* computer: the buttons sit right under the card instead of at the bottom of the screen */
+@media (min-width:761px){ #cardPreview{justify-content:center} .pv-row{flex:0 1 auto} .pv-card{height:auto;min-height:min(460px,60vh);max-height:min(720px,calc(100vh - 150px))} .pv-bottom{max-width:640px} }
 /* Progress page */
 .activity{display:flex;align-items:flex-end;gap:3px;height:120px;margin:14px 0 6px}
 .activity .day{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;background:var(--surface2);border-radius:4px;overflow:hidden}
@@ -1104,6 +1106,20 @@ dialog h3{font-size:18px;margin-bottom:14px}
 .ed-area:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .ed-area:empty::before{content:attr(data-placeholder);color:var(--muted);pointer-events:none}
 .ed-area img{max-height:150px;max-width:100%;border-radius:8px;vertical-align:middle;margin:2px}
+/* card text tools (cardfmt.js): alignment, lists, focus. Alignment only shows on the card itself; lists of cards and game tiles ignore it. */
+.al{display:contents}
+.flash .word .al,.pv-side .al{display:block} .al-left{text-align:left} .al-right{text-align:right}
+.flash .side:has(>.word .al){width:100%} .flash .side:has(>.word .al)>.word{flex:1;min-width:0}
+.flash .side:has(>.speak):has(>.word .al){grid-template-columns:minmax(0,1fr) auto} .flash .side:has(>.speak):has(>.word .al)>.word{grid-column:1} .flash .side:has(>.speak):has(>.word .al)>.speak{grid-column:2}
+.pv-side:has(.al)>.rich{width:100%}
+:is(ul,ol)[data-list]{width:fit-content;max-width:100%;margin:.25em auto;padding:0 0 0 1.4em;text-align:left;list-style-position:outside;white-space:normal}
+ul[data-list=bullet]{list-style-type:disc} ul[data-list=dash]{list-style-type:'–\00a0\00a0'} ol[data-list=num]{list-style-type:decimal}
+.al-left>:is(ul,ol)[data-list],.ed-area[data-align=left] :is(ul,ol)[data-list],table.cards :is(ul,ol)[data-list]{margin-left:0} .al-right>:is(ul,ol)[data-list],.ed-area[data-align=right] :is(ul,ol)[data-list]{margin-right:0}
+.ed-area{text-align:center}.ed-area[data-align=left]{text-align:left}.ed-area[data-align=right]{text-align:right}
+.ed-tools .tool:is([data-act=edList],[data-act=edAlign]) svg{color:var(--text)} .ed-tools .tool.cf-on{background:var(--accent-soft)} .ed-tools .tool[data-act=edCase]{font-size:13px;font-weight:600}
+[data-focus]{background:color-mix(in srgb,var(--accent) 20%,transparent);border-bottom:2px solid var(--accent);border-radius:3px}
+.pv-side .rich:has([data-focus]){color:var(--muted)} .pv-side [data-focus]{color:var(--text)}
+.ed-focus{display:none;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:400;color:var(--muted)} .editor:has(.ed-area [data-focus])>.ed-focus{display:flex}
 .flash .word img,.flash .side img{display:block;max-width:100%;max-height:280px;margin:8px auto;border-radius:12px}
 .rich img{max-height:48px;max-width:90px;border-radius:6px;vertical-align:middle}
 .mtile img{display:block;max-height:80px;max-width:100%;margin:0 auto;border-radius:8px}
@@ -2633,9 +2649,9 @@ function cardDialog(card, after) {
     body: `
       <div class="row-between" style="margin:-4px 0 2px"><span></span><button type="button" class="btn sm ghost" data-act="swapCard" data-id="${card.id}" title="Swap this card’s front and back (unsaved changes in this window are left out)">⇄ Swap sides</button></div>
       <div class="field">Front <span class="hint muted">(${esc(langName(d.frontLang))})</span>
-        ${editorHtml('ef', d, { html: sideHtml(card, 'front', d), text: card.front, lang: d.frontLang })}</div>
+        ${editorHtml('ef', d, { html: sideHtml(card, 'front', d, { full: true }), text: cardFull(card, 'front'), lang: d.frontLang })}</div>
       <div class="field">Back <span class="hint muted">(${esc(langName(d.backLang))})</span>
-        ${editorHtml('eb', d, { html: sideHtml(card, 'back', d), text: card.back, lang: d.backLang })}</div>
+        ${editorHtml('eb', d, { html: sideHtml(card, 'back', d, { full: true }), text: cardFull(card, 'back'), lang: d.backLang })}</div>
       <label class="field">Example sentence <span class="hint muted">(${esc(langName(d.frontLang))}, optional, used by the games)</span>
         <div class="inp-wrap"><input name="example" id="ee" value="${esc(card.example)}" placeholder="A sentence that uses the word">${d.frontLang && d.tts !== false ? `<button type="button" class="icon-btn speak" data-act="speakField" data-field="ee" data-lang="${d.frontLang}">${ICON.speak}</button>` : ''}</div></label>
       <label class="field">Sentence translation <span class="hint muted">(optional)</span><input name="exampleTr" id="eet" value="${esc(card.exampleTr)}"></label>
@@ -2753,7 +2769,7 @@ async function exportBackup() {
 }
 function exportDeckText(deck) {
   const q = s => /[\t\n"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  const lines = cardsOf(deck.id).map(c => [c.front, c.back, c.notes].map(q).join('\t'));
+  const lines = cardsOf(deck.id).map(c => [cardFull(c, 'front'), cardFull(c, 'back'), c.notes].map(q).join('\t'));
   download(`${deck.name.replace(/[\\/:*?"<>|]/g, '_')}.txt`, lines.join('\n'), 'text/plain');
 }
 let fileHandler = null;
@@ -3119,8 +3135,8 @@ function renderCardTable() {
   const st = renderCardTable.st = { deckId: d.id, q, cs, n: Math.min(cs.length, Math.max(CL_CHUNK, keep)), row: null };
   const row = st.row = c => `<tr class="${bulkSel?.has(c.id) ? 'sel-on' : ''}${c.frozen ? ' frozen' : ''}${dups.get(c.id)?.kind === 'exact' ? ' dup-row' : ''}">
       <td class="sel"><input type="checkbox" class="cardSel" data-id="${c.id}" ${bulkSel?.has(c.id) ? 'checked' : ''} title="Select card"></td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'front', d))}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'front') : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
-      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'back', d))}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'back') : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.front, d.frontLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'front', d, { full: true }))}</span>${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}${dups.size ? dupTag(c, dups) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'front') : ''}</div>${c.example ? `<div class="muted small">“${esc(plainSent(c.example))}”</div>` : ''}</td>
+      <td class="txt pv-open-cell" data-act="clPreview" data-id="${c.id}" title="Tap to preview"><div class="cell">${speakBtn(c.back, d.backLang)}<span class="rich">${clTrimEnd(sideHtml(c, 'back', d, { full: true }))}</span>${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}${typeof clBlankTag === 'function' ? clBlankTag(c, 'back') : ''}</div>${c.notes ? `<div class="muted small">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}</td>
       <td class="hide-sm">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c, now)}</td>
       <td class="act"><div class="act-stack"><button type="button" class="icon-btn" data-act="editCard" data-id="${c.id}" title="Edit">${ICON.edit}</button><button type="button" class="icon-btn ${c.frozen ? 'on' : ''}" data-act="clFreeze" data-id="${c.id}" title="${c.frozen ? 'Unfreeze: study this card again' : 'Freeze: skip this card when studying'}">❄️</button><button type="button" class="icon-btn" data-act="duplicateCard" data-id="${c.id}" title="Duplicate this card">📄</button><button type="button" class="icon-btn" data-act="deleteCard" data-id="${c.id}" title="Delete">${ICON.trash}</button></div></td>
     </tr>`;
@@ -3555,6 +3571,7 @@ document.addEventListener('DOMContentLoaded', () => boot());
 </script>
 <script src="mascot.js"></script>
 <script src="rich.js"></script>
+<script src="cardfmt.js"></script>
 <script src="profiles.js"></script>
 <script src="quick.js"></script>
 <script src="progress.js"></script>

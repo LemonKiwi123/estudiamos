@@ -322,7 +322,7 @@ actions.bulkTranslate = () => {
       if (!rows) { run(); return false; }
       if (busy) return false;
       const use = rows.filter(r => r.on && r.val.trim());
-      for (const r of use) { const t = r.val.trim(); if (dir === 'fb') { r.c.back = t; delete r.c.backHtml; } else { r.c.front = t; delete r.c.frontHtml; } r.c.autoTr = 1; }
+      for (const r of use) { const t = r.val.trim(); cfSetText(r.c, dir === 'fb' ? 'back' : 'front', t); r.c.autoTr = 1; }
       save(); render(); toast(`🌐 Updated ${use.length} card${use.length === 1 ? '' : 's'}`);
     } });
 };

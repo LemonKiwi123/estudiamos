@@ -89,7 +89,7 @@ const hasTable = (db, n) => rows(db, "SELECT name FROM sqlite_master WHERE type=
 /* ---------- Text cleanup for imported HTML fields ---------- */
 function htmlToText(h) {
   h = String(h ?? '').replace(/\[sound:[^\]]*\]/g, '').replace(/<img[^>]*>/gi, '').replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
-    .replace(/<br\s*\/?>|<\/div>|<\/p>|<\/li>/gi, '\n');
+    .replace(/<br\s*\/?>|<\/div>|<\/p>|<\/li>/gi, '\n').replace(/<[uo]l[ >]/gi, '\n$&');
   const doc = new DOMParser().parseFromString(h, 'text/html');
   return (doc.body.textContent || '').replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{2,}/g, '\n').trim();
 }
@@ -167,7 +167,7 @@ async function importHtmlField(raw, media, z, cache) {
   }
   h = h.replace(IMG, (m, a, b, c) => { const id = cache.get(safeDecode(a || b || c)); return id ? `<img data-mid="${id}">` : ''; });
   const html = cleanHtml(h, { rich: true, pictures: true });
-  return { text: htmlToText(html), html: isPlainHtml(html) ? '' : html };
+  return { text: sideText(html), html: isPlainHtml(html) ? '' : html };
 }
 function extractAnki(db) {
   const col = rows(db, 'SELECT * FROM col')[0] || {};
@@ -414,14 +414,14 @@ async function buildAnkiPackage(decks, withProgress) {
   }
   const sideField = (c, side, d) => {
     const h = c[side + 'Html'] ? cleanHtml(c[side + 'Html'], { rich: deckRich(d), pictures: deckPics(d) }) : '';
-    if (!h) return toHtml(c[side] || '');
-    return h.replace(/<img data-mid="([\w-]+)" alt="">/g, (m, mid) => files.has(mid) ? `<img src="${files.get(mid).fn}">` : '');
+    if (!h) return toHtml(cardFull(c, side) || '');
+    return cfAnki(h).replace(/<img data-mid="([\w-]+)" alt="">/g, (m, mid) => files.has(mid) ? `<img src="${files.get(mid).fn}">` : '');
   };
   let id = nowMs + 1000, pos = 1, count = 0;
   db.run('BEGIN');
   for (const d of decks) for (const c of cardsOf(d.id).sort((a, b) => a.created - b.created)) {
     const nid = id++, flds = [sideField(c, 'front', d), sideField(c, 'back', d), ...[c.notes, plainSent(c.example), c.exampleTr].map(x => toHtml(x || ''))].join('\x1f');
-    insN.run([nid, ankiGuid(), mid, now, -1, '', flds, c.front, await fieldChecksum(c.front), 0, '']);
+    insN.run([nid, ankiGuid(), mid, now, -1, '', flds, cardFull(c, 'front'), await fieldChecksum(cardFull(c, 'front')), 0, '']);
     const s = ankiCardSched(c, crt, withProgress, pos++);
     insC.run([nid, nid, dids.get(d.id), 0, now, -1, s.type, s.queue, s.due, s.ivl, s.factor, s.reps, s.lapses, s.left, 0, 0, 0, '']);
     count++;
@@ -437,7 +437,7 @@ async function buildAnkiPackage(decks, withProgress) {
 }
 function csvCell(s) { s = String(s ?? ''); return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
 function deckCsv(deck, extra, header) {
-  const lines = cardsOf(deck.id).sort((a, b) => a.created - b.created).map(c => (extra ? [c.front, c.back, c.notes, plainSent(c.example), c.exampleTr] : [c.front, c.back]).map(csvCell).join(','));
+  const lines = cardsOf(deck.id).sort((a, b) => a.created - b.created).map(c => (extra ? [cardFull(c, 'front'), cardFull(c, 'back'), c.notes, plainSent(c.example), c.exampleTr] : [cardFull(c, 'front'), cardFull(c, 'back')]).map(csvCell).join(','));
   if (header) lines.unshift((extra ? ['Front', 'Back', 'Notes', 'Example', 'Example translation'] : ['Front', 'Back']).join(','));
   return '\ufeff' + lines.join('\r\n');
 }
@@ -463,7 +463,7 @@ function exportDialog(deck) {
       if (fmt === 'csv') { saveBlob(nameBase + '.csv', new Blob([deckCsv(deck, f.extra.checked, f.header.checked)], { type: 'text/csv' })); toast('Saved to Downloads'); return; }
       if (fmt === 'txt') {
         const q = s => /[\t\n"]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        const lines = cardsOf(deck.id).map(c => (f.extra.checked ? [c.front, c.back, c.notes, plainSent(c.example), c.exampleTr] : [c.front, c.back]).map(x => q(x || '')).join('\t'));
+        const lines = cardsOf(deck.id).map(c => (f.extra.checked ? [cardFull(c, 'front'), cardFull(c, 'back'), c.notes, plainSent(c.example), c.exampleTr] : [cardFull(c, 'front'), cardFull(c, 'back')]).map(x => q(x || '')).join('\t'));
         saveBlob(nameBase + '.txt', new Blob([lines.join('\n')], { type: 'text/plain' })); toast('Saved to Downloads'); return;
       }
       const withProgress = f.progress.checked;

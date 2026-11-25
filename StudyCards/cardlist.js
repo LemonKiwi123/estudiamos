@@ -6,6 +6,7 @@ const CL_SORTS = [['next', 'Next review'], ['newest', 'Newest'], ['oldest', 'Old
 const CL_FILTERS = [
   ['level', 'Learning status', [['new', 'Not studied'], ['learning', 'Learning'], ['mastered', 'Mastered']]],
   ['quick', 'Quick review', [['none', 'Not studied'], ['nq', 'Not quite'], ['got', 'Got it']]],
+  ['sel', 'Selected cards', [['on', '☑ Selected cards only']]],
   ['card', 'Card status', [['active', 'Active'], ['frozen', 'Frozen']]],
   ['dup', 'Duplicates', [['exact', 'Exact duplicates'], ['front', 'Same front'], ['back', 'Same back']]],
   ['blank', 'Blank sides', [['front', 'Front is blank'], ['back', 'Back is blank']]],
@@ -22,8 +23,10 @@ const activeCardsOf = id => S.cards.filter(c => c.deckId === id && !c.frozen);
 
 /* Remembered per deck while the app is open */
 const clPrefs = {};
-const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; p.f.blank ||= []; p.f.tr ||= []; return p; };
-const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length + (p.f.blank || []).length + (p.f.tr || []).length;
+const clPref = id => { const p = (clPrefs[id] ||= { sort: 'newest', f: { level: [], quick: [], card: [], dup: [] } }); p.f.dup ||= []; p.f.ex ||= []; p.f.blank ||= []; p.f.tr ||= []; p.f.sel ||= [];
+  if (p.f.sel.length && (bulkDeck !== id || !bulkSel.size)) p.f.sel = [];   // nothing is ticked in this deck any more: “Selected cards only” turns itself off
+  return p; };
+const clFilterCount = p => p.f.level.length + p.f.quick.length + p.f.card.length + (p.f.dup || []).length + (p.f.ex || []).length + (p.f.blank || []).length + (p.f.tr || []).length + (p.f.sel || []).length;
 
 /* ---------- Duplicates: cards in the same deck with the same front (and maybe the same back) ----------
    "exact" = same front AND same back (almost certainly an extra copy); "front" = same front, different back (maybe two meanings). */
@@ -65,6 +68,7 @@ function clMatches(c, p) {
   const f = p.f;
   if (f.level.length && !f.level.includes(cardLevel(c))) return false;
   if (f.quick.length && !f.quick.includes(c.fr || 'none')) return false;
+  if (f.sel?.length && !bulkSel.has(c.id)) return false;
   if (f.card.length && !f.card.includes(c.frozen ? 'frozen' : 'active')) return false;
   if (f.dup?.length) { const i = dupInfo(c.deckId).get(c.id); if (!i || !f.dup.some(k => k === 'back' ? i.back : i.kind === k)) return false; }
   if (f.tr?.length && !f.tr.some(k => k === 'auto' ? !!c.autoTr : typeof txIsGrammar === 'function' && (txIsGrammar(c.back) || txIsGrammar(c.front)))) return false;
@@ -116,7 +120,7 @@ function clSort(cs, sort) {
 /* The cards shown in the list, after search, filters and sort */
 function clShownCards(d, q) {
   const p = clPref(d.id);
-  return clSort(cardsOf(d.id).filter(c => (!q || norm([c.front, c.back, c.notes, c.example, c.exampleTr].join(' ')).includes(q)) && clMatches(c, p)), p.sort);
+  return clSort(cardsOf(d.id).filter(c => (!q || norm([cardFull(c, 'front'), cardFull(c, 'back'), c.notes, c.example, c.exampleTr].join(' ')).includes(q)) && clMatches(c, p)), p.sort);
 }
 
 function clHeadHtml(d) {
@@ -184,7 +188,7 @@ function clFilterDialog() {
     title: 'Filter by', ok: 'Apply',
     body: `<p class="muted small" style="margin:0">Pick as many as you like. Inside a group, a card can match any choice. Across groups, it has to match every group.</p>
       ${CL_FILTERS.map(([g, name, opts]) => `<div class="cl-group"><div class="cl-gname">${name}</div><div class="cl-opts">
-        ${opts.map(([v, l]) => `<button type="button" class="cl-opt ${draft[g].includes(v) ? 'on' : ''}" data-g="${g}" data-v="${v}" aria-pressed="${draft[g].includes(v)}">${l}<span class="muted small">${count(g, v)}</span></button>`).join('')}
+        ${opts.map(([v, l]) => `<button type="button" class="cl-opt ${draft[g].includes(v) ? 'on' : ''}" data-g="${g}" data-v="${v}" aria-pressed="${draft[g].includes(v)}"${g === 'sel' && !bulkSel.size ? ' disabled title="Tick the boxes of some cards in the list first"' : ''}>${l}<span class="muted small">${count(g, v)}</span></button>`).join('')}
       </div></div>`).join('')}
       <div><button type="button" class="btn sm" id="clResetDraft">Reset</button></div>`,
     onOpen: dlg => {
@@ -198,6 +202,11 @@ function clFilterDialog() {
     },
     onOk: () => { p.f = draft; renderCardTable(); },
   });
+}
+/* a tick changed while “Selected cards only” is on: refresh the list */
+function clSelChanged() {
+  if (view.name !== 'deck' || !clPrefs[view.deckId]?.f.sel?.length) return;
+  clPref(view.deckId); renderCardTable();
 }
 function clToggleFreeze(cards, freeze) {
   const undo = cards.map(c => [c, !!c.frozen]);
@@ -254,11 +263,12 @@ function clPreviewRender() {
     <div class="pv-row">
       <button type="button" class="pv-nav" data-act="clPvPrev" ${clPv.i ? '' : 'disabled'} title="Previous card (←)" aria-label="Previous card">${CHEV('l')}</button>
       <div class="pv-card ${c.frozen ? 'frozen' : ''}">
-        <div class="pv-side" lang="${esc(d.frontLang || '')}"><div class="rich">${sideHtml(c, 'front', d)}${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}</div>${big(c.front, d.frontLang)}</div>
+        <div class="pv-side" lang="${esc(d.frontLang || '')}"><div class="rich">${sideHtml(c, 'front', d, { full: true })}${typeof posTag === 'function' ? posTag(c, 'front', d) : ''}</div>${big(c.front, d.frontLang)}</div>
         <hr>
-        <div class="pv-side" lang="${esc(d.backLang || '')}"><div class="rich">${sideHtml(c, 'back', d)}${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${big(c.back, d.backLang)}</div>
+        <div class="pv-side" lang="${esc(d.backLang || '')}"><div class="rich">${sideHtml(c, 'back', d, { full: true })}${typeof posTag === 'function' ? posTag(c, 'back', d) : ''}</div>${big(c.back, d.backLang)}</div>
         ${c.example ? `<div class="pv-extra"><div>“${esc(plainSent(c.example))}”</div>${c.exampleTr ? `<div class="muted">${esc(c.exampleTr)}</div>` : ''}</div>` : ''}
         ${c.notes ? `<div class="pv-extra muted">${esc(c.notes).replace(/\n/g, '<br>')}</div>` : ''}
+        ${hasFocus(c.frontHtml) || hasFocus(c.backHtml) ? '<div class="pv-extra muted small">🎯 In review, only the marked text shows.</div>' : ''}
         <div class="pv-status">${c.frozen ? '<span class="pill frozen">❄️ Frozen</span>' : cardStatus(c)}</div>
       </div>
       <button type="button" class="pv-nav" data-act="clPvNext" ${clPv.i < n - 1 ? '' : 'disabled'} title="Next card (→)" aria-label="Next card">${CHEV('r')}</button>

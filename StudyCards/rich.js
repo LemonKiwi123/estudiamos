@@ -84,7 +84,7 @@ const BLOCK_TAGS = new Set(['DIV', 'P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
 const STYLE_PROPS = ['color', 'background-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-decoration-line'];
 const FONT_SIZES = ['x-small', 'small', 'medium', 'large', 'x-large', 'xx-large', 'xxx-large'];
 const REL_SIZE = { 'x-small': '0.6em', small: '0.8em', medium: '1em', large: '1.25em', 'x-large': '1.5em', 'xx-large': '2em', 'xxx-large': '2.6em' };
-function cleanHtml(html, { rich = true, pictures = true } = {}) {
+function cleanHtml(html, { rich = true, pictures = true, marks = true } = {}) {   // marks: keep the focus and alignment markers (cardfmt.js)
   const doc = new DOMParser().parseFromString('<body>' + String(html || '') + '</body>', 'text/html');
   const walk = node => {
     let s = '';
@@ -95,10 +95,12 @@ function cleanHtml(html, { rich = true, pictures = true } = {}) {
       if (t === 'IMG') { const id = n.getAttribute('data-mid'); if (pictures && id && /^[\w-]+$/.test(id)) s += `<img data-mid="${id}" alt="">`; continue; }
       if (t === 'BR') { s += '<br>'; continue; }
       if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'svg', 'SVG', 'TEMPLATE', 'HEAD', 'TITLE', 'META', 'LINK'].includes(t)) continue;
-      const inner = walk(n);
-      const block = BLOCK_TAGS.has(t) && !(rich && (t === 'LI'));
+      const inner = walk(n), list = /^(UL|OL)$/.test(t) && /^(bullet|dash|num)$/.test(n.getAttribute('data-list') || '') ? ` data-list="${n.getAttribute('data-list')}"` : '';
+      const block = (BLOCK_TAGS.has(t) || (!rich && list)) && !(rich && (t === 'LI'));
+      const focus = marks && t === 'SPAN' && n.hasAttribute('data-focus') && !n.parentElement.closest('[data-focus]') && (/<img /.test(inner) || /\S/.test(inner.replace(/<[^>]*>/g, '')));
+      if (focus && !rich) { s += `<span data-focus="1">${inner}</span>`; continue; }
       if (!rich || !KEEP_TAGS.has(t)) {
-        if (block && inner) s += (s && !s.endsWith('<br>') ? '<br>' : '') + inner;
+        if (block && inner) s += (s && !/(<br>|<\/[uo]l>)$/.test(s) && !/^<[uo]l[ >]/.test(inner) ? '<br>' : '') + inner + (list ? '<br>' : '');
         else s += inner;
         continue;
       }
@@ -119,24 +121,26 @@ function cleanHtml(html, { rich = true, pictures = true } = {}) {
         if (tag === 'strike') st.push('text-decoration-line:line-through');
         tag = 'span';
       }
-      if (tag === 'span' && !st.length) { s += inner; continue; }
+      if (tag === 'span' && !st.length && !focus) { s += inner; continue; }
       if (!inner && tag !== 'li') continue;
-      s += `<${tag}${st.length ? ` style="${esc(st.join(';'))}"` : ''}>${inner}</${tag}>`;
+      s += `<${tag}${focus ? ' data-focus="1"' : ''}${list}${st.length ? ` style="${esc(st.join(';'))}"` : ''}>${inner}</${tag}>`;
     }
     return s;
   };
-  return walk(doc.body).replace(/^(<br>)+|(<br>)+$/g, '').trim();
+  const out = walk(doc.body).replace(/^(<br>)+|(<br>)+$/g, '').trim(), al = marks && rich && doc.body.querySelector(':scope > div[data-align]')?.dataset.align;
+  return al === 'left' || al === 'right' ? cfWrap(out, al) : out;
 }
 const isPlainHtml = h => !/<(?!br>)/i.test(h);
 const hasContent = f => !!(f.text || /<img /.test(f.html));
 const withMedia = h => h.replace(/<img data-mid="([\w-]+)"/g, (m, id) => `<img data-mid="${id}" src="${mediaURL.get(id) || ''}"`);
 const deckRich = d => d?.rich !== false, deckPics = d => d?.pictures !== false;
-/* Display HTML for one side of a card, honouring the deck's formatting / pictures switches. */
-function sideHtml(card, side, deck) {
-  const h = card[side + 'Html'];
-  if (h && (deckRich(deck) || deckPics(deck))) {
+/* Display HTML for one side of a card, honouring the deck's formatting / pictures switches.
+   With focused text only that part is shown, as in review; { full: true } = the whole side (editor, card list, preview). */
+function sideHtml(card, side, deck, { full = false } = {}) {
+  const h = card[side + 'Html'], foc = hasFocus(h);
+  if (h && (deckRich(deck) || deckPics(deck) || foc)) {
     const c = cleanHtml(h, { rich: deckRich(deck), pictures: deckPics(deck) });
-    if (c) return withMedia(c);
+    if (c) return withMedia(alignShow(foc && !full ? focusHtml(c) : c));
   }
   return esc(card[side] || '').replace(/\n/g, '<br>');
 }
@@ -177,7 +181,7 @@ function deckFeatureFields(d) {
   return `
     <div class="grid2">
       <div class="feat"><h4>Card features</h4>
-        ${chk('rich', deckRich(d), 'Formatting toolbar', 'Bold, italic, underline, colors, highlight, fonts and sizes')}
+        ${chk('rich', deckRich(d), 'Formatting toolbar', 'Bold, italic, underline, colors, highlight, fonts, sizes, capitals, lists, left / center / right and focus select')}
         ${chk('pictures', deckPics(d), 'Pictures', 'Add pictures from a file, by pasting, or by dragging them in')}
         ${chk('autoEx', !!d.autoExamples, 'Example sentences for the whole deck', 'Every card without a sentence (and every new card) gets a real sentence + translation from Tatoeba, ready for “Finish the sentence”. Needs internet; only the word is sent. You can still type or edit sentences yourself.')}
         ${chk('posTags', !!d.posTags, 'Word labels (part of speech)', 'A little label like “noun” or “verb” on each card side with one or two words. Looked up on Wiktionary; needs internet and only the word is sent. You can also turn it on or off for just some cards from the selection bar.')}
@@ -243,7 +247,8 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
     return `<div class="inp-wrap" style="margin-top:5px"><textarea id="${id}" rows="2" placeholder="${esc(placeholder)}" lang="${esc(lang)}">${esc(text)}</textarea><button type="button" class="icon-btn scan-btn" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>${typeof txCanDeck === 'function' && lang && txCanDeck(deck) ? `<button type="button" class="icon-btn scan-btn" data-act="edTranslate" data-ed="${id}" title="Translate into the other side">🌐</button>` : ''}${canSpeak ? `<button type="button" class="icon-btn speak" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>` : ''}</div>`;
   }
   const tb = (cmd, label, title) => `<button type="button" class="tool" data-act="fmt" data-ed="${id}" data-cmd="${cmd}" title="${title}">${label}</button>`;
-  const tools = [];
+  const tools = [], al = /^<div class="al al-(left|right)">([\s\S]*)<\/div>$/.exec(html) || [];
+  if (al[1]) html = al[2];
   if (rich) tools.push(
     tb('bold', '<b>B</b>', 'Bold (Ctrl+B)'), tb('italic', '<i>I</i>', 'Italic (Ctrl+I)'), tb('underline', '<u>U</u>', 'Underline (Ctrl+U)'), tb('strikeThrough', '<s>S</s>', 'Strikethrough'),
     `<button type="button" class="tool" data-act="palette" data-ed="${id}" data-cmd="foreColor" title="Text color"><span style="border-bottom:3px solid #cf6b6b;line-height:1.1">A</span><span class="caret">▾</span></button>`,
@@ -252,22 +257,24 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
     `<select class="tool-sel" data-ed="${id}" data-cmd="fontSize" title="Text size">${EDITOR_SIZES.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>`,
     `<button type="button" class="tool dock-only" data-act="edMenu" data-ed="${id}" data-cmd="fontName" title="Font">Font<span class="caret">▾</span></button>`,
     `<button type="button" class="tool dock-only" data-act="edMenu" data-ed="${id}" data-cmd="fontSize" title="Text size">Size<span class="caret">▾</span></button>`,
-    tb('removeFormat', 'Tx', 'Clear formatting').replace('class="tool"', 'class="tool clear"'));
+    tb('removeFormat', 'Tx', 'Clear formatting').replace('class="tool"', 'class="tool clear"'),
+    ...cfTools(id, al[1]));   // case, lists, alignment, focus (cardfmt.js)
   if (pics) tools.push(`<button type="button" class="tool" data-act="edPic" data-ed="${id}" title="Add a picture (you can also paste or drag one in)">🖼️</button>`);
   if (pics) tools.push(`<button type="button" class="tool" data-act="edWebPic" data-ed="${id}" title="Find a free picture online (Creative Commons)">🔎</button>`);
   tools.push(`<button type="button" class="tool" data-act="edScan" data-ed="${id}" title="Scan text from a photo">📷</button>`);
   if (typeof txCanDeck === 'function' && lang && txCanDeck(deck)) tools.push(`<button type="button" class="tool" data-act="edTranslate" data-ed="${id}" title="Translate into the other side">🌐</button>`);
   if (canSpeak) tools.push(`<span class="tool-sp"></span><button type="button" class="tool" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>`);
   return `<div class="editor"><div class="ed-tools">${tools.join('')}</div><div class="ed-area" id="${id}" contenteditable="true" role="textbox" aria-multiline="true"
-    data-rich="${rich ? 1 : 0}" data-pics="${pics ? 1 : 0}" data-placeholder="${esc(placeholder)}" lang="${esc(lang)}">${html}</div></div>`;
+    data-rich="${rich ? 1 : 0}"${al[1] ? ` data-align="${al[1]}"` : ''} data-pics="${pics ? 1 : 0}" data-placeholder="${esc(placeholder)}" lang="${esc(lang)}">${html}</div>${cfFocusBar(id)}</div>`;
 }
 function readEditor(id) {
   const el = document.getElementById(id); if (!el) return { text: '', html: '' };
   if (!el.isContentEditable) return { text: el.value.trim(), html: '' };
-  const html = cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' });
-  return { text: htmlToText(html), html: isPlainHtml(html) ? '' : html };
+  const inner = cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' });
+  const html = el.dataset.rich === '1' ? cfWrap(cfAlign(inner) ? CF_ALIGN.exec(inner)[2] : inner, el.dataset.align) : inner;
+  return { text: sideText(html), html: isPlainHtml(html) ? '' : html };
 }
-function clearEditor(id) { const el = document.getElementById(id); if (!el) return; if (el.isContentEditable) el.innerHTML = ''; else el.value = ''; }
+function clearEditor(id) { const el = document.getElementById(id); if (!el) return; if (el.isContentEditable) { el.innerHTML = ''; cfSetAlign(id); } else el.value = ''; }
 
 let edRange = null, edId = null;
 document.addEventListener('selectionchange', () => {
@@ -318,7 +325,7 @@ document.addEventListener('paste', e => {
   const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
   if (files.length) { if (ed.dataset.pics === '1') files.forEach(f => insertPicture(ed.id, f)); else toast('Pictures are turned off for this deck'); return; }
   const h = e.clipboardData.getData('text/html');
-  if (h && ed.dataset.rich === '1') { const c = cleanHtml(h, { rich: true, pictures: false }); if (c) { document.execCommand('insertHTML', false, c); return; } }
+  if (h && ed.dataset.rich === '1') { const c = cleanHtml(h, { rich: true, pictures: false, marks: false }); if (c) { document.execCommand('insertHTML', false, c); return; } }
   document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
 });
 document.addEventListener('dragover', e => { if (e.target.closest?.('.ed-area')) e.preventDefault(); });
