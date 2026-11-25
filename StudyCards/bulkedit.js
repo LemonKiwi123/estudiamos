@@ -120,8 +120,8 @@ function stripPlan(cards, fields, kinds) {
   return out;
 }
 /* Clear formatting: bold, italics, colors, highlights, sizes and fonts go; the words, line breaks and pictures stay */
-const fmtHas = html => !!html && /<(?!\/|br\b|img\b|span data-focus="1">)/i.test(html);   // a focus mark isn't formatting
-function fmtClear(c, f) { const h = cleanHtml(c[f + 'Html'], { rich: false, pictures: true }); if (/<img\b/i.test(h) || hasFocus(h)) c[f + 'Html'] = h; else delete c[f + 'Html']; }
+const fmtHas = html => !!html && /<(?!\/|br\b|img\b|span data-focus="[12]">)/i.test(html);   // a focus mark isn't formatting
+function fmtClear(c, f) { const h = cleanHtml(c[f + 'Html'], { rich: false, pictures: true }); if (/<img\b/i.test(h) || hasMark(h)) c[f + 'Html'] = h; else delete c[f + 'Html']; }
 function openBulkStrip() {
   const d = deckById(view.deckId), cards = cardsOf(d.id).filter(c => bulkSel.has(c.id));
   if (!cards.length) return toast('Select some cards first');

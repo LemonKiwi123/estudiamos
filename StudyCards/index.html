@@ -1118,8 +1118,8 @@ ul[data-list=bullet]{list-style-type:disc} ul[data-list=dash]{list-style-type:'â
 .ed-area{text-align:center}.ed-area[data-align=left]{text-align:left}.ed-area[data-align=right]{text-align:right}
 .ed-tools .tool:is([data-act=edList],[data-act=edAlign]) svg{color:var(--text)} .ed-tools .tool.cf-on{background:var(--accent-soft)} .ed-tools .tool[data-act=edCase]{font-size:13px;font-weight:600}
 [data-focus]{background:color-mix(in srgb,var(--accent) 20%,transparent);border-bottom:2px solid var(--accent);border-radius:3px}
-.pv-side .rich:has([data-focus]){color:var(--muted)} .pv-side [data-focus]{color:var(--text)}
-.ed-focus{display:none;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:400;color:var(--muted)} .editor:has(.ed-area [data-focus])>.ed-focus{display:flex}
+.pv-side .rich:has([data-focus="1"]){color:var(--muted)} .pv-side [data-focus]{color:var(--text)}
+.ed-focus{display:none;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px;font-weight:400;color:var(--muted)} .ed-focus .seg-mini{flex-wrap:wrap} .ed-focus .seg-mini button{font-size:12.5px;text-align:left} .ed-focus .seg-mini button.on{background:var(--accent-soft)} .editor:has(.ed-area [data-focus])>.ed-focus{display:flex}
 .flash .word img,.flash .side img{display:block;max-width:100%;max-height:280px;margin:8px auto;border-radius:12px}
 .rich img{max-height:48px;max-width:90px;border-radius:6px;vertical-align:middle}
 .mtile img{display:block;max-height:80px;max-width:100%;margin:0 auto;border-radius:8px}
@@ -3470,7 +3470,7 @@ const actions = {
   speak: el => speak(el.dataset.text, el.dataset.lang),
   speakField: el => {
     const f = document.getElementById(el.dataset.field);
-    const t = (f ? (f.isContentEditable ? f.innerText : f.value) : '').trim();
+    const t = (f ? (f.isContentEditable ? (f.querySelector('[data-focus]') && cfSpoken(cleanHtml(f.innerHTML))) || f.innerText : f.value) : '').trim();
     if (t) speak(t, el.dataset.lang); else toast('Type something first');
   },
   study: el => startStudy(el.dataset.id),

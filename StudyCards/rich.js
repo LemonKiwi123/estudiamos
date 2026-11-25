@@ -98,7 +98,8 @@ function cleanHtml(html, { rich = true, pictures = true, marks = true } = {}) { 
       const inner = walk(n), list = /^(UL|OL)$/.test(t) && /^(bullet|dash|num)$/.test(n.getAttribute('data-list') || '') ? ` data-list="${n.getAttribute('data-list')}"` : '';
       const block = (BLOCK_TAGS.has(t) || (!rich && list)) && !(rich && (t === 'LI'));
       const focus = marks && t === 'SPAN' && n.hasAttribute('data-focus') && !n.parentElement.closest('[data-focus]') && (/<img /.test(inner) || /\S/.test(inner.replace(/<[^>]*>/g, '')));
-      if (focus && !rich) { s += `<span data-focus="1">${inner}</span>`; continue; }
+      const fv = focus && (n.getAttribute('data-focus') === '2' ? '2' : '1');
+      if (focus && !rich) { s += `<span data-focus="${fv}">${inner}</span>`; continue; }
       if (!rich || !KEEP_TAGS.has(t)) {
         if (block && inner) s += (s && !/(<br>|<\/[uo]l>)$/.test(s) && !/^<[uo]l[ >]/.test(inner) ? '<br>' : '') + inner + (list ? '<br>' : '');
         else s += inner;
@@ -123,7 +124,7 @@ function cleanHtml(html, { rich = true, pictures = true, marks = true } = {}) { 
       }
       if (tag === 'span' && !st.length && !focus) { s += inner; continue; }
       if (!inner && tag !== 'li') continue;
-      s += `<${tag}${focus ? ' data-focus="1"' : ''}${list}${st.length ? ` style="${esc(st.join(';'))}"` : ''}>${inner}</${tag}>`;
+      s += `<${tag}${focus ? ` data-focus="${fv}"` : ''}${list}${st.length ? ` style="${esc(st.join(';'))}"` : ''}>${inner}</${tag}>`;
     }
     return s;
   };
@@ -140,7 +141,7 @@ function sideHtml(card, side, deck, { full = false } = {}) {
   const h = card[side + 'Html'], foc = hasFocus(h);
   if (h && (deckRich(deck) || deckPics(deck) || foc)) {
     const c = cleanHtml(h, { rich: deckRich(deck), pictures: deckPics(deck) });
-    if (c) return withMedia(alignShow(foc && !full ? focusHtml(c) : c));
+    if (c) return withMedia(alignShow(full ? c : foc ? focusHtml(c) : c.replace(/<span data-focus="2"/g, '<span')));
   }
   return esc(card[side] || '').replace(/\n/g, '<br>');
 }
@@ -265,12 +266,12 @@ function editorHtml(id, deck, { html = '', text = '', lang = '', placeholder = '
   if (typeof txCanDeck === 'function' && lang && txCanDeck(deck)) tools.push(`<button type="button" class="tool" data-act="edTranslate" data-ed="${id}" title="Translate into the other side">🌐</button>`);
   if (canSpeak) tools.push(`<span class="tool-sp"></span><button type="button" class="tool" data-act="speakField" data-field="${id}" data-lang="${esc(lang)}" title="Hear it">${ICON.speak}</button>`);
   return `<div class="editor"><div class="ed-tools">${tools.join('')}</div><div class="ed-area" id="${id}" contenteditable="true" role="textbox" aria-multiline="true"
-    data-rich="${rich ? 1 : 0}"${al[1] ? ` data-align="${al[1]}"` : ''} data-pics="${pics ? 1 : 0}" data-placeholder="${esc(placeholder)}" lang="${esc(lang)}">${html}</div>${cfFocusBar(id)}</div>`;
+    data-rich="${rich ? 1 : 0}" data-fmode="${cfMode(html)}"${al[1] ? ` data-align="${al[1]}"` : ''} data-pics="${pics ? 1 : 0}" data-placeholder="${esc(placeholder)}" lang="${esc(lang)}">${html}</div>${cfFocusBar(id, cfMode(html))}</div>`;
 }
 function readEditor(id) {
   const el = document.getElementById(id); if (!el) return { text: '', html: '' };
   if (!el.isContentEditable) return { text: el.value.trim(), html: '' };
-  const inner = cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' });
+  const inner = cleanHtml(el.innerHTML, { rich: el.dataset.rich === '1', pictures: el.dataset.pics === '1' }).replace(/<span data-focus="[12]"/g, `<span data-focus="${el.dataset.fmode === '2' ? 2 : 1}"`);
   const html = el.dataset.rich === '1' ? cfWrap(cfAlign(inner) ? CF_ALIGN.exec(inner)[2] : inner, el.dataset.align) : inner;
   return { text: sideText(html), html: isPlainHtml(html) ? '' : html };
 }

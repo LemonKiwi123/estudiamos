@@ -4,8 +4,10 @@
    - lists:      <ul data-list="bullet|dash"> or <ol data-list="num">   (older lists have no data-list and look as they always did)
    - alignment:  the whole side sits in <div data-align="left|right">   (no div = centered)
    - focus:      <span data-focus="1">…</span> around the focused text. card.front / card.back then hold ONLY the focused text,
-                 so review, read-aloud, typed answers, quizzes and games all use it. The whole text stays in the HTML. */
+                 so review, read-aloud, typed answers, quizzes and games all use it. The whole text stays in the HTML.
+                 data-focus="2" = sound only: the whole side shows everywhere (card.front / card.back hold it all), and only the marked text is read aloud. */
 const hasFocus = h => /<span data-focus="1"/.test(h || '');
+const hasMark = h => /<span data-focus="[12]"/.test(h || ''), hasSound = h => /<span data-focus="2"/.test(h || '');
 const CF_ALIGN = /^<div data-align="(left|right)">([\s\S]*)<\/div>$/;
 const cfAlign = h => (CF_ALIGN.exec(h || '') || [])[1] || '';
 const cfWrap = (h, align) => h && align ? `<div data-align="${align}">${h}</div>` : h;
@@ -13,8 +15,8 @@ const cfBody = h => new DOMParser().parseFromString(`<body>${h}</body>`, 'text/h
 /* for showing a side: the saved marker becomes a class that only the big card views use (see .al in index.html) */
 const alignShow = h => { const m = CF_ALIGN.exec(h); return m ? `<div class="al al-${m[1]}">${m[2]}</div>` : h; };
 /* only the focused parts of a side, as HTML (the same HTML when nothing is focused) */
-function focusHtml(h) {
-  if (!hasFocus(h)) return h;
+function focusHtml(h, sound) {   // sound: also the marks that are only for reading aloud
+  if (!(sound ? hasMark(h) : hasFocus(h))) return h;
   const GAP = '\u0001', m = CF_ALIGN.exec(h), box = cfBody(m ? m[2] : h);
   for (const n of cfLeaves(box)) if (!n.parentElement.closest('[data-focus]')) n.replaceWith(GAP);
   const blank = el => !el.querySelector('[data-focus]') && !el.closest('[data-focus]');
@@ -25,9 +27,23 @@ function focusHtml(h) {
     .replace(/(<(?:ul|ol)[^>]*>)\s+/g, '$1').replace(/(?:<br>|\s)+(<(?:ul|ol)\b)/g, '$1').replace(/(<\/(?:ul|ol)>)(?:<br>|\s)+/g, '$1').replace(/^(?:<br>|\s)+|(?:<br>|\s)+$/g, '');
   return cfWrap(out, m?.[1]);
 }
+const cfSpoken = html => htmlToText(focusHtml(html, true));
 const sideText = html => htmlToText(focusHtml(html));
 /* the whole text of a side, also the part outside the focus (for the editor, search and text exports) */
 const cardFull = (c, side) => hasFocus(c[side + 'Html']) ? htmlToText(c[side + 'Html']) : c[side];
+/* Sound-only focus: wherever a card's text is read aloud (study, quick review, quizzes, games), say only its marked part */
+function cfSayText(text, lang) {
+  const key = t => String(t || '').replace(/\s+/g, ' ').trim(), k = key(text); if (!k) return text;
+  let hit = '';
+  for (const c of S.cards || []) for (const side of ['front', 'back']) {
+    const h = c[side + 'Html']; if (!hasSound(h) || key(c[side]) !== k || deckById(c.deckId)?.[side + 'Lang'] !== lang) continue;
+    const t = cfSpoken(h); if (!t) continue;
+    if (c.deckId === currentDeckId()) return t;
+    hit ||= t;
+  }
+  return hit || text;
+}
+document.addEventListener('DOMContentLoaded', () => { const say = speak; speak = (text, lang, ...more) => say(cfSayText(text, lang), lang, ...more); });   // after every file has loaded, so this comes first (latin.js also changes speak)
 /* put new review text on a side (translations): with a focus only the focused text is replaced; the alignment is kept */
 function cfSetText(c, side, t) {
   const k = side + 'Html', h = c[k], a = cfAlign(h), html = esc(t).replace(/\n/g, '<br>'); c[side] = t;
@@ -57,9 +73,11 @@ function cfTools(id, align) {
   return [b('edCase', 'up', 'AA', 'UPPER CASE: make the selected letters capitals'), b('edCase', 'low', 'aa', 'lower case: make the selected letters small'),
     b('edList', 'bullet', CF_LIST_ICONS.bullet, 'Bulleted list'), b('edList', 'dash', CF_LIST_ICONS.dash, 'List with dashes'), b('edList', 'num', CF_LIST_ICONS.num, 'Numbered list'),
     ...['left', 'center', 'right'].map(a => b('edAlign', a, CF_SVG(`<path d="${CF_LINES[a]}"/>`), a === 'center' ? 'Center the text on this side (normal)' : `Move the text on this side to the ${a}`, (align || 'center') === a)),
-    b('edFocus', '', '🎯', 'Focus select: only the selected text shows in review. The rest stays on the card.')];
+    b('edFocus', '', '🎯', 'Focus select: in review, show or read aloud only the selected text. The rest stays on the card.')];
 }
-const cfFocusBar = id => `<div class="ed-focus"><span>🎯 In review, only the marked text shows.</span><button type="button" class="btn sm" data-act="edFocusReset" data-ed="${id}" title="Show all the text of this side in review again">Reset focus</button></div>`;
+const CF_MODES = [['1', '🎯 Show only the marked text', 'In review, only the marked text shows and is read aloud'], ['2', '🔊 Show all, read only the marked text', 'In review, all the text shows, but only the marked text is read aloud']];
+const cfMode = html => hasSound(html) ? '2' : hasFocus(html) ? '1' : S.settings?.focusMode === '2' ? '2' : '1';   // a new focus starts with the choice you made last
+const cfFocusBar = (id, mode) => `<div class="ed-focus"><span>In review:</span><div class="seg-mini" role="group" aria-label="In review">${CF_MODES.map(([v, l, t]) => `<button type="button" class="${v === mode ? 'on' : ''}" data-act="edFocusMode" data-ed="${id}" data-v="${v}" title="${t}" aria-pressed="${v === mode}">${l}</button>`).join('')}</div><button type="button" class="btn sm" data-act="edFocusReset" data-ed="${id}" title="Show all the text of this side in review again">Reset focus</button></div>`;
 function cfSetAlign(id, a) {
   const ed = document.getElementById(id); if (!ed) return;
   if (a === 'left' || a === 'right') ed.dataset.align = a; else { a = 'center'; delete ed.dataset.align; }
@@ -148,5 +166,10 @@ Object.assign(actions, {
   edList: el => cfList(el.dataset.ed, el.dataset.v),
   edAlign: el => cfSetAlign(el.dataset.ed, el.dataset.v),
   edFocus: el => cfFocus(el.dataset.ed),
-  edFocusReset: el => { cfEdit(el.dataset.ed, root => { cfUnmark(root); }, false); toast('Focus reset: all the text shows in review again'); },
+  edFocusMode: el => {
+    const ed = document.getElementById(el.dataset.ed), v = el.dataset.v; if (!ed) return;
+    ed.dataset.fmode = v; S.settings.focusMode = v; save();
+    el.parentNode.querySelectorAll('button').forEach(b => { b.classList.toggle('on', b === el); b.setAttribute('aria-pressed', b === el); });
+  },
+  edFocusReset: el => { cfEdit(el.dataset.ed, root => { cfUnmark(root); }, false); toast('Focus reset: all the text shows and is read aloud again'); },
 });
