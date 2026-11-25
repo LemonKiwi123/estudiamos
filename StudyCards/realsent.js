@@ -9,6 +9,7 @@
    Sentences that use your deck's words come up more often. */
 const RS_LANGS = { es: 'Spanish', fr: 'French', ja: 'Japanese' };
 const RS_DATA = {};   // lang -> { items, lower: Set of words seen in lowercase }
+const RS_NOSPACE = new Set(['ja']), RS_SPLIT = {}, RS_POS_BY = {};   // languages written without spaces (other files add theirs), how to split them into words, and their word types
 let rs = null;
 async function rsLoad(lang) {
   if (RS_DATA[lang]) return RS_DATA[lang];
@@ -19,12 +20,12 @@ async function rsLoad(lang) {
 }
 /* the words of a sentence, without the opening ¿¡ and the closing . ? ! (those are shown for you) */
 function rsTokens(text, lang) {
-  if (lang === 'ja') return String(text).replace(/[。．！？!?]+$/, '').split('|').filter(Boolean);
+  if (RS_NOSPACE.has(lang)) return String(text).replace(/[。．！？!?]+$/, '').split('|').filter(Boolean);
   return String(text).trim().replace(/^[¿¡\s]+/, '').replace(/[\s.!?…»"]+$/, '').split(/\s+/).filter(Boolean);
 }
-const rsEnd = (text, lang) => lang === 'ja' ? (/[。！？]$/.exec(text)?.[0] || '。') : (/[.!?…]+$/.exec(String(text).trim())?.[0] || '.');
-const rsPlain = (text, lang) => lang === 'ja' ? String(text).replace(/\|/g, '') : String(text).trim();
-const rsKey = (w, lang) => (lang === 'ja' ? w : w.toLowerCase()).replace(/[^\p{L}\p{N}'’-]/gu, '');
+const rsEnd = (text, lang) => RS_NOSPACE.has(lang) ? (/[。！？]$/.exec(text)?.[0] || '。') : (/[.!?…]+$/.exec(String(text).trim())?.[0] || '.');
+const rsPlain = (text, lang) => RS_NOSPACE.has(lang) ? String(text).replace(/\|/g, '') : String(text).trim();
+const rsKey = (w, lang) => (RS_NOSPACE.has(lang) ? w : w.toLowerCase()).replace(/[^\p{L}\p{N}'’-]/gu, '');
 /* your deck's cards that have an example sentence in this language (and its English) */
 /* Japanese has no spaces: split a sentence into words using the words of the Japanese sentence set (longest match first) */
 let RS_JA_VOCAB = null;
@@ -52,7 +53,7 @@ function rsFromCards(deckId, lang) {
     for (const c of cardsOf(d.id)) {
       const ex = typeof plainSent === 'function' ? plainSent(c.example || '').trim() : String(c.example || '').trim(), tr = typeof plainSent === 'function' ? plainSent(c.exampleTr || '').trim() : String(c.exampleTr || '').trim();
       if (!ex || !tr) continue;
-      const text = lang === 'ja' ? rsSplitJa(ex).join('|') + (/[。！？]$/.test(ex) ? ex.slice(-1) : '。') : ex;
+      const text = RS_NOSPACE.has(lang) ? (RS_SPLIT[lang] || rsSplitJa)(ex).join('|') + (/[。！？]$/.test(ex) ? ex.slice(-1) : '。') : ex;
       const n = rsTokens(text, lang).length;
       if (n >= 2 && n <= 14) out.push({ id: 'card:' + c.id, text, en: tr, src: c.exampleSrc ? `${c.exampleSrc} (tatoeba.org, CC BY 2.0 FR)` : `From your card in “${d.name}”`, mine: true });
     }
@@ -94,13 +95,13 @@ function rsPick() {
   for (let t = 0; t < 40; t++) {
     const it = pool[Math.floor(Math.random() * pool.length)];
     if (!best) best = it;
-    if (rs.pref.size && rsTokens(it[1], rs.lang).some(w => rs.pref.has(rsKey(w, rs.lang)) || (rs.lang === 'ja' && [...rs.pref].some(p => p.length > 1 && w.includes(p))))) { best = it; break; }
+    if (rs.pref.size && rsTokens(it[1], rs.lang).some(w => rs.pref.has(rsKey(w, rs.lang)) || (RS_NOSPACE.has(rs.lang) && [...rs.pref].some(p => p.length > 1 && w.includes(p))))) { best = it; break; }
   }
   return { id: best[0], text: best[1], en: best[2], level: best[3],
     src: String(best[0]).startsWith('z') ? D.credit.zenodo : `Tatoeba #${best[0]} (tatoeba.org, CC BY 2.0 FR)` };
 }
 /* 🎯 Practice: pick word types. The other words of the sentence are put in place (locked); you place only the picked kinds. */
-const RS_POS = lang => lang === 'ja' ? ['noun', 'verb', 'adj', 'adv', 'pron', 'det', 'part', 'conj'] : ['noun', 'verb', 'adj', 'adv', 'pron', 'det', 'prep', 'conj'];
+const RS_POS = lang => RS_POS_BY[lang] || (lang === 'ja' ? ['noun', 'verb', 'adj', 'adv', 'pron', 'det', 'part', 'conj'] : ['noun', 'verb', 'adj', 'adv', 'pron', 'det', 'prep', 'conj']);
 const rsPosSel = () => { const v = S.settings.rsPos; const ok = Array.isArray(v) ? v.filter(k => RS_POS(rs?.lang).includes(k)) : []; return ok.length && ok.length < RS_POS(rs?.lang).length ? ok : null; };
 function rsRound() {
   const D = RS_DATA[rs.lang], focus = rsPosSel();
@@ -142,7 +143,7 @@ function rsDecoys(blanks, words) {
   const lang = rs.lang, pool = rsPool(lang), taken = new Set(words.map(w => rsKey(w, lang))), out = [];
   // how many wrong words: ⭐ Easier 2–3, ⭐⭐ Medium (and Any length) 5–6, ⭐⭐⭐ Harder 10–11
   const [lo, hi] = rsDecoyRange(), want = lo + Math.floor(Math.random() * (hi - lo + 1));
-  const stem = w => lang === 'ja' ? w.slice(0, 1) : rsKey(w, lang).slice(0, Math.min(4, Math.max(3, rsKey(w, lang).length - 2)));
+  const stem = w => RS_NOSPACE.has(lang) ? w.slice(0, 1) : rsKey(w, lang).slice(0, Math.min(4, Math.max(3, rsKey(w, lang).length - 2)));
   for (let n = 0; out.length < want && n < want * 6; n++) {
     const b = blanks[n % blanks.length], list = pool[b.type] || []; if (!list.length) continue;
     const close = list.filter(w => !taken.has(rsKey(w, lang)) && rsKey(w, lang) !== rsKey(b.w, lang) && stem(w) === stem(b.w));
@@ -308,10 +309,10 @@ Object.assign(actions, {
       if (rs.frame && wrong.length > 1) {   // 🎯 Practice: take away half of the wrong words
         const out = shuffle(wrong.slice()).slice(0, Math.ceil(wrong.length / 2)); out.forEach(t => { t.gone = true; });
         rs.msg = `💡 Took away ${out.length} wrong word${out.length > 1 ? 's' : ''}. Tap 💡 again for another clue.`;
-      } else if (rs.hintStep === 2) rs.msg = `💡 ${spot} is short: just ${[...c.w].length} ${rs.lang === 'ja' ? 'character' : 'letter'}${[...c.w].length > 1 ? 's' : ''}. Tap 💡 again for another clue.`;
+      } else if (rs.hintStep === 2) rs.msg = `💡 ${spot} is short: just ${[...c.w].length} ${RS_NOSPACE.has(rs.lang) ? 'character' : 'letter'}${[...c.w].length > 1 ? 's' : ''}. Tap 💡 again for another clue.`;
       else rs.msg = `💡 ${spot} is a${/^[aeiou]/.test(kind) ? 'n' : ''} <b>${esc(kind)}</b>. Tap 💡 again for another clue.`;
     } else if (rs.hintStep === 2) {
-      const w = c.w, ja = rs.lang === 'ja', n = [...w].length;
+      const w = c.w, ja = RS_NOSPACE.has(rs.lang), n = [...w].length;
       rs.msg = `💡 ${spot} starts with “<b lang="${rs.lang}">${esc([...w][0])}</b>…” and has ${n} ${ja ? 'character' : 'letter'}${n > 1 ? 's' : ''}. Tap 💡 again for another clue.`;
     } else {
       // the same three words every time you ask (new ones each time would give it away)

@@ -620,7 +620,7 @@ function bldRound() {
   Object.assign(bld, { heatShown: 0, gap: null, tray, line: [], example: g.words, english: g.english, msg: null, bad: -1, fails: 0, done: false, hint: -1, showEx: false });
 }
 // French l' and j' join the next word with no space
-const bldSentence = (words, lang) => { if (BLD_LANGS[lang]?.text) return BLD_LANGS[lang].text(words); if (BLD_LANGS[lang]?.join) return BLD_LANGS[lang].join(words); if (BLD_LANGS[lang]?.noSpaces) return words.map(w => w.w).join('') + '。'; const s = words.reduce((t, w, i) => i && !/'$/.test(words[i - 1].w) ? t + ' ' + w.w : t + w.w, ''); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
+const bldSentence = (words, lang) => { if (BLD_LANGS[lang]?.text) return BLD_LANGS[lang].text(words); if (BLD_LANGS[lang]?.join) return BLD_LANGS[lang].join(words); if (BLD_LANGS[lang]?.noSpaces) return words.map(w => w.w).join('') + (BLD_LANGS[lang].end?.(words) || '。'); const s = words.reduce((t, w, i) => i && !/'$/.test(words[i - 1].w) ? t + ' ' + w.w : t + w.w, ''); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
 const bldGloss = c => c.gloss || (bld.lang === 'es' || bld.lang === 'fr' ? (c.k === 'verb' ? 'to ' + c.e[5] : c.en) : (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[2] : c.k === 'verb' ? c.e[5] : '')) || (c.e && (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[4] : ''))
   || ({ el: 'the', la: 'the', los: 'the', las: 'the', un: 'a', una: 'a', unos: 'some', unas: 'some', no: 'not', en: 'in', a: '(to)', al: '(to the)' })[c.w] || '';
 
@@ -799,7 +799,7 @@ function bldCandidates(deckId) {
     const toVerb = /^to\s/.test(enRaw), en = enRaw.replace(/^(to|the|a|an|some)\s+/, '').trim();
     if (!en || !/^[a-z][a-z' -]*$/.test(en) || en.split(' ').length > (toVerb ? 4 : 2)) continue;   // "to take a shower", "to go for a walk" are fine for a verb
     const m = L.parse(es), w = m?.w;
-    if (!w || w.length < (sides[2] === 'ja' ? 1 : 2) || seen.has(w) || L.known(w)) continue;   // one kanji (犬) is a whole word
+    if (!w || w.length < (L.minLen || (sides[2] === 'ja' ? 1 : 2)) || seen.has(w) || L.known(w)) continue;   // one kanji (犬) is a whole word
     seen.add(w);
     let k = '', g = m.g || L.gender(w);
     // the deck's word labels (noun, verb, adjective…) come first; otherwise guess from "el/la" and "to …"
@@ -807,6 +807,7 @@ function bldCandidates(deckId) {
     const isVerb = L.isVerb(w);   // levantar / levantarse, parler / se laver
     if (lab && (lab !== 'verb' || isVerb)) k = lab;
     else if (m.art) k = 'noun'; else if (toVerb && isVerb) k = 'verb';
+    else if (L.guess && !toVerb) k = L.guess(w, en);
     else if (sides[2] === 'ja' && !toVerb) k = /い$/.test(w) ? 'adj' : 'noun';   // Japanese has no articles: most single words are nouns, and many ending in い are adjectives
     out.push({ w, en, k, g, verbOK: isVerb, fromLabel: !!lab && k === lab, lang: sides[2], read: m.read || null });
   }
