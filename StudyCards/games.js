@@ -78,7 +78,7 @@ let game = null;
 const GAMES = {
   match: { emoji: '🧩', title: 'Match words', desc: 'Tap a word, then tap its meaning. Clear the board as fast as you can.' },
   sentence: { emoji: '✏️', title: 'Finish the sentence', desc: 'Pick the missing word in an example sentence.' },
-  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Put real sentences, written by people, back together word by word. Each word shows what kind of word it is and what it means, a hot/cold meter shows how close you are, and 🎯 Practice lets you fill in just the nouns, verbs or other kinds of words. Spanish, French, Japanese, Italian and Romanian.' },
+  builder: { emoji: '🧩', title: 'Sentence Builder', desc: 'Put real sentences, written by people, back together word by word. Each word shows what kind of word it is and what it means, a hot/cold meter shows how close you are, and 🎯 Practice lets you fill in just the nouns, verbs or other kinds of words. Spanish, French, Japanese, Italian, Romanian and Esperanto.' },
   speak: { emoji: '🎙️', title: 'Say it!', desc: 'See what a word means, then say it out loud. Estudiamos listens through your microphone and checks it.' },
   listen: { emoji: '🎧', title: 'Listen & tap', desc: 'Hear a sentence, then tap the words you heard in the right order.' },
   priceparty: { emoji: '🏷️', title: 'Price Party', desc: 'Name the products to win drop chips, then bounce them down the peg board for prizes! 1–2 players.' },
