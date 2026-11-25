@@ -620,7 +620,7 @@ function bldRound() {
   Object.assign(bld, { heatShown: 0, gap: null, tray, line: [], example: g.words, english: g.english, msg: null, bad: -1, fails: 0, done: false, hint: -1, showEx: false });
 }
 // French l' and j' join the next word with no space
-const bldSentence = (words, lang) => { if (BLD_LANGS[lang]?.noSpaces) return words.map(w => w.w).join('') + '。'; const s = words.reduce((t, w, i) => i && !/'$/.test(words[i - 1].w) ? t + ' ' + w.w : t + w.w, ''); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
+const bldSentence = (words, lang) => { if (BLD_LANGS[lang]?.join) return BLD_LANGS[lang].join(words); if (BLD_LANGS[lang]?.noSpaces) return words.map(w => w.w).join('') + '。'; const s = words.reduce((t, w, i) => i && !/'$/.test(words[i - 1].w) ? t + ' ' + w.w : t + w.w, ''); return (lang === 'es' && /^¿/.test(s) ? s : s[0].toUpperCase() + s.slice(1)) + '.'; };
 const bldGloss = c => c.gloss || (bld.lang === 'es' || bld.lang === 'fr' ? (c.k === 'verb' ? 'to ' + c.e[5] : c.en) : (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[2] : c.k === 'verb' ? c.e[5] : '')) || (c.e && (c.k === 'noun' ? c.e[4] : c.k === 'adj' ? c.e[4] : ''))
   || ({ el: 'the', la: 'the', los: 'the', las: 'the', un: 'a', una: 'a', unos: 'some', unas: 'some', no: 'not', en: 'in', a: '(to)', al: '(to the)' })[c.w] || '';
 
