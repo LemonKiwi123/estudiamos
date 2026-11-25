@@ -29,7 +29,7 @@ function zhDeckNow() {
 }
 if (typeof checkTyped === 'function') {
   const typedAll = checkTyped;
-  checkTyped = function (input, ans) { const r = typedAll(input, ans); return (!r.ok || r.typo) && zhHasHan(ans) | /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(ans) && zhDeckNow() && zhPinyinOk(input, ans) ? { ok: true } : r; };
+  checkTyped = function (input, ans) { const r = typedAll(input, ans); return (!r.ok || r.typo) && (zhHasHan(ans) || /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(ans)) && zhDeckNow() && zhPinyinOk(input, ans) ? { ok: true } : r; };
 }
 if (typeof sgGrade === 'function') {   // ⚔️ Lexicon Saga: spelling a word
   const gradeAll = sgGrade;
@@ -69,7 +69,7 @@ if (typeof NG_LANGS !== 'undefined') {
     const r = n % 100; return (n < 300 && n >= 200 ? '两' : u[Math.floor(n / 100)]) + '百' + (!r ? '' : r < 10 ? '零' + u[r] : r < 20 ? '一' + two(r) : two(r));
   };
   // the sounds a syllable can start with, each with a common character (b: 爸 bà)
-  NG_ABC.zh = 'b:爸 p:朋 m:妈 f:饭 d:大 t:他 n:你 l:来 g:个 k:看 h:好 j:家 q:去 x:小 zh:中 ch:吃 sh:书 r:人 z:在 c:菜 s:三 y:一 w:我'.replace(/ (zh|ch|sh):/g, ' $1:');
+  NG_ABC.zh = 'b:爸 p:朋 m:妈 f:饭 d:大 t:他 n:你 l:来 g:个 k:看 h:好 j:家 q:去 x:小 r:人 z:在 c:菜 s:三 y:一 w:我';
   NG_MODES.liang = { icon: '✌️', label: '两 or 二?', desc: 'Two ways to say “two”: pick the right one for each phrase.', zh: true };
 }
 // ngAbc splits on one-letter names, so the two-letter sounds (zh, ch, sh) need their own list

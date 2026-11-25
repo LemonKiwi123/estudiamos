@@ -50,7 +50,7 @@ function gtLine(html, lang, names = []) {
   if (tr == null) {   // try again without leading icons and trailing punctuation
     const m = /^([^A-Za-z{<¿¡“"(]*)(.*?)([\s.!…]*)$/s.exec(key); lead = m[1]; tail = m[3];
     tr = book.loose.get(gtLoose(key));
-    if (tr != null) { tr = tr.replace(/^[^A-Za-zÀ-ÿ{<¿¡“"(]+/, ''); if (/[.!…?]$/.test(tr)) tail = ''; }
+    if (tr != null) { tr = tr.replace(/^[^\p{L}{<¿¡“"(]+/u, ''); if (/[.!…?。！？]$/.test(tr)) tail = ''; }
   }
   if (tr == null) {   // "Speaker: what they say" -> translate what they say
     const sp = /^((?:[^:<]|<b>[^<]*<\/b>){1,40}?): (.+)$/s.exec(body);
