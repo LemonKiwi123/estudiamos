@@ -8,7 +8,15 @@ let qr = null;
 const qrOpt = deckId => ((S.settings.qrOpt ||= {})[deckId] ||= { filter: false, sort: false });
 const qrUseFilter = deckId => qrOpt(deckId).filter && typeof clPref === 'function' && clFilterCount(clPref(deckId)) > 0;
 const qrUseSort = deckId => qrOpt(deckId).sort && typeof clPref === 'function';
-function qrPool(deckId) { const cs = activeCardsOf(deckId); if (!qrUseFilter(deckId)) return cs; const p = clPref(deckId); return cs.filter(c => clMatches(c, p)); }
+/* “Selected cards only” (the card list's filter): Quick review goes through just those cards. A review that has started keeps
+   the cards it started with (qr.sel), whatever is ticked later. */
+function qrSel(deckId) {
+  if (!/^quick/.test(view.name)) return null;
+  if (qr && qr.deckId === deckId && view.name !== 'quickStart') return qr.sel || null;
+  if (typeof clPref !== 'function') return null;
+  const p = clPref(deckId); return p.f.sel.length ? new Set(cardsOf(deckId).filter(c => clMatches(c, p)).map(c => c.id)) : null;
+}
+function qrPool(deckId) { const cs = activeCardsOf(deckId), sel = qrSel(deckId); if (sel) return cs.filter(c => sel.has(c.id)); if (!qrUseFilter(deckId)) return cs; const p = clPref(deckId); return cs.filter(c => clMatches(c, p)); }
 const qrOrder = (deckId, cs) => qrUseSort(deckId) ? clSort(cs.slice(), clPref(deckId).sort) : shuffle(cs);
 function qrCounts(deckId) {
   const cs = qrPool(deckId);
@@ -18,12 +26,13 @@ function qrBar(k) {
   const t = Math.max(1, k.total), pc = n => (n / t * 100).toFixed(2) + '%';
   return `<div class="seg-bar qr-seg" title="${k.got} got it · ${k.nq} not quite · ${k.ns} not studied"><div class="g" style="width:${pc(k.got)}"></div><div class="n" style="width:${pc(k.nq)}"></div></div>`;
 }
-function startQuick(deckId, reset) {
-  if (reset) { (qrUseFilter(deckId) ? qrPool(deckId) : cardsOf(deckId)).forEach(c => { delete c.fr; }); save(); }   // with filters on, Start over only resets the filtered cards
+function startQuick(deckId, reset, all) {   // all: also the cards already marked Got it
+  const sel = qrSel(deckId);
+  if (reset) { (sel || qrUseFilter(deckId) ? qrPool(deckId) : cardsOf(deckId)).forEach(c => { delete c.fr; }); save(); }   // with filters on, Start over only resets the filtered cards
   const cs = qrPool(deckId), notStudied = cs.filter(c => !c.fr), notQuite = cs.filter(c => c.fr === 'nq');
-  const ids = [...qrOrder(deckId, notStudied), ...qrOrder(deckId, notQuite)].map(c => c.id);
+  const ids = (all ? qrOrder(deckId, cs) : [...qrOrder(deckId, notStudied), ...qrOrder(deckId, notQuite)]).map(c => c.id);
   if (!ids.length) { go({ name: 'quickDone', deckId }); return; }
-  qr = { deckId, queue: ids, i: 0, revealed: false, round: 1, roundEnd: false, history: [], rounds: 1, start: Date.now(), missed: new Set(), seen: new Set(ids) };
+  qr = { deckId, sel, queue: ids, i: 0, revealed: false, round: 1, roundEnd: false, history: [], rounds: 1, start: Date.now(), missed: new Set(), seen: new Set(ids) };
   go({ name: 'quick', deckId }); speakQuick();
 }
 const qrCard = () => qr && S.cards.find(c => c.id === qr.queue[qr.i]);
@@ -73,14 +82,15 @@ function qrOptsHtml(d) {   // only shown when the card list has filters or a sor
   const p = typeof clPref === 'function' ? clPref(d.id) : null; if (!p) return '';
   const nf = clFilterCount(p), o = qrOpt(d.id), sortName = clSortName(p.sort), hasSort = p.sort && p.sort !== 'newest';
   if (!nf && !hasSort && !o.sort) return `<p class="muted small" style="margin:0">Tip: pick a sort or filters in the deck’s card list (Edit cards →) to quick review just those cards, in that order.</p>`;
-  const n = activeCardsOf(d.id).filter(c => clMatches(c, p)).length;
+  const n = activeCardsOf(d.id).filter(c => clMatches(c, p)).length, sel = qrSel(d.id), ice = sel ? sel.size - n : 0;
   return `<div class="qr-opts">
-    ${nf ? `<label class="check"><input type="checkbox" data-qro="filter" data-id="${d.id}" ${o.filter ? 'checked' : ''}><span>Only the cards my filters show <span class="muted small">(${nf} filter${nf === 1 ? '' : 's'} · ${n} card${n === 1 ? '' : 's'})</span></span></label>` : ''}
+    ${sel ? `<div class="row-between" style="gap:8px"><span>☑ Only your <b>${n}</b> selected card${n === 1 ? '' : 's'}${ice ? ` <span class="muted small">(${ice} frozen card${ice === 1 ? ' is' : 's are'} skipped)</span>` : ''}</span>
+      <button type="button" class="btn sm" data-act="qrSelOff" data-id="${d.id}" title="Turn off the “Selected cards only” filter">Use all cards</button></div>` : nf ? `<label class="check"><input type="checkbox" data-qro="filter" data-id="${d.id}" ${o.filter ? 'checked' : ''}><span>Only the cards my filters show <span class="muted small">(${nf} filter${nf === 1 ? '' : 's'} · ${n} card${n === 1 ? '' : 's'})</span></span></label>` : ''}
     <label class="check"><input type="checkbox" data-qro="sort" data-id="${d.id}" ${o.sort ? 'checked' : ''}><span>In my sort order <span class="muted small">(⇅ ${esc(sortName)})</span> instead of shuffled</span></label></div>`;
 }
 views.quickStart = () => {
   const d = deckById(view.deckId); if (!d) { view = { name: 'home' }; return views.home(); }
-  const k = qrCounts(d.id), started = k.got + k.nq > 0, allGot = k.total > 0 && k.got === k.total;
+  const k = qrCounts(d.id), started = k.got + k.nq > 0, sel = qrSel(d.id), allGot = k.total > 0 && k.got === k.total;
   return `
     <div class="crumbs"><a data-act="home">Decks</a> / <a data-act="openDeck" data-id="${d.id}">${esc(d.name)}</a> / Quick review</div>
     <div class="flash" style="min-height:0;gap:14px">
@@ -94,7 +104,9 @@ views.quickStart = () => {
           <span style="color:var(--qr-got)">● Got it ${k.got}</span><span style="color:var(--qr-nq)">● Not quite ${k.nq}</span><span class="muted">● Not studied ${k.ns}</span></div></div>
       ${qrOptsHtml(d)}
       <div class="row" style="justify-content:center">
-        ${!k.total ? `<span class="muted">${qrUseFilter(d.id) ? 'No cards match your filters.' : 'This deck has no cards yet.'}</span>`
+        ${!k.total ? `<span class="muted">${sel ? 'All your selected cards are frozen, so there is nothing to review.' : qrUseFilter(d.id) ? 'No cards match your filters.' : 'This deck has no cards yet.'}</span>`
+          : sel ? `<button type="button" class="btn primary big" data-act="qrStart" data-id="${d.id}" data-all="1">Start (${k.total} card${k.total === 1 ? '' : 's'})</button>
+                   ${started && !allGot ? `<button type="button" class="btn" data-act="qrStart" data-id="${d.id}">Continue (${k.ns + k.nq} left)</button>` : ''}`
           : allGot ? `<span class="muted">Every card is marked Got it 🎉</span><button type="button" class="btn primary big" data-act="qrStart" data-id="${d.id}" data-reset="1">Review all again</button>`
           : started ? `<button type="button" class="btn primary big" data-act="qrStart" data-id="${d.id}">Continue (${k.ns + k.nq} left)</button>
                        <button type="button" class="btn" data-act="qrStart" data-id="${d.id}" data-reset="1">Start over</button>`
@@ -163,7 +175,8 @@ views.quickDone = () => {
 
 Object.assign(actions, {
   quickStart: el => go({ name: 'quickStart', deckId: el.dataset.id }),
-  qrStart: el => startQuick(el.dataset.id, !!el.dataset.reset),
+  qrStart: el => startQuick(el.dataset.id, !!el.dataset.reset, !!el.dataset.all),
+  qrSelOff: el => { clPref(el.dataset.id).f.sel = []; render(); },
   qrFlip: (el, e) => { if (e.target.closest('button')) return; qrFlip(); },
   qrAns: el => qrAnswer(el.dataset.got === '1'),
   qrNext: () => qrNextRound(),
