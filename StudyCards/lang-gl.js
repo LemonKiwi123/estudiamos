@@ -2,7 +2,7 @@
 /* ================= Galician (gl): what the rest of the app needs =================
    - Galician in the deck language list (gl-ES, right after Portuguese).
    - Speech: a Galician voice (gl-ES) when the PC has one. Edge's online voices include Galician; when there is none,
-     Galician is read with a Spanish voice (Galician spelling reads much like Spanish), and a note says so once.
+     Galician is read with a Spanish voice (Galician spelling reads much like Spanish) or a Portuguese one, and a note says so once.
    - 🔢 Numbers & ABC: Galician number words (un, dous, vinte e un, cento un, douscentos) and the Galician alphabet.
      Typed numbers can use the feminine forms too (unha, dúas, duascentas).
    - 🎤 Say it!: o / a / os / as / un / unha in front don't matter.
@@ -26,8 +26,8 @@ if (typeof voicesFor === 'function') {
   voicesFor = function (lang) {
     const own = voicesForAll(lang);
     if (own.length || !glIs(lang)) return own;
-    const es = voicesForAll(GL_FALLBACK_VOICE);
-    if (es.length && !glVoiceNoted && typeof toast === 'function' && voices.length) { glVoiceNoted = true; setTimeout(() => toast('No Galician voice on this PC, so Galician is read with a Spanish voice. See Settings for voices.'), 0); }
+    const es = [...voicesForAll(GL_FALLBACK_VOICE), ...voicesForAll('pt-PT')];
+    if (es.length && !glVoiceNoted && typeof toast === 'function' && voices.length) { glVoiceNoted = true; setTimeout(() => toast('No Galician voice on this PC, so Galician is read with a ' + langName(es[0].lang).replace(/ \(.*/, '') + ' voice. See Settings for voices.'), 0); }
     return es;
   };
 }
