@@ -4,7 +4,7 @@
    - Speech: a Galician voice (gl-ES) when the PC has one. Edge's online voices include Galician; when there is none,
      Galician is read with a Spanish voice (Galician spelling reads much like Spanish), and a note says so once.
    - 🔢 Numbers & ABC: Galician number words (un, dous, vinte e un, cento un, douscentos) and the Galician alphabet.
-     Typed numbers can use the feminine forms too (unha, dúas, douscentas).
+     Typed numbers can use the feminine forms too (unha, dúas, duascentas).
    - 🎤 Say it!: o / a / os / as / un / unha in front don't matter.
    - A Galician starter deck, and Galician in 🌐 Auto-translate: the Sentence Builder's Galician words count as
      "built-in words", and the Galician real sentences (data/real-gl.json) help pick between two meanings.
@@ -45,9 +45,9 @@ if (typeof NG_LANGS !== 'undefined') {
     if (n === 1000) return 'mil'; if (n === 100) return 'cen'; if (n < 100) return two(n);
     return h[Math.floor(n / 100)] + (n % 100 ? ' ' + two(n % 100) : '');   // cento un, douscentos trinta e dous
   };
-  NG_ABC.gl = 'a:a b:be c:ce d:de e:e f:efe g:gue h:hache i:i l:ele m:eme n:ene ñ:eñe o:o p:pe q:cu r:erre s:ese t:te u:u v:uve x:xe z:zeta';
-  // the feminine way to say the same number: un → unha, dous → dúas, douscentos → douscentas; and 500 as cincocentos
-  const glNumOther = w => [String(w).replace(/\bun$/, 'unha').replace(/\bdous$/, 'dúas').replace(/centos\b/g, 'centas').replace(/quiñentos/, 'quiñentas'), String(w).replace(/quiñentos/, 'cincocentos')];
+  NG_ABC.gl = 'a:a b:be c:ce d:de e:e f:efe g:gue h:hache i:i l:ele m:eme n:ene ñ:eñe o:o p:pe q:que r:erre s:ese t:te u:u v:uve x:xe z:zeta';
+  // the feminine way to say the same number: un → unha, dous → dúas, douscentos → duascentas; and 500 as cincocentos
+  const glNumOther = w => [String(w).replace(/\bun$/, 'unha').replace(/\bdous$/, 'dúas').replace(/douscentos/, 'duascentas').replace(/centos\b/g, 'centas').replace(/quiñentos/, 'quiñentas'), String(w).replace(/quiñentos/, 'cincocentos')];
   const prevAnswer = ngAnswer;
   ngAnswer = function (given) {
     if (ng?.lang === 'gl' && ng.mode === 'type' && ng.q && typeof given === 'string') {
@@ -99,3 +99,6 @@ if (typeof txAppIndex === 'function') {
     return idx;
   };
 }
+
+/* ---------- the Sentence Builder's card on the Games page names its languages ---------- */
+if (typeof GAMES !== 'undefined' && GAMES.builder && !/Galician/.test(GAMES.builder.desc)) GAMES.builder.desc = GAMES.builder.desc.replace(/ and ([A-Z]\p{L}+)\.$/u, ', $1 and Galician.');

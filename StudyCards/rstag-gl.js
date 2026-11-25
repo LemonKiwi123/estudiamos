@@ -37,7 +37,7 @@ let rsGlFem = null;
 // a verb with a pronoun joined on: levántome, gústame, déitase (an accent three syllables from the end), facelo, vela (the infinitive's r drops)
 function rsGlEnclitic(w, prev) {
   const lex = rsGlLex();
-  const m = /^(\p{L}*[áéíóú]\p{L}*?[aeo][ns]?)(me|te|se|che|lle|lles|nos|vos|o|a|os|as)$/u.exec(w);
+  const m = /^(\p{L}*[áéíóú]\p{L}*?[aeo][ns]?)(me|te|se|che|lle|lles|nos|vos)$/u.exec(w);
   if (m && /[áéíóú]/.test(m[1])) { const stem = RS_GL_UNACC(m[1]); if (lex.get(stem) === 'verb' || RS_CLOSED.gl.verb.has(stem) || /(a|e|an|en|as|es|amos|emos|imos)$/.test(stem)) return true; }
   const r = /^(\p{L}{2,}[aei])(lo|la|los|las)$/u.exec(w);
   if (r && (lex.get(r[1] + 'r') === 'verb' || RS_GL_MODAL.has(prev))) return true;

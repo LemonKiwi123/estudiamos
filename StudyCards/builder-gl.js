@@ -31,6 +31,9 @@ const glWant = (fam, g, num) => GL_DETF[fam][glIdx(g, num)] || GL_DETF[fam][glId
 // contractions: preposition + article in one word
 const GL_CONTR = { do: ['de', 'o'], da: ['de', 'a'], dos: ['de', 'os'], das: ['de', 'as'], no: ['en', 'o'], na: ['en', 'a'], nos: ['en', 'os'], nas: ['en', 'as'],
   ao: ['a', 'o'], 'á': ['a', 'a'], aos: ['a', 'os'], 'ás': ['a', 'as'], co: ['con', 'o'], coa: ['con', 'a'], cos: ['con', 'os'], coas: ['con', 'as'] };
+// de / en / con + un, and de / en + este, ese, aquel are one word too (dun, nunha, cun, deste, naquela)
+for (const [p, pre, fams] of [['de', 'd', ['un', 'este', 'ese', 'aquel']], ['en', 'n', ['un', 'este', 'ese', 'aquel']], ['con', 'c', ['un']]]) for (const fam of fams) for (const w of GL_DETF[fam]) GL_CONTR[pre + w] = [p, w];
+const GL_KIN = ['pai', 'nai', 'irmán', 'irmá'];   // family words can go without the article: meu pai, miña nai
 const glContr = (p, art) => Object.keys(GL_CONTR).find(k => GL_CONTR[k][0] === p && GL_CONTR[k][1] === art) || p + ' ' + art;
 //            singular   plural     g    kind      English one / many   mass (1 can't count, 2 both)
 const GL_NOUN = [
@@ -133,6 +136,7 @@ const GL_ATTRACT = ['sempre', 'tamén'];   // before the verb, these pull me / t
 const GL_PREP = [['a', 'to'], ['ao', 'to the'], ['á', 'to the'], ['aos', 'to the'], ['ás', 'to the'], ['en', 'in / at'], ['no', 'in the / at the'], ['na', 'in the / at the'],
   ['nos', 'in the / at the'], ['nas', 'in the / at the'], ['con', 'with'], ['co', 'with the'], ['coa', 'with the'], ['cos', 'with the'], ['coas', 'with the'],
   ['para', 'for / to'], ['de', 'of / from'], ['do', 'of the'], ['da', 'of the'], ['dos', 'of the'], ['das', 'of the']];
+for (const [w, [p, d]] of Object.entries(GL_CONTR)) if (!GL_PREP.some(x => x[0] === w)) GL_PREP.push([w, { de: 'of', en: 'in / on', con: 'with' }[p] + ' ' + GL_DET.find(x => x[0] === d)[3]]);
 const GL_CONJ = [['e', 'and'], ['pero', 'but'], ['ou', 'or']];
 const GL_KIND = { food: 'food', drink: 'drinks', read: 'things you read or write', thing: 'things', place: 'places', animal: 'animals', person: 'people', open: 'things you can open' };
 const GL_HOW_VERBS = /^(falar|traballar|estudar|xogar|correr|camiñar|durmir|comer|beber|ler|escribir)$/;   // verbs that go with ben / moito
@@ -168,15 +172,16 @@ function glCheck(T) {
   const gName = g => g === 'f' ? 'feminine' : 'masculine', nName = n => n === 'p' ? 'plural' : 'singular';
   const join = (...ws) => ws.filter(Boolean).join(' ');
   const npText = np => np.coord ? np.coord.map(npText).join(' e ') : join(np.det?.w, np.poss?.w, np.pre?.w, np.n.w, np.tres ? 'moi' : '', np.post?.w);
+  const isDe = w => w === 'de' || GL_CONTR[w]?.[0] === 'de', isEn = w => w === 'en' || GL_CONTR[w]?.[0] === 'en';
   const V = name => GL_VERB.find(v => v[0] === name)[1];
   const ser = f => V('ser')[f], estar = f => V('estar')[f], ter = f => V('ter')[f];
   // a noun phrase: (article) (possessive) (bo / malo) noun ((moi) adjective) (de / do / da + noun)
   // opt.art: the article is already inside a contraction like "na" (en + a); opt.p is that contraction
   function NP(role, opt = {}) {
-    const start = i; let det = null, poss = null, pre = null, post = null, tres = false, of = null;
+    const start = i; let det = opt.vd || null, poss = null, pre = null, post = null, tres = false, of = null;
     if (peek()?.k === 'det') {
       const d = T[i++];
-      if (opt.art && d.cls === 'art') return err(`“${opt.p.w}” already has the article in it (${GL_CONTR[opt.p.w].join(' + ')}), so don’t add “${d.w}”.`, i - 1);
+      if ((opt.art && d.cls === 'art') || opt.vd) return err(`“${opt.p.w}” already has the article in it (${GL_CONTR[opt.p.w].join(' + ')}), so don’t add “${d.w}”.`, i - 1);
       if (d.cls === 'poss') poss = d; else det = d;
       if (peek()?.k === 'det') {
         const d2 = T[i];
@@ -195,6 +200,7 @@ function glCheck(T) {
     i++;
     if (n.cat === 'feel') return err(`“${n.w}” is a feeling. Galician says it with ter and no article: “teño ${n.w}”.`, start);
     const art = det?.cls === 'art' && det.fam === 'o' ? det.w : opt.art || null;
+    if (opt.vd) { const dw = glWant(opt.vd.fam, n.g, n.num); if (opt.vd.w !== dw) { const c = glContr(GL_CONTR[opt.p.w][0], dw); return err(`“${n.w}” is ${gName(n.g)} ${nName(n.num)}, so use “${c}”: “${c} ${n.w}”.`, start - 1); } }
     if (!det && !poss && !opt.art) {
       if (role === 'subj') return err(`Galician needs a word like “${glWant('o', n.g, n.num)}” or “${glWant('un', n.g, n.num)}” before “${n.w}” here.`, start);
       if (!(n.mass || n.num === 'p' || opt.bare)) return err(`“${n.w}” needs a word like “${glWant('un', n.g, n.num)}” (a) or “${glWant('o', n.g, n.num)}” (the) before it.`, start);
@@ -209,7 +215,7 @@ function glCheck(T) {
     if (poss) {
       const want = glWant(poss.fam, n.g, n.num);
       if (poss.w !== want) return err(`“${n.w}” is ${gName(n.g)} ${nName(n.num)}, so use “${want}”: “${join(det && det.w, want, n.w)}”.`, det ? start + 1 : start);
-      if (!art && role !== 'pred') return err(`In Galician, “${poss.w}” comes with the article first: “${join(glWant('o', n.g, n.num), poss.w, n.w)}”.`, start);
+      if (!art && role !== 'pred' && !(GL_KIN.includes(n.e[0]) && n.num === 's')) return err(`In Galician, “${poss.w}” comes with the article first: “${join(glWant('o', n.g, n.num), poss.w, n.w)}”.`, start);
     }
     if (pre) { const w = pre.e[glIdx(n.g, n.num)]; if (pre.w !== w) return err(`“${pre.w}” has to match “${n.w}” (${gName(n.g)} ${nName(n.num)}): use “${w}”.`, i - 2); }
     if ((peek()?.k === 'int' && peek(1)?.k === 'adj') || peek()?.k === 'adj') {
@@ -222,10 +228,10 @@ function glCheck(T) {
     }
     if (peek()?.k === 'adv' && peek().w === 'moito' && peek(1)?.k === 'adj') return err('Before a describing word, Galician says “moi” (very): “moi grande”. “moito” means “a lot” and goes after a verb.');
     // de + noun: "o libro do neno", "a casa da miña nai"
-    if (role !== 'of' && peek()?.k === 'prep' && ['de', 'do', 'da', 'dos', 'das'].includes(peek().w) && ['det', 'noun', 'adj'].includes(peek(1)?.k)) {
+    if (role !== 'of' && peek()?.k === 'prep' && isDe(peek().w) && ['det', 'noun', 'adj'].includes(peek(1)?.k)) {
       const p = T[i++];
-      if (p.w === 'de' && peek()?.k === 'det' && peek().fam === 'o') return err(`Galician joins “de” + “${peek().w}” into “${glContr('de', peek().w)}”: “${glContr('de', peek().w)} ${peek(1)?.w || '…'}”.`, i - 1);
-      const o = NP('of', p.w === 'de' ? { bare: true } : { art: GL_CONTR[p.w][1], p }); if (isErr(o)) return o;
+      if (p.w === 'de' && peek()?.k === 'det' && GL_CONTR[glContr('de', peek().w)]) return err(`Galician joins “de” + “${peek().w}” into “${glContr('de', peek().w)}”: “${glContr('de', peek().w)} ${peek(1)?.w || '…'}”.`, i - 1);
+      const o = p.w === 'de' ? NP('of', { bare: true }) : PP(p, 'of'); if (isErr(o)) return o;
       of = { ...o, p };
     }
     return { det, poss, n, pre, post, tres, of, art, num: n.num, g: n.g, cat: n.cat };
@@ -245,8 +251,9 @@ function glCheck(T) {
   // a / ao / á / en / no / na / con / co / coa / para + a noun phrase
   function PP(p, role) {
     const C = GL_CONTR[p.w];
-    if (C) { if (peek()?.k === 'det' && peek().cls === 'art') return err(`“${p.w}” already has the article in it (${C.join(' + ')}), so don’t add “${peek().w}”.`); return NP(role, { art: C[1], p }); }
-    if (['de', 'en', 'a', 'con'].includes(p.w) && peek()?.k === 'det' && peek().fam === 'o') { const c = glContr(p.w, peek().w); return err(`Galician joins “${p.w}” + “${peek().w}” into “${c}”: “${c} ${peek(1)?.w || '…'}”.`, i - 1); }
+    if (C) { if (peek()?.k === 'det' && peek().cls === 'art') return err(`“${p.w}” already has the article in it (${C.join(' + ')}), so don’t add “${peek().w}”.`);
+      const d = GL_DET.find(x => x[0] === C[1]); return NP(role, d[1] === 'o' ? { art: C[1], p } : { vd: { w: d[0], fam: d[1], cls: d[2], en: d[3] }, p }); }
+    if (['de', 'en', 'a', 'con'].includes(p.w) && peek()?.k === 'det' && GL_CONTR[glContr(p.w, peek().w)]) { const c = glContr(p.w, peek().w); return err(`Galician joins “${p.w}” + “${peek().w}” into “${c}”: “${c} ${peek(1)?.w || '…'}”.`, i - 1); }
     // en casa / a casa / para casa: at home, home
     if (['en', 'para', 'a'].includes(p.w) && peek()?.k === 'noun' && peek().e[0] === 'casa' && peek().num === 's' && peek(1)?.k !== 'adj' && !(peek(1)?.k === 'prep' && /^d/.test(peek(1).w))) { const n = T[i++]; return { n, home: true, num: 's', g: 'f', cat: 'place' }; }
     return NP(role, { bare: p.w === 'con' });
@@ -349,7 +356,7 @@ function glCheck(T) {
         if (!np.det && !np.poss && np.cat !== 'person') return err(`Add a word like “${glWant('un', np.g, np.num)}” before “${np.n.w}”.`, i - 1);
         if (np.num !== sNum && !C.subj?.np?.coord) return err(`“${np.n.w}” has to match the subject (${nName(sNum)}).`, i - 1);
         C.comp = { np };
-      } else if (nx.k === 'prep' && /^(en|no|na|nos|nas)$/.test(nx.w)) return err(`For where someone or something is, Galician uses estar: “${estar(vf)} ${nx.w} …”.`);
+      } else if (nx.k === 'prep' && isEn(nx.w)) return err(`For where someone or something is, Galician uses estar: “${estar(vf)} ${nx.w} …”.`);
       else return err(`After “${v.w}”, put a describing word (“${v.w} ${sNum === 'p' ? 'grandes' : 'grande'}”) or a noun (“${v.w} profesor”).`);
     } else if (W.type === 'estar') {
       if (!nx || nx.k === 'conj') return err(`“${v.w}” needs something after it: how someone is (“${v.w} ${sNum === 'p' ? 'cansos' : 'canso'}”) or where (“${v.w} na casa”).`, i - 1);
@@ -357,14 +364,14 @@ function glCheck(T) {
       else if (nx.k === 'prep' && nx.w === 'con' && peek(1)?.k === 'noun' && peek(1).cat === 'feel') return err(`Galician says this with ter: “${ter(vf)} ${peek(1).w}”.`);
       else if (nx.k === 'noun' && nx.cat === 'feel') return err(`Galician says “${ter(vf)} ${nx.w}”, with ter.`);
       else if (['det', 'noun'].includes(nx.k)) return err(`After “${v.w}”, put how someone is (“${sNum === 'p' ? 'contentos' : 'contento'}”) or where (“na escola”, “en casa”). For who or what something is, use ser.`);
-      else if (!(nx.k === 'prep' && /^(en|no|na|nos|nas)$/.test(nx.w)) && !(nx.k === 'adv' && nx.w === 'aquí')) return err(`After “${v.w}”, put how someone is or where (“en casa”, “na cociña”).`);
+      else if (!(nx.k === 'prep' && isEn(nx.w)) && !(nx.k === 'adv' && nx.w === 'aquí')) return err(`After “${v.w}”, put how someone is or where (“en casa”, “na cociña”).`);
     } else if (W.type === 'ter') {
       if (nx?.k === 'noun' && nx.cat === 'feel') { i++; C.comp = { feel: nx }; }
       else if (nx?.k === 'det' && peek(1)?.k === 'noun' && peek(1).cat === 'feel') return err(`No article here: Galician says “${v.w} ${peek(1).w}”.`);
       else if (nx && ['det', 'noun', 'adj', 'int'].includes(nx.k)) { const np = NPs('obj'); if (isErr(np)) return np; C.comp = { np }; }
       else return err(`“${v.w}” needs something after it: “${v.w} un gato”, “${v.w} fame”.`, i - 1);
     } else if (W.type === 'ir') {
-      if (!nx || nx.k !== 'prep' || !['a', 'ao', 'á', 'aos', 'ás', 'para'].includes(nx.w)) return err(nx?.k === 'prep' && /^(en|no|na|nos|nas)$/.test(nx.w) ? `With ir, use “a” or “para” for where you go: “${v.w} á praia”, “${v.w} para a escola”.` : `“${v.w}” (go) needs where you go: “${v.w} á praia” or “${v.w} ao parque”.`, nx ? i : i - 1);
+      if (!nx || nx.k !== 'prep' || !['a', 'ao', 'á', 'aos', 'ás', 'para'].includes(nx.w)) return err(nx?.k === 'prep' && isEn(nx.w) ? `With ir, use “a” or “para” for where you go: “${v.w} á praia”, “${v.w} para a escola”.` : `“${v.w}” (go) needs where you go: “${v.w} á praia” or “${v.w} ao parque”.`, nx ? i : i - 1);
       i++; const np = PP(nx, 'dest'); if (isErr(np)) return np;
       if (np.cat !== 'place') return err(`ir needs a place: “${v.w} á praia”. “${np.n.w}” isn’t a place.`, i - 1);
       C.comp = { dest: np, p: nx };
@@ -384,12 +391,12 @@ function glCheck(T) {
     // en / no / na + a place, con / co / coa + someone, para + someone or a place
     while (peek()?.k === 'prep') {
       const p = T[i++];
-      if (['de', 'do', 'da', 'dos', 'das'].includes(p.w)) return err('“de” joins two nouns: “o libro do neno”. It needs a noun right before it.', i - 1);
+      if (isDe(p.w)) return err('“de” joins two nouns: “o libro do neno”. It needs a noun right before it.', i - 1);
       const toward = ['a', 'ao', 'á', 'aos', 'ás'].includes(p.w);
       if (W.type === 'ir' && (toward || p.w === 'para') && !(p.w === 'para' && ['det', 'noun'].includes(peek()?.k) && T.slice(i, i + 3).find(t => t.k === 'noun')?.cat === 'person')) return err('Say where you go only once.', i - 1);
       if (toward && W.type !== 'ir') return err(`“${p.w}” is for where you go (with ir). For where something happens, use “en”: “no parque”, “na escola”.`, i - 1);
       const np = PP(p, 'pp'); if (isErr(np)) return np;
-      if (/^(en|no|na|nos|nas)$/.test(p.w) && np.cat !== 'place' && !(np.n && GL_RIDE.includes(np.n.e[0]))) return err(`“${p.w}” + a place: “na cociña”, “no parque”. “${np.n.w}” isn’t a place.`, i - 1);
+      if (isEn(p.w) && np.cat !== 'place' && !(np.n && GL_RIDE.includes(np.n.e[0]))) return err(`“${p.w}” + a place: “na cociña”, “no parque”. “${np.n.w}” isn’t a place.`, i - 1);
       C.pps.push({ p, np });
     }
     while (peek()?.k === 'adv' && /[ez]/.test(peek().pos)) {
@@ -460,7 +467,7 @@ function glEnglish(P) {
       if (C.comp?.dest) vp += (C.comp.dest.home ? ' ' : ' to ') + npEn(C.comp.dest);
     }
     if (endAdv.length) vp += ' ' + endAdv.join(' ');
-    for (const { p, np } of C.pps) vp += np.home ? (p.w === 'para' || p.w === 'a' ? ' home' : ' at home') : ` ${/^(no|na|nos|nas|en)$/.test(p.w) ? (np.n && GL_RIDE.includes(np.n.e[0]) ? 'on' : np.cat === 'place' && ['praia', 'escola', 'igrexa', 'mercado'].includes(np.n.e[0]) ? 'at' : 'in') : /^(con|co|coa|cos|coas)$/.test(p.w) ? 'with' : p.w === 'para' ? 'for' : 'to'} ${npEn(np)}`;
+    for (const { p, np } of C.pps) vp += np.home ? (p.w === 'para' || p.w === 'a' ? ' home' : ' at home') : ` ${(p.w === 'en' || GL_CONTR[p.w]?.[0] === 'en') ? (np.n && GL_RIDE.includes(np.n.e[0]) ? 'on' : np.cat === 'place' && ['praia', 'escola', 'igrexa', 'mercado'].includes(np.n.e[0]) ? 'at' : 'in') : (p.w === 'con' || GL_CONTR[p.w]?.[0] === 'con') ? 'with' : p.w === 'para' ? 'for' : 'to'} ${npEn(np)}`;
     const tail = [...C.lead.filter(a => !['sempre', 'moitas veces', 'tamén'].includes(a.w)).map(a => a.en), ...C.tail.filter(a => ['hoxe', 'mañá', 'agora'].includes(a.w)).map(a => a.en), too ? 'too' : ''].filter(Boolean).join(' ');
     const lf = C.lead.filter(a => a.w === 'sempre' || a.w === 'moitas veces').map(a => a.en).join(' ');
     if (lf && !freq) vp = C.v2 || v.type === 'ser' || v.type === 'estar' || C.comp?.feel ? vp.replace(/^(am|is|are)/, `$1 ${lf}`) : `${lf} ${vp}`;
@@ -502,14 +509,16 @@ function glGenerate(pref) {
     if (a) { const [g2, n2] = flip(g, num), w = a[glIdx(g2, n2)]; extra.push(glAdj(a, w)); }
     if (opts.of && !poss && n[3] !== 'person' && coin(0.25)) { const o = nounOf(['person']), c = glContr('de', glWant('o', o[2], 's')); out.push(glPrep(c)); np(o, 's', out, { art: true, adj: false }); extra.push(glPrep('de')); }
   };
-  const inPlace = (out, n) => { if (n[0] === 'casa' && coin(0.35)) { out.push(glPrep('en'), glNoun(n, 's')); return; } out.push(glPrep(glContr('en', glWant('o', n[2], 's')))); np(n, 's', out, { art: true, adj: false }); extra.push(glPrep('en'), glDetW(glWant('o', n[2], 's'))); };
+  const inPlace = (out, n) => { if (n[0] === 'casa' && coin(0.35)) { out.push(glPrep('en'), glNoun(n, 's')); return; }
+    if (coin(0.25)) { const d = glWant(R(['un', 'este', 'ese', 'aquel']), n[2], 's'); out.push(glPrep(glContr('en', d)), glNoun(n, 's')); extra.push(glPrep('en'), glDetW(d)); return; }
+     out.push(glPrep(glContr('en', glWant('o', n[2], 's')))); np(n, 's', out, { art: true, adj: false }); extra.push(glPrep('en'), glDetW(glWant('o', n[2], 's'))); };
   const toPlace = (out, n) => {
     if (n[0] === 'casa' && coin(0.4)) { out.push(glPrep(R(['para', 'a'])), glNoun(n, 's')); extra.push(glPrep('en')); return; }
     if (coin(0.35)) { out.push(glPrep('para')); np(n, 's', out, { adj: false, subj: true }); }
     else { out.push(glPrep(glContr('a', glWant('o', n[2], 's')))); np(n, 's', out, { art: true, adj: false }); }
     extra.push(glPrep(glContr('en', glWant('o', n[2], 's'))));
   };
-  const withSomeone = (out, n) => { const c = glContr('con', glWant('o', n[2], 's')); if (coin(0.3)) { out.push(glPrep('con'), glDetW(glWant('un', n[2], 's')), glNoun(n, 's')); } else { out.push(glPrep(c)); np(n, 's', out, { art: true, adj: false }); } extra.push(glPrep('con')); };
+  const withSomeone = (out, n) => { const c = glContr('con', glWant('o', n[2], 's')); if (coin(0.3)) { out.push(glPrep(glContr('con', glWant('un', n[2], 's'))), glNoun(n, 's')); extra.push(glDetW(glWant('un', n[2], 's'))); } else { out.push(glPrep(c)); np(n, 's', out, { art: true, adj: false }); } extra.push(glPrep('con')); };
   const pick = name => GL_VERB.find(v => v[0] === name);
   const pronList = ['eu', 'eu', 'ti', 'ti', 'el', 'ela', 'nós', 'vós', 'eles', 'elas', 'vostede', 'vostedes'];
   const clause = () => {
@@ -615,8 +624,8 @@ BLD_ORDER.gl = { rows: [
   ], tips: [
     ['pron', 'You can leave out eu, ti, nós and vós: the verb already shows who. <b>vostede</b> is the polite “you” and goes with the el / ela form.'],
     ['adj', 'Most adjectives come <b>after</b> the noun: <b>unha casa grande</b>. <b>bo</b> and <b>malo</b> can go before it: <b>un bo libro</b>.'],
-    ['det', 'Possessives come after the article and match the thing you have: <b>a miña casa</b>, <b>os meus libros</b>.'],
-    ['prep', '<b>de + o = do</b>, <b>en + a = na</b>, <b>a + a = á</b>, <b>con + o = co</b>. Go somewhere with <b>a</b> or <b>para</b>; be somewhere with <b>en</b>.'],
+    ['det', 'Possessives come after the article and match the thing you have: <b>a miña casa</b>, <b>os meus libros</b>. Family words can go without it: <b>meu pai</b>, <b>miña nai</b>.'],
+    ['prep', '<b>de + o = do</b>, <b>en + a = na</b>, <b>a + a = á</b>, <b>con + o = co</b>. So do <b>un</b> and <b>este / ese / aquel</b>: <b>nunha</b>, <b>cun</b>, <b>deste</b>. Go somewhere with <b>a</b> or <b>para</b>; be somewhere with <b>en</b>.'],
     ['verb', '<b>ser</b>: what something is like (é grande). <b>estar</b>: how it is right now, and where (está canso, está na casa).'],
     ['adv', '<b>non</b> and <b>nunca</b> go right before the verb. <b>moi</b> before an adjective means “very”; <b>moito</b> after the verb means “a lot”.'],
     ['pron', 'me / te / se go <b>after</b> the verb, joined to it: <b>levántome</b>, <b>lávase</b>. After non, nunca, sempre and tamén they go before it: <b>non me levanto</b>.'],
@@ -629,8 +638,8 @@ const GL_IRREG_FORMS = {
   ser: 'son es é somos sodes son', estar: 'estou estás está estamos estades están', ter: 'teño tes ten temos tedes teñen', ir: 'vou vas vai imos ides van',
   haber: 'hei has ha habemos habedes han', facer: 'fago fas fai facemos facedes fan', dicir: 'digo dis di dicimos dicides din', traer: 'traio traes trae traemos traedes traen',
   poder: 'podo podes pode podemos podedes poden', querer: 'quero queres quere queremos queredes queren', saber: 'sei sabes sabe sabemos sabedes saben', caber: 'caibo cabes cabe cabemos cabedes caben',
-  ver: 'vexo ves ve vemos vedes ven', vir: 'veño vés vén vimos vides veñen', dar: 'dou dás dá damos dades dan', ler: 'leo les le lemos ledes len', crer: 'creo cres cre cremos credes cren',
-  'pór': 'poño pos pon poñemos poñedes poñen', 'oír': 'oio oes oe oímos oídes oen', pedir: 'pido pides pide pedimos pedides piden', medir: 'mido mides mide medimos medides miden',
+  ver: 'vexo ves ve vemos vedes ven', vir: 'veño vés vén vimos vindes veñen', preferir: 'prefiro prefires prefire preferimos preferides prefiren', dar: 'dou dás dá damos dades dan', ler: 'leo les le lemos ledes len', crer: 'creo cres cre cremos credes cren',
+  poñer: 'poño pos pon poñemos poñedes poñen', 'pór': 'poño pos pon pomos pondes poñen', 'oír': 'oio oes oe oímos oídes oen', pedir: 'pido pides pide pedimos pedides piden', medir: 'mido mides mide medimos medides miden',
   repetir: 'repito repites repite repetimos repetides repiten', sentir: 'sinto sentes sente sentimos sentides senten', mentir: 'minto mentes mente mentimos mentides menten',
   vestir: 'visto vistes viste vestimos vestides visten', seguir: 'sigo segues segue seguimos seguides seguen', servir: 'sirvo serves serve servimos servides serven',
   durmir: 'durmo dormes dorme durmimos durmides dormen', subir: 'subo sobes sobe subimos subides soben', fuxir: 'fuxo foxes foxe fuximos fuxides foxen', cubrir: 'cubro cobres cobre cubrimos cubrides cobren',
@@ -648,7 +657,7 @@ function glConjugate(inf) {
   if (e === 'ir') return [eu, st + 'es', st + 'e', st + 'imos', st + 'ides', st + 'en'];
   return [inf, inf, inf, inf, inf, inf];
 }
-const GL_PL_EX = { 'mes': 'meses', 'país': 'países', 'deus': 'deuses', 'lapis': 'lapis', 'luns': 'luns', 'xoves': 'xoves' };
+const GL_PL_EX = { 'mes': 'meses', 'país': 'países', 'deus': 'deuses', 'lapis': 'lapis', 'luns': 'luns', 'xoves': 'xoves', sol: 'soles', mel: 'meles', mal: 'males', sal: 'sales', pel: 'peles', fel: 'feles', col: 'coles' };
 const glPl = w => GL_PL_EX[w] || (/[aeiouáéíóú]$/.test(w) ? w + 's' : /n$/.test(w) ? w + 's' : /z$/.test(w) ? w.slice(0, -1) + 'ces'
   : /l$/.test(w) ? (/[áéíóú]/.test(w.slice(0, -2)) ? w + 'es' : /al$/.test(w) ? w.slice(0, -1) + 'is' : /el$/.test(w) ? w.slice(0, -1) + 'is' : /ol$/.test(w) ? w.slice(0, -1) + 'is' : /ul$/.test(w) ? w.slice(0, -1) + 'is' : /il$/.test(w) ? w.slice(0, -2) + 'ís' : w + 'es')
   : /[áéíóú]s$/.test(w) ? w.slice(0, -2) + GL_UNACC[w.slice(-2, -1)] + 'ses' : /s$/.test(w) ? w : /[rx]$/.test(w) ? w + 'es' : w + 's');
