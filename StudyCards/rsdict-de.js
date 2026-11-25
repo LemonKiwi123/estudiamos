@@ -61,17 +61,18 @@ RS_DICT.de = new Map();
 { const m = RS_DICT.de, put = (w, t, g) => { w = String(w || '').toLowerCase(); if (w && !m.has(w)) m.set(w, [t, g]); };
   const NEEDS_E = /([dt]|[^aeiouäöülrhnm][mn]|ch[mn])$/;
   const past = p => /te$/.test(p) ? [p, p + 'st', p + 'n', p + 't'] : [p, p + (/(s|ß|z)$/.test(p) ? 'est' : 'st'), p + 'en', p + 't'];
-  for (const row of RS_DE_VERBS.split(/[;\n]/)) {
+  // whole verbs first, so machen = make wins over auf.machen = open
+  const rows = RS_DE_VERBS.split(/[;\n]/).map(r => r.trim()).filter(Boolean);
+  for (const row of [...rows.filter(r => !r.split('|')[0].includes('.')), ...rows.filter(r => r.split('|')[0].includes('.'))]) {
     const [inf0, en, p0, part0] = row.trim().split('|'); if (!inf0) continue;
     const [pre, base] = inf0.includes('.') ? inf0.split('.') : ['', inf0], st = base.replace(/e?n$/, '').replace(/(el|er)$/, '$1');
     const p = p0 || st + (NEEDS_E.test(st) ? 'ete' : 'te'), part = part0 || 'ge' + st + (NEEDS_E.test(st) ? 'et' : 't');
     const pres = typeof deConjugate === 'function' ? deConjugate(base, true) : [];
     put(pre + base, 'verb', 'to ' + en);
     if (pre) put(pre + 'zu' + base, 'verb', 'to ' + en);
-    put(pre + part, 'verb', en + ' (done)');
+    put(pre + part, 'verb', en + ' (past)');
     pres.forEach(f => put(pre + f, 'verb', en));
     if (!/ /.test(p)) past(p).forEach(f => put(pre + f, 'verb', en + ' (past)'));
-    if (pre && !m.has(base)) { pres.forEach(f => put(f, 'verb', en)); past(p).forEach(f => put(f, 'verb', en + ' (past)')); }
   }
   for (const row of RS_DE_ADJS.split(/[;\n]/)) {
     const [w0, en] = row.trim().split('|'); if (!w0) continue;

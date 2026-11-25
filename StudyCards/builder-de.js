@@ -71,7 +71,7 @@ const DE_NOUN = [
   DN('Restaurant', 'Restaurants', 'n', 'place', 'restaurant', 'restaurants', { p: 'in' }), DN('Bibliothek', 'Bibliotheken', 'f', 'place', 'library', 'libraries', { p: 'in' }),
   DN('Büro', 'Büros', 'n', 'place', 'office', 'offices', { p: 'in' }), DN('Bahnhof', 'Bahnhöfe', 'm', 'place', 'station', 'stations', { p: 'an', go: 'zu', alt: ['in', 'auf'] }), DN('Strand', 'Strände', 'm', 'place', 'beach', 'beaches', { p: 'an' }),
   DN('Markt', 'Märkte', 'm', 'place', 'market', 'markets', { p: 'auf' }), DN('Zoo', 'Zoos', 'm', 'place', 'zoo', 'zoos', { p: 'in' }), DN('Garten', 'Gärten', 'm', 'place', 'garden', 'gardens', { p: 'in' }),
-  DN('Café', 'Cafés', 'n', 'place', 'café', 'cafés', { p: 'in' }), DN('Museum', 'Museen', 'n', 'place', 'museum', 'museums', { p: 'in' }),
+  DN('Haus', 'Häuser', 'n', 'place', 'house', 'houses', { p: 'in' }), DN('Café', 'Cafés', 'n', 'place', 'café', 'cafés', { p: 'in' }), DN('Museum', 'Museen', 'n', 'place', 'museum', 'museums', { p: 'in' }),
   DN('Auto', 'Autos', 'n', 'thing', 'car', 'cars'), DN('Tisch', 'Tische', 'm', 'thing', 'table', 'tables'), DN('Stuhl', 'Stühle', 'm', 'thing', 'chair', 'chairs'), DN('Handy', 'Handys', 'n', 'thing', 'phone', 'phones'),
   DN('Ball', 'Bälle', 'm', 'thing', 'ball', 'balls'), DN('Blume', 'Blumen', 'f', 'thing', 'flower', 'flowers'), DN('Tür', 'Türen', 'f', 'thing', 'door', 'doors'), DN('Fenster', 'Fenster', 'n', 'thing', 'window', 'windows'),
   DN('Geschenk', 'Geschenke', 'n', 'thing', 'gift', 'gifts'), DN('Fahrrad', 'Fahrräder', 'n', 'thing', 'bike', 'bikes'), DN('Tasche', 'Taschen', 'f', 'thing', 'bag', 'bags'), DN('Uhr', 'Uhren', 'f', 'thing', 'watch', 'watches'),
@@ -149,8 +149,11 @@ const DE_PARTS = ['an', 'auf', 'zu', 'ein', 'fern', 'mit'];
 
 /* chips (each one carries its own English for the word tag) */
 const deChip = o => chip({ ...o, gloss: o.gloss || o.en });
-const dePronC = (w, en) => deChip({ k: 'pron', w, en });
-const deDetC = (w, fam, en) => deChip({ k: 'det', w, fam, en, cls: ['der', 'ein'].includes(fam) ? 'art' : fam });
+// the meaning shown on a chip: every meaning its spelling can have (sie = she / they / her / them)
+const dePronEn = w => [...new Set(DE_PRON.flatMap(r => [r[0] === w ? r[3] : '', r[1] === w || r[2] === w ? r[4] : '']).filter(Boolean))].slice(0, 3).join(' / ');
+const dePronC = (w, en) => deChip({ k: 'pron', w, en, gloss: dePronEn(w) });
+const deFamEn = (fam, en) => ({ der: 'the', ein: 'a', kein: 'no', dies: 'this / these', zwei: 'two', drei: 'three', mein: 'my', dein: 'your', sein: 'his', ihr: 'her / their', unser: 'our', euer: 'your' })[fam] || en;
+const deDetC = (w, fam, en) => deChip({ k: 'det', w, fam, en, gloss: deFamEn(fam, en), cls: ['der', 'ein'].includes(fam) ? 'art' : fam });
 const deNounC = (n, c, num) => deChip({ k: 'noun', w: deNounForm(n, c, num), e: n, num, en: num === 'p' ? n.enPl || n.en : n.en });
 const deAdjC = (a, w) => deChip({ k: 'adj', w, e: a, en: a.en });
 const deVerbC = (v, f, joined) => deChip({ k: 'verb', w: (joined ? v.part : '') + v.f[f], e: v, f, joined: !!joined, en: v.en, gloss: v.gloss || 'to ' + v.en });
@@ -695,7 +698,7 @@ function deGenerate(pref) {
     if (fam === 'poss') { const row = R(DE_POSS); stem = row[0]; out.push(deDetC(deDet(stem, c, n.g, num), stem, row[1])); }
     else if (fam !== 'bare') {
       const w = deDet(fam, c, n.g, num); out.push(deDetC(w, fam, fam === 'der' ? 'the' : fam === 'ein' ? 'a' : fam === 'kein' ? 'no' : fam === 'dies' ? (num === 'p' ? 'these' : 'this') : fam === 'zwei' ? 'two' : 'three'));
-      const wrong = R(DE_CASES.filter(x => x !== c).map(x => deDet(fam, x, n.g, num)).filter(x => x && x !== w)); if (wrong) extra.push(deDetC(wrong, fam, 'the'));
+      const wrong = R(DE_CASES.filter(x => x !== c).map(x => deDet(fam, x, n.g, num)).filter(x => x && x !== w)); if (wrong) extra.push(deDetC(wrong, fam, deFamEn(fam)));
     }
     if (a) { if (sehr) out.push(deSehrC()); const w = deAdjForm(a, c, n.g, num, fam === 'bare' ? null : stem); out.push(deAdjC(a, w));
       const wrongA = R(['e', 'en', 'er', 'es', 'em'].map(e => a.stem + e).filter(x => x !== w)); extra.push(deAdjC(a, wrongA)); }
@@ -766,7 +769,7 @@ function deGenerate(pref) {
     else if (kind === 'sein') {
       if (coin(0.7)) { if (coin(0.2)) pred.push(deSehrC()); const a = adjFor(subjCat); pred.push(deAdjC(a, a.pred)); extra.push(deAdjC(a, a.stem + 'e')); }
       else if (coin(0.2)) pred.push(deAdvC('hier')); else toPlace(pp, false);
-    } else if (kind === 'werden') { const a = adjFor(subjCat === 'person' ? 'person' : subjCat); pred.push(deAdjC(a, a.pred)); extra.push(deVerbC(verb('sein'), f)); neg = null; }
+    } else if (kind === 'werden') { const turns = DE_ADJ.filter(x => /^(groß|alt|teuer|billig|kalt|warm|heiß|sauber|schmutzig|müde|glücklich|traurig|krank|schnell|langweilig|interessant)$/.test(x.pred) && x.d.includes(CAT[subjCat] || 'p')), a = turns.length ? R(turns) : adjFor(subjCat); pred.push(deAdjC(a, a.pred)); extra.push(deVerbC(verb('sein'), f)); neg = null; }
     if (kind === 'say') neg = null;
     if (['tr', 'in', 'sep', 'go', 'dat'].includes(kind) && !modal && G.inf !== 'mögen' && coin(0.12) && !how.length) how.push(deAdvC('gern'));
     if (coin(0.15) && !neg && !obj.some(c => c.fam === 'kein')) freq.push(deAdvC(R(['oft', 'immer'])));
@@ -873,9 +876,12 @@ function deConjugate(inf, noSep) {
   const s = /(s|ß|x|z|tz)$/.test(st) ? '' : 's';                  // tanzen → du tanzt
   return [st + 'e', st + e + s + 't', st + e + 't', inf, st + e + 't', inf];
 }
+const DE_PL_LAST = 'haus:häuser buch:bücher kind:kinder mann:männer baum:bäume rad:räder wort:wörter land:länder bild:bilder kleid:kleider glas:gläser blatt:blätter dorf:dörfer schloss:schlösser wald:wälder zahn:zähne stuhl:stühle zug:züge ball:bälle fuß:füße hand:hände stadt:städte nacht:nächte wand:wände maus:mäuse kuh:kühe vogel:vögel garten:gärten apfel:äpfel bruder:brüder vater:väter mutter:mütter tochter:töchter platz:plätze saft:säfte hut:hüte sohn:söhne arzt:ärzte fluss:flüsse auto:autos ei:eier licht:lichter lied:lieder herz:herzen bett:betten hemd:hemden auge:augen ohr:ohren'.split(' ').map(x => x.split(':')).filter(x => x[0].length > 2 || x[0] === 'zug');
 // the plural of a noun (a good guess: check the ones that look wrong)
 function dePl(w, g) {
   const W = String(w || '');
+  // compounds go like their last part: Vogelhaus → Vogelhäuser, Kinderbuch → Kinderbücher
+  for (const [a, b] of DE_PL_LAST) if (W.toLowerCase().endsWith(a)) return W.slice(0, W.length - a.length) + (W.length === a.length ? deCap(b) : b);
   if (/(e)$/.test(W)) return W + 'n';
   if (/(ung|heit|keit|schaft|ion|tät|ei|ie)$/.test(W)) return W + 'en';
   if (/in$/.test(W) && g === 'f') return W + 'nen';

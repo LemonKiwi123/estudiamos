@@ -1490,4 +1490,4 @@ GT_BOOKS.de = {
 GT_BOOKS.de.lines['🌐 Game language: Deutsch'] = '🌐 Spielsprache: Deutsch';
 GT_BOOKS.de.suffix = [[' · Tavern', ' · Taverne'], [' · Church', ' · Kirche'], [' · Jail', ' · Gefängnis'], [' · 1F', ' · E1'], [' · 2F', ' · E2'], [' · Bank', ' · Bank'],
   [' · Inn', ' · Gasthaus'], [' · Item shop', ' · Laden'], [' · Smithy', ' · Schmiede'], [' · Old Well', ' · Alter Brunnen']];
-GT_BOOKS.de.frag = [[/(d+) gold/g, '$1 Gold'], [/(d+) coins/g, '$1 Münzen'], [/Lv ?(d+)/g, 'Lv. $1'], [/(d+) MP/g, '$1 MP'], [/(d+) HP/g, '$1 LP'], [/Next:/g, 'Als Nächstes:']];
+GT_BOOKS.de.frag = [[/(\d+) gold\b/g, '$1 Gold'], [/(\d+) coins\b/g, '$1 Münzen'], [/\bLv ?(\d+)/g, 'Lv. $1'], [/(\d+) MP\b/g, '$1 MP'], [/(\d+) HP\b/g, '$1 LP'], [/\bNext:/g, 'Als Nächstes:']];
