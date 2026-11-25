@@ -66,10 +66,10 @@ const DE_NOUN = [
   DN('Tee', null, 'm', 'drink', 'tea', null, { mass: 2 }), DN('Saft', null, 'm', 'drink', 'juice', null, { mass: 2 }),
   DN('Buch', 'Bücher', 'n', 'read', 'book', 'books'), DN('Brief', 'Briefe', 'm', 'read', 'letter', 'letters'), DN('Zeitung', 'Zeitungen', 'f', 'read', 'newspaper', 'newspapers'),
   DN('Zeitschrift', 'Zeitschriften', 'f', 'read', 'magazine', 'magazines'), DN('Geschichte', 'Geschichten', 'f', 'read', 'story', 'stories'),
-  DN('Park', 'Parks', 'm', 'place', 'park', 'parks', { p: 'in' }), DN('Schule', 'Schulen', 'f', 'place', 'school', 'schools', { p: 'in' }), DN('Kino', 'Kinos', 'n', 'place', 'movie theater', 'movie theaters', { p: 'in' }),
+  DN('Park', 'Parks', 'm', 'place', 'park', 'parks', { p: 'in' }), DN('Schule', 'Schulen', 'f', 'place', 'school', 'schools', { p: 'in', alt: ['auf', 'an'] }), DN('Kino', 'Kinos', 'n', 'place', 'movie theater', 'movie theaters', { p: 'in' }),
   DN('Stadt', 'Städte', 'f', 'place', 'town', 'towns', { p: 'in' }), DN('Küche', 'Küchen', 'f', 'place', 'kitchen', 'kitchens', { p: 'in' }), DN('Supermarkt', 'Supermärkte', 'm', 'place', 'supermarket', 'supermarkets', { p: 'in' }),
   DN('Restaurant', 'Restaurants', 'n', 'place', 'restaurant', 'restaurants', { p: 'in' }), DN('Bibliothek', 'Bibliotheken', 'f', 'place', 'library', 'libraries', { p: 'in' }),
-  DN('Büro', 'Büros', 'n', 'place', 'office', 'offices', { p: 'in' }), DN('Bahnhof', 'Bahnhöfe', 'm', 'place', 'station', 'stations', { p: 'an', go: 'zu' }), DN('Strand', 'Strände', 'm', 'place', 'beach', 'beaches', { p: 'an' }),
+  DN('Büro', 'Büros', 'n', 'place', 'office', 'offices', { p: 'in' }), DN('Bahnhof', 'Bahnhöfe', 'm', 'place', 'station', 'stations', { p: 'an', go: 'zu', alt: ['in', 'auf'] }), DN('Strand', 'Strände', 'm', 'place', 'beach', 'beaches', { p: 'an' }),
   DN('Markt', 'Märkte', 'm', 'place', 'market', 'markets', { p: 'auf' }), DN('Zoo', 'Zoos', 'm', 'place', 'zoo', 'zoos', { p: 'in' }), DN('Garten', 'Gärten', 'm', 'place', 'garden', 'gardens', { p: 'in' }),
   DN('Café', 'Cafés', 'n', 'place', 'café', 'cafés', { p: 'in' }), DN('Museum', 'Museen', 'n', 'place', 'museum', 'museums', { p: 'in' }),
   DN('Auto', 'Autos', 'n', 'thing', 'car', 'cars'), DN('Tisch', 'Tische', 'm', 'thing', 'table', 'tables'), DN('Stuhl', 'Stühle', 'm', 'thing', 'chair', 'chairs'), DN('Handy', 'Handys', 'n', 'thing', 'phone', 'phones'),
@@ -176,9 +176,19 @@ const deNounReads = n => { const out = []; for (const c of DE_CASES) for (const 
 
 /* ---------------- German checker ---------------- */
 function deCheck(T0) {
+  const first = deCheckOnce(T0); if (first.ok) return first;
+  const amb = []; for (let k = 0; k < T0.length; k++) { const t = T0[k]; if (t.k === 'verb' && t.e && t.w === t.e.inf && (t.inf || t.e.f.includes(t.w))) amb.push(k); }
+  for (const k of amb.slice(0, 4)) {
+    const t = T0[k], other = t.inf ? (t.e.f.includes(t.w) ? { ...t, inf: false, f: t.e.f.indexOf(t.w) } : null) : { ...t, inf: true };
+    if (!other) continue;
+    const r = deCheckOnce(T0.map((x, j) => j === k ? other : x)); if (r.ok) return r;
+  }
+  return first;
+}
+function deCheckOnce(T0) {
   // a few words are spelled the same as another kind of word: ihr / sein before a noun is "her / his", mit / zu at the end is a verb part
   const T = T0.map((t, k) => {
-    const nx = T0[k + 1], nounNext = nx && ['noun', 'adj', 'int'].includes(nx.k);
+    const nx = k + 1 < T0.length ? T0[k + 1] : null, nounNext = nx && ['noun', 'adj', 'int'].includes(nx.k);
     if (t.k === 'part' && ['mit', 'zu', 'an', 'auf'].includes(t.w) && nx && ['det', 'noun', 'adj', 'int'].includes(nx.k)) return { ...t, k: 'prep', ...(() => { const p = DE_PREP.find(x => x[0] === t.w); return { base: p[1], art: p[2], cs: p[3], en: p[4] }; })() };
     if (t.k === 'prep' && DE_PARTS.includes(t.w) && (!nx || ['conj', 'verb', 'neg', 'adv'].includes(nx.k) && !(nx.k === 'adv' && nx.w === 'hier'))) return { ...t, k: 'part', e: null };
     if ((t.k === 'pron' || (t.k === 'verb' && t.inf)) && ['ihr', 'sein'].includes(t.w) && nounNext) return { ...t, k: 'det', fam: t.w, en: dePossEn(t.w) };
@@ -195,10 +205,10 @@ function deCheck(T0) {
   function NP(opts = {}) {
     const start = i; let det = null, sehr = null, adj = null;
     if (peek()?.k === 'det') det = T[i++];
-    if (peek()?.k === 'int') { sehr = T[i++]; if (peek()?.k !== 'adj') return err('“sehr” (very) goes right before a describing word: “sehr groß”.', i - 1); }
+    if (peek()?.k === 'int') { sehr = T[i++]; if (peek()?.k !== 'adj') return err('“sehr” (very) goes right before a describing word: “sehr groß”.', peek() ? i - 1 : i); }
     if (peek()?.k === 'adj') adj = T[i++];
     const n = peek();
-    if (!n || n.k !== 'noun') return err(det ? `“${det.w}” comes before a noun, so a noun has to follow it.` : `“${adj ? adj.w : T[start].w}” describes a noun, so the noun goes right after it.`, det && !adj ? i - 1 : start);
+    if (!n || n.k !== 'noun') return err(det ? `“${det.w}” comes before a noun, so a noun has to follow it.` : `“${adj ? adj.w : T[start].w}” describes a noun, so the noun goes right after it.`, !n ? i : det && !adj ? i - 1 : start);
     i++;
     const np = { k: 'np', det, sehr, adj, n, start, end: i, cdet: opts.cdet || null };
     // whose: "der Hund der Frau", "das Buch meines Bruders"
@@ -233,7 +243,7 @@ function deCheck(T0) {
     if (np.coord) { for (const p of np.coord) { const e = npFix(p, c, why); if (e) return e; } return null; }
     const n = np.n.e, reads = deNounReads(np.n), at = np.start;
     if (n.cat === 'home') return err('“Hause” only goes after “nach” (going home) or “zu” (at home).', at);
-    const nums = [...new Set(reads.map(r => r.num))], num = reads.some(r => r.c === c && r.num === np.n.num) ? np.n.num : reads.find(r => r.c === c)?.num || np.n.num || nums[0] || 's';
+    const nums = [...new Set(reads.map(r => r.num))], whole = npReads(np).filter(r => r.c === c), num = whole.length ? (whole.find(r => r.num === np.n.num) || whole[0]).num : reads.some(r => r.c === c && r.num === np.n.num) ? np.n.num : reads.find(r => r.c === c)?.num || np.n.num || nums[0] || 's';
     const d = np.det || np.cdet, cn = DE_CASE_NAME[c];
     const fams = d ? [...new Set(deDetReads(d.w).map(x => x.fam))] : [];
     const fam = d ? (fams.includes(d.fam) ? d.fam : fams[0] || d.fam) : null;
@@ -284,7 +294,7 @@ function deCheck(T0) {
     if (nx?.k === 'noun' && nx.e.cat === 'home') return err(p.art ? `Use “${p.base}” on its own here: “${p.base === 'zu' ? 'zu Hause' : 'nach Hause'}”.` : '“Hause” only goes after “nach” (going home) or “zu” (at home).', start);
     if (p.w === 'nach') return err('Here “nach” goes with “Hause”: “nach Hause” (home). To go to a place, use “in” or “zu”: “in den Park”, “zum Park”.', start);
     if (nx?.k === 'pron') { i++; return { k: 'pp', p, pron: { k: 'pron', t: nx, start: i - 1, end: i }, start, end: i }; }
-    if (!nx || !['det', 'noun', 'adj', 'int'].includes(nx.k)) return err(`“${p.w}” needs a noun after it: “${p.art ? `${p.w} Park` : p.w === 'mit' ? 'mit dem Hund' : p.w === 'für' ? 'für meine Mutter' : `${p.w} den Park`}”.`, start);
+    if (!nx || !['det', 'noun', 'adj', 'int'].includes(nx.k)) return err(`“${p.w}” needs a noun after it: “${p.art ? `${p.w} Park` : p.w === 'mit' ? 'mit dem Hund' : p.w === 'für' ? 'für meine Mutter' : `${p.w} den Park`}”.`, nx ? start : i);
     if (p.art) {
       if (nx.k === 'det') return err(`“${p.w}” already has the article in it (${p.base} + ${p.art}), so don’t add another one.`, i);
       const np = NP({ cdet: { w: p.art, fam: 'der' } }); if (isErr(np)) return np;
@@ -306,7 +316,7 @@ function deCheck(T0) {
     if (t.k === 'int' || t.k === 'adj') {
       let j = i; if (T[j].k === 'int') j++; if (T[j]?.k === 'adj') j++;
       if (T[j]?.k === 'noun') return NPs(where);
-      let sehr = null; if (t.k === 'int') { sehr = T[i++]; if (peek()?.k !== 'adj') return err('“sehr” (very) goes right before a describing word: “sehr groß”.', i - 1); }
+      let sehr = null; if (t.k === 'int') { sehr = T[i++]; if (peek()?.k !== 'adj') return err('“sehr” (very) goes right before a describing word: “sehr groß”.', peek() ? i - 1 : i); }
       const a = T[i++]; return { k: 'pred', a, sehr, start, end: i };
     }
     if (t.k === 'prep') return PP();
@@ -318,7 +328,11 @@ function deCheck(T0) {
   }
   /* check one clause once its parts are known. C: { kind: main | sub, vf, verb, items, shared, cj } */
   function analyse(C) {
-    const V = C.verb, items = C.items, main = C.kind === 'main';
+    let V = C.verb; const items = C.items, main = C.kind === 'main';
+    if (main) {
+      const pt = items.find(x => x.k === 'part'), alt = pt ? (V.e.part === pt.t.w ? null : DE_VERB.find(v => v.part === pt.t.w && v.f.includes(V.w))) : V.e.part && !V.joined ? DE_VERB.find(v => !v.part && v.f.includes(V.w)) : null;
+      if (alt) V = C.verb = { ...V, e: alt, f: alt.f.indexOf(V.w) };
+    }
     // the verb that decides what comes after it: the one at the end when the first is a modal verb
     const infs = items.filter(x => x.k === 'inf'), modal = V.e.t === 'modal';
     if (infs.length > 1) return err('Use only one verb at the end.', infs[1].start);
@@ -342,14 +356,14 @@ function deCheck(T0) {
       const cand = [C.vf, ...rest].find(x => x && (x.k === 'np' || x.k === 'pron'));
       if (cand && cand.k === 'np') { const e = npFix(cand, 'nom', 'who does it (the subject)'); if (e) return e; }
       if (cand && cand.k === 'pron') { const r = dePronReads(cand.t.w)[0]; return err(`Who does it uses the nominative: “${r ? r.r[0] : 'ich'}”, not “${cand.t.w}”.`, cand.start); }
-      return err(main ? 'German needs who does it (the subject): for example “ich”, “er” or “der Hund”.' : `After “${C.cj.w}” comes who does it: “${C.cj.w} ich …”, “${C.cj.w} er …”.`, main ? C.vAt : C.vAt);
+      return err(main ? 'German needs who does it (the subject): for example “ich”, “er” or “der Hund”.' : `After “${C.cj.w}” comes who does it: “${C.cj.w} ich …”, “${C.cj.w} er …”.`, main && !rest.length ? C.vEnd : C.vAt);
     }
     if (C.shared) subj = C.shared;
     // the verb matches who does it
     let fset;
     if (C.shared) fset = C.shared.fset;
     else if (subj.k === 'pron') { fset = dePronReads(subj.t.w).filter(r => r.c === 'nom').map(r => r.r[5]); if (!fset.length) { const r = dePronReads(subj.t.w)[0]; return err(`Who does it uses the nominative: “${r ? r.r[0] : 'ich'}”, not “${subj.t.w}”.`, subj.start); } }
-    else { const e = npFix(subj, 'nom', 'who does it (the subject)'); if (e) return e; fset = [subj.coord ? 5 : subj.num === 'p' ? 5 : 2]; }
+    else { const e = npFix(subj, 'nom', 'who does it (the subject)'); if (e) return e; fset = subj.coord ? (subj.conj.w === 'oder' ? [2, 5] : [5]) : [subj.num === 'p' ? 5 : 2]; }
     C.subj = subj; C.fset = fset;
     const vForm = f => (V.joined ? V.e.part : '') + V.e.f[f];
     const f = fset.find(x => vForm(x) === V.w);
@@ -378,6 +392,7 @@ function deCheck(T0) {
     // what kind of verb it is
     if (['tr', 'haben'].includes(G.t) || G.t === 'dat') {
       const cs = G.t === 'dat' ? 'dat' : 'acc';
+      if (cs === 'dat' && !objs.length && subj.gen && npHas(subj.gen, 'dat')) { objs.push(subj.gen); subj.gen = null; }
       if (objs.length > 1) { const two = objs[1]; return err(objs[1].k === 'np' && objs[0].k === 'np' ? `Only one object here: what you ${en}. To say whose, use the genitive: “${npText(objs[0])} ${deDet('der', 'gen', two.n.e.g, two.n.num)} ${deNounForm(two.n.e, 'gen', two.n.num || 's')}”.` : 'Only one object here.', two.start); }
       if (!objs.length && G.need) return err(`“${G.inf}” needs ${G.t === 'dat' ? 'who you ' + en : 'what you ' + en} after it: “${inf ? `${V.w} … ${G.t === 'dat' ? 'dir' : 'einen Apfel'} ${inf.t.w}` : `${V.w} ${{ food: 'einen Apfel', drink: 'Wasser', read: 'ein Buch', thing: 'einen Ball', person: 'meinen Freund', open: 'die Tür', '*': 'einen Hund' }[G.objs?.[0]] || 'einen Hund'}`}”.`, last ? last.end : C.vEnd);
       for (const o of objs) {
@@ -418,37 +433,34 @@ function deCheck(T0) {
         if (!ok) { const r = rr[0]; return err(`After “${p.w}” comes the ${DE_CASE_NAME[cs]}: “${p.w} ${r ? r.r[cs === 'acc' ? 1 : 2] : 'mir'}”.`, x.start + 1); }
         x.pr = ok; if (go && p.w === 'zu') dest++; continue;
       }
-      const np = x.np, n = np.n.e;
-      if (p.cs === 'two' || (p.base === 'zu' && n.cat === 'place')) {
-        if (n.cat !== 'place') return err(`“${p.w}” + a place here: “${go ? 'in den Park' : 'im Park'}”, “${go ? 'an den Strand' : 'am Strand'}”. “${n.w}” isn’t a place.`, x.start);
+      const np = x.np, n = np.n.e, two = ['in', 'an', 'auf'].includes(p.base), spot = n.cat === 'place' || n.cat === 'thing';
+      if (two || (p.base === 'zu' && n.cat === 'place')) {
+        if (!spot) return err(`“${p.w}” + a place here: “${go ? 'in den Park' : 'im Park'}”, “${go ? 'an den Strand' : 'am Strand'}”. “${n.w}” isn’t a place.`, x.start);
         if (p.base === 'zu' && !go) return err(`“${p.w}” is for going somewhere. Being there: “${deAt(n, 'dat')}”.`, x.start);
-        if (p.base !== 'zu' && p.base !== n.p) return err(`German says “${deAt(n, go ? 'acc' : 'dat', np)}”.`, x.start);
         const cs = p.base === 'zu' ? 'dat' : go ? 'acc' : 'dat';
-        if (p.art && p.cs !== cs) return err(cs === 'acc' ? `With “${G.inf}” (going somewhere), “${p.base}” takes the accusative: “${deAt(n, 'acc', np)}”.` : `“${p.w}” is for going somewhere. Being there takes the dative: “${deAt(n, 'dat', np)}”.`, x.start);
-        if (p.art) { const want = deDet('der', cs, n.g, np.n.num || 's'); if (want !== p.art || np.n.num === 'p') return err(`“${n.w}” is ${np.n.num === 'p' ? 'plural' : DE_G_NAME[n.g]}, so it is “${deAt(n, cs, np)}”.`, x.start); }
+        // in, an or auf? "am" (by, at) works with any place; "in" doesn't go with Strand or Markt, "auf" not with most places
+        if (two && n.cat === 'place' && p.base !== n.p && !(n.alt || []).includes(p.base) && !(p.base === 'an' && cs === 'dat')) return err(`German says “${deAt(n, cs, np)}”.`, x.start);
+        const at = { ...n, p: p.base };
+        if (p.art && p.cs !== cs) return err(cs === 'acc' ? `With “${G.inf}” (going somewhere), “${p.base}” takes the accusative: “${deAt(at, 'acc', np)}”.` : `“${p.w}” is for going somewhere. Being there takes the dative: “${deAt(at, 'dat', np)}”.`, x.start);
+        if (p.art) { const want = deDet('der', cs, n.g, deNumOf(np)); if (want !== p.art) return err(`“${n.w}” is ${deNumOf(np) === 'p' ? 'plural' : DE_G_NAME[n.g]}, so it is “${deAt(at, cs, np)}”.`, x.start); }
         const e = npFix(np, cs, cs === 'acc' ? `where you go (“${p.base}” + accusative)` : p.base === 'zu' ? 'after “zu” (always dative)' : `where something is (“${p.base}” + dative)`); if (e) return e;
         x.loc = !go; if (go) dest++;
         continue;
       }
       const cs = p.cs;
-      if (p.art) { const want = deDet('der', cs, n.g, np.n.num || 's'); if (want !== p.art || np.n.num === 'p') return err(`“${n.w}” is ${np.n.num === 'p' ? 'plural' : DE_G_NAME[n.g]}, so say “${p.base} ${deDet('der', cs, n.g, np.n.num || 's')} ${deNounForm(n, cs, np.n.num || 's')}”.`, x.start); }
+      if (p.art) { const num = deNumOf(np), want = deDet('der', cs, n.g, num); if (want !== p.art) return err(`“${n.w}” is ${num === 'p' ? 'plural' : DE_G_NAME[n.g]}, so say “${DE_JOIN[p.base + ' ' + want] || p.base + ' ' + want} ${deNounForm(n, cs, num)}”.`, x.start); }
       const e = npFix(np, cs, `after “${p.base}” (always ${DE_CASE_NAME[cs]})`); if (e) return e;
-      if (p.base === 'für' && !['person', 'animal'].includes(n.cat)) return err(`“für” + a person here: “für meine Mutter”. “${n.w}” isn’t a person.`, x.start);
       if (p.base === 'zu' && go) dest++;
-      else if (p.base === 'zu') return err(`“zu” is for going somewhere: “ich gehe zu meinem Freund”.`, x.start);
-      if (['von', 'bei'].includes(p.base) && !['person', 'animal'].includes(n.cat)) return err(`“${p.base}” + a person here: “${p.base} meinem Freund”.`, x.start);
+      else if (p.base === 'zu') return err('“zu” is for going somewhere: “ich gehe zu meinem Freund”.', x.start);
     }
     if (G.t === 'go' && dest > 1) return err('Say where you go only once.', pps[pps.length - 1].start);
-    if (G.t === 'go' && !dest) return err(`“${G.inf}” needs where you go: “${V.w} in den Park”, “${V.w} zur Schule” or “${V.w} nach Hause”.`, last ? last.end : C.vEnd);
-    if (G.t !== 'go' && pps.some(x => !x.loc && x.p.cs === 'two')) { const x = pps.find(x => !x.loc && x.p.cs === 'two'); return err(`“${x.p.w}” here is for going somewhere. Use the dative for where you are: “im Park”.`, x.start); }
     const locs = pps.filter(x => x.loc).length + advs.filter(a => a.t.cls === 'place').length;
     if (G.t === 'sein' && !preds.length && !locs) return err(`“${V.w}” needs something after it: a describing word (“müde”) or a place (“im Park”, “zu Hause”).`, last ? last.end : C.vEnd);
     if (G.t === 'werden' && !preds.length) return err(`“${V.w}” needs a describing word after it: “${V.w} müde”.`, last ? last.end : C.vEnd);
     if (G.t === 'sein' && preds.length && locs) return err('Say one thing after sein: how something is (“müde”) or where it is (“im Park”).', preds[0].start);
     // adverbs
     for (const a of advs) {
-      if (a.t.cls === 'gern' && ['sein', 'werden', 'haben', 'say'].includes(G.t)) return err('“gern” goes with action verbs: “ich spiele gern”, “ich esse gern Äpfel”.', a.start);
-      if (a.t.cls === 'gern' && modal) return err(`Try “gern” without “${V.w}”: “ich spiele gern”, or “${V.w}” without “gern”.`, a.start);
+      if (a.t.cls === 'gern' && preds.length) return err('“gern” goes with action verbs: “ich spiele gern”, “ich esse gern Äpfel”.', a.start);
       if (a.t.cls === 'how' && !['in', 'tr', 'go'].includes(G.t)) return err(`“${a.t.w}” goes with action verbs: “sie spielt ${a.t.w}”.`, a.start);
     }
     if (advs.filter(a => a.t.cls === 'gern').length > 1) return err('Use “gern” only once.');
@@ -473,7 +485,7 @@ function deCheck(T0) {
           const p = x.coord ? x.coord[0] : x;
           return err(`German says “kein” here instead of “nicht”: “${[deDet('kein', p.c, p.n.e.g, p.num), p.adj ? deAdjForm(p.adj.e, p.c, p.n.e.g, p.num, 'kein') : '', deNounForm(p.n.e, p.c, p.num)].filter(Boolean).join(' ')}”.`, x.start);
         }
-        if (x.k === 'pred' || (x.k === 'pp' && (x.loc || x.home || x.p.cs === 'two' || (G.t === 'go' && x.p.base === 'zu'))) || (x.k === 'adv' && ['gern', 'how', 'place'].includes(x.t.cls))) return err(`“nicht” goes before “${cText(x)}”.`, rest[ni].start);
+        if (x.k === 'pred' || (x.k === 'pp' && (x.loc || x.home || ['in', 'an', 'auf'].includes(x.p.base) || (G.t === 'go' && x.p.base === 'zu'))) || (x.k === 'adv' && ['gern', 'how', 'place'].includes(x.t.cls))) return err(`“nicht” goes before “${cText(x)}”.`, rest[ni].start);
       }
     }
     // makes sense? only people and animals do things
@@ -499,7 +511,7 @@ function deCheck(T0) {
       }
       const c = part('sub'); if (isErr(c)) return c; C.items.push(c);
     }
-    if (!C.verb) return err(`After “${cj.w}” comes a whole sentence with its verb at the end: “${cj.w} ich müde bin”.`, i - 1);
+    if (!C.verb) return err(`After “${cj.w}” comes a whole sentence with its verb at the end: “${cj.w} ich müde bin”.`, i);
     const r = analyse(C); return r;
   }
   function mainClause(front, shared) {
@@ -539,7 +551,7 @@ function deCheck(T0) {
     let C;
     if (peek()?.k === 'conj' && peek().w === 'weil') {   // "Weil ich müde bin, bleibe ich zu Hause."
       const cj = T[i++]; const s = subClause(cj); if (isErr(s)) return s;
-      if (!peek()) return err('Now add the main sentence, verb first: “…, bleibe ich zu Hause”.', i - 1);
+      if (!peek()) return err('Now add the main sentence, verb first: “…, bleibe ich zu Hause”.', i);
       P.commas.add(i);
       C = mainClause({ k: 'sub', start: s.start, end: i, s }, null); if (isErr(C)) return C;
       C.front = s;
@@ -549,7 +561,7 @@ function deCheck(T0) {
     // weil / dass after the clause
     while (peek()?.k === 'conj' && peek().sub) {
       const cj = T[i]; P.commas.add(i); i++;
-      if (!peek()) return err(`“${cj.w}” needs a sentence after it.`, i - 1);
+      if (!peek()) return err(`“${cj.w}” needs a sentence after it.`, i);
       if (cj.w === 'dass' && C.G.t !== 'say') return err('“dass” (that) comes after verbs like denken, glauben, sagen and wissen: “Ich denke, dass …”.', i - 1);
       const s = subClause(cj); if (isErr(s)) return s; C.subs.push(s);
       if (peek()?.k === 'conj' && !peek().sub) P.commas.add(i);   // the weil sentence ends: "…, weil ich müde bin, und …"
@@ -558,13 +570,15 @@ function deCheck(T0) {
     const cj = T[i];
     if (cj.k !== 'conj') return err(`“${cj.w}” doesn’t fit here.`, i);
     i++;
-    if (!peek()) return err(`“${cj.w}” joins two parts, so something has to come after it.`, i - 1);
+    if (!peek()) return err(`“${cj.w}” joins two parts, so something has to come after it.`, i);
     if (cj.w === 'aber') P.commas.add(i - 1);
     P.links.push(cj);
     C.shareNext = C.subj ? { ...C.subj, fset: [C.f] } : C.shared;
   }
   return { ok: true, P };
 }
+// the number of a noun after im / ins / zum: the noun's own spelling decides (Kind / Kinder), one when it could be both
+const deNumOf = np => { const r = deNounReads(np.n); return r.some(x => x.num === 's') ? 's' : 'p'; };
 const deEnA = p => p.n.num === 'p' || p.n.e.mass || p.n.e.cat === 'feel' ? p.n.en : (/^[aeiou]/i.test(p.n.en) ? 'an ' : 'a ') + p.n.en;
 // how to say "to the park" or "in the park" for a place: in den Park / im Park, an den Strand / am Strand, auf den Markt
 function deAt(n, c, np) {
@@ -596,7 +610,8 @@ function deEnglish(P) {
     if (x.home) return x.p.w === 'nach' ? 'home' : 'at home';
     if (x.pron) return `${({ mit: 'with', für: 'for', ohne: 'without', von: 'from', bei: 'at', zu: 'to' })[x.p.base] || x.p.base} ${pronEn(x, true)}`;
     const n = x.np.n.e, the = npEn(x.np);
-    if (n.cat === 'place' && (x.p.cs === 'two' || x.p.base === 'zu')) return x.loc ? (x.p.base === 'in' ? 'in ' : 'at ') + the : 'to ' + the;
+      if (n.cat === 'thing' && ['in', 'an', 'auf'].includes(x.p.base)) return (x.p.base === 'in' ? (x.loc ? 'in ' : 'into ') : x.p.base === 'an' ? (x.loc ? 'at ' : 'to ') : (x.loc ? 'on ' : 'onto ')) + the;
+      if (n.cat === 'place' && ['in', 'an', 'auf', 'zu'].includes(x.p.base)) return x.loc ? (x.p.base === 'in' ? 'in ' : 'at ') + the : 'to ' + the;
     return ({ mit: 'with', für: 'for', ohne: 'without', von: 'from', bei: 'at', zu: 'to' })[x.p.base] + ' ' + the;
   };
   const one = (C, sub) => {
@@ -622,11 +637,14 @@ function deEnglish(P) {
     let vp;
     const be = f === 0 ? 'am' : third ? 'is' : 'are';
     const baseOf = () => G.t === 'sein' || feel ? 'be' : G.en;
-    const lead = (gern ? 'like to ' : '');
+    const lead = '';
+    if (modal && gern && V.e.inf !== 'möchten') endAdv.push('gladly');
     if (modal) {
       const m = V.e.m[(neg2 ? 2 : 0) + (third ? 1 : 0)];
       vp = `${m}${freq ? ' ' + freq : ''} ${lead}${baseOf()}`;
-    } else if (G.t === 'sein' || feel) vp = `${be}${neg2 ? ' not' : ''}${freq ? ' ' + freq : ''}`;
+    } else if (gern && G.t === 'haben' && !feel) vp = neg2 ? `${third ? 'does' : 'do'} not like` : third ? 'likes' : 'like';
+    else if (gern && G.t === 'sein') vp = neg2 ? `${third ? 'does' : 'do'} not like to be` : `${third ? 'likes' : 'like'} to be`;
+    else if (G.t === 'sein' || feel) vp = `${be}${neg2 ? ' not' : ''}${freq ? ' ' + freq : ''}`;
     else if (gern) vp = neg2 ? `${third ? 'does' : 'do'} not${freq ? ' ' + freq : ''} like to ${G.en}` : `${freq ? freq + ' ' : ''}${third ? 'likes' : 'like'} to ${G.en}`;
     else vp = neg2 ? `${third ? 'does' : 'do'} not${freq ? ' ' + freq : ''} ${G.en}` : `${freq ? freq + ' ' : ''}${third ? G.en3 : G.en}`;
     let s = `${subj} ${vp} ${rest} ${pp.join(' ')} ${endAdv.join(' ')} ${time.join(' ')}`;
@@ -667,7 +685,7 @@ function deGenerate(pref) {
       if (num === 'p') fam = R(['der', 'der', 'poss', 'dies', 'zwei', 'drei', ...(o.bare ? ['bare', 'bare'] : [])]);
       else if (n.mass === 1) fam = R(['der', 'poss', ...(o.bare ? ['bare', 'bare', 'bare'] : [])]);
       else fam = R(['der', 'der', 'ein', 'ein', 'poss', 'dies', ...(n.mass === 2 && o.bare ? ['bare'] : [])]);
-      if (n.fam && num === 's' && coin(0.6)) fam = 'poss';
+      if (n.fam && num === 's' && coin(0.9)) fam = 'poss';
       if (o.noBare && fam === 'bare') fam = 'der';
     }
     if (fam === 'ein' && num === 'p') fam = 'der';
@@ -685,7 +703,7 @@ function deGenerate(pref) {
     if (n.weak && num === 's') extra.push(deNounC(n, c === 'nom' ? 'acc' : 'nom', 's'));
     if (c === 'dat' && num === 'p' && deNounForm(n, 'dat', 'p') !== n.pl) extra.push(deNounC(n, 'nom', 'p'));
     // whose: der Hund meiner Schwester
-    if (o.gen && coin(0.15)) { const g = nounOf(['person']), gfam = g.fam ? 'poss' : 'der'; let gs = gfam;
+    if (o.gen && fam === 'der' && coin(0.25)) { const g = nounOf(['person']), gfam = g.fam ? 'poss' : 'der'; let gs = gfam;
       if (gfam === 'poss') { const row = R(DE_POSS.filter(r => r[0] !== 'euer')); gs = row[0]; out.push(deDetC(deDet(gs, 'gen', g.g, 's'), gs, row[1])); } else out.push(deDetC(deDet('der', 'gen', g.g, 's'), 'der', 'the'));
       out.push(deNounC(g, 'gen', 's')); if (g.g !== 'f') extra.push(deNounC(g, 'nom', 's')); }
     return p;
@@ -727,7 +745,7 @@ function deGenerate(pref) {
       if ((G.objs.includes('person') || G.objs.includes('*')) && coin(0.22) && G.t !== 'haben') pron.push(pronObj(cs, f));
       else if (G.t === 'haben' && coin(0.3)) { const n = R(DE_NOUN.filter(n => n.cat === 'feel')); if (neg) { obj.push(deDetC(deDet('kein', 'acc', n.g, 's'), 'kein', 'no')); neg = null; } obj.push(deNounC(n, 'acc', 's')); extra.push(deVerbC(verb('sein'), f)); }
       else {
-        const n = nounOf(G.objs), num = n.pl && coin(0.3) ? 'p' : 's';
+        const n = nounOf(G.t === 'haben' ? ['thing', 'read', 'animal', 'food', 'drink'] : G.objs), num = n.pl && coin(0.3) ? 'p' : 's';
         let fam = null;
         if (neg && !G.part && coin(0.6)) { fam = 'kein'; neg = null; }
         const p = np(n, num, cs, obj, { bare: cs === 'acc' && !fam, gen: true, fam: fam || undefined });
@@ -740,18 +758,18 @@ function deGenerate(pref) {
       if (coin(0.15) && G.t !== 'haben') withWho(pp);
       else if (coin(0.12) && !G.objs.includes('place')) toPlace(pp, false);
     } else if (kind === 'in' || (kind === 'sep' && G.t === 'in')) {
-      const r = Math.random();
+      const r = G.part && !['einkaufen'].includes(G.inf) ? 1 : Math.random();
       if (r < 0.4) toPlace(pp, false);
       else if (r < 0.6) withWho(pp, ['person', 'animal']);
       if (DE_HOW_VERBS.test(G.inf) && coin(0.25)) how.push(deAdvC(R(['gut', 'viel'])));
-    } else if (kind === 'go') { toPlace(pp, true); if (coin(0.25)) withWho(pp); extra.push(deVerbC(verb('sein'), f)); }
+    } else if (kind === 'go') { if (coin(0.25)) withWho(pp); toPlace(pp, true); extra.push(deVerbC(verb('sein'), f)); }
     else if (kind === 'sein') {
       if (coin(0.7)) { if (coin(0.2)) pred.push(deSehrC()); const a = adjFor(subjCat); pred.push(deAdjC(a, a.pred)); extra.push(deAdjC(a, a.stem + 'e')); }
       else if (coin(0.2)) pred.push(deAdvC('hier')); else toPlace(pp, false);
     } else if (kind === 'werden') { const a = adjFor(subjCat === 'person' ? 'person' : subjCat); pred.push(deAdjC(a, a.pred)); extra.push(deVerbC(verb('sein'), f)); neg = null; }
     if (kind === 'say') neg = null;
     if (['tr', 'in', 'sep', 'go', 'dat'].includes(kind) && !modal && G.inf !== 'mögen' && coin(0.12) && !how.length) how.push(deAdvC('gern'));
-    if (coin(0.15) && !neg) freq.push(deAdvC(R(['oft', 'immer'])));
+    if (coin(0.15) && !neg && !obj.some(c => c.fam === 'kein')) freq.push(deAdvC(R(['oft', 'immer'])));
     const timeW = coin(0.25) ? R(['heute', 'morgen', 'jetzt', ...(G.inf === 'aufstehen' ? ['früh', 'früh'] : [])]) : null;
     const front = !o.sub && !o.shared && timeW && timeW !== 'früh' && coin(0.6);
     if (timeW && !front) time.push(deAdvC(timeW));
@@ -835,18 +853,20 @@ const DE_IRREG_FORMS = {
   gelten: 'gelte giltst gilt gelten geltet gelten', vergeben: 'vergebe vergibst vergibt vergeben vergebt vergeben', erschrecken: 'erschrecke erschrickst erschrickt erschrecken erschreckt erschrecken',
 };
 const DE_SEP = /^(ab|an|auf|aus|bei|ein|fern|fest|her|hin|los|mit|nach|vor|weg|zu|zurück|zusammen|weiter|wieder|vorbei|heim|kennen|spazieren|statt|teil|um)(?=[a-zäöü]{3,})/;
+// verbs that are often the second half of one that splits (abholen, ausmachen, vorstellen)
+const DE_SEP_BASE = new Set('holen machen legen stellen setzen hören lernen sagen bauen packen kaufen räumen füllen stecken schalten leihen ziehen steigen springen kommen gehen stehen bringen denken schreiben schneiden suchen wachen zahlen fragen führen klären kleben drehen drücken hängen heben kehren klappen kochen rufen reisen rechnen reden richten schauen schicken schließen passen atmen bieten bleiben fliegen fließen gießen greifen hauen heizen knöpfen liegen lösen lehnen malen nähen probieren putzen reichen reißen schieben sitzen spielen spülen starten stimmen suchen tauschen teilen trennen trinken wandern warten wechseln weinen werten wischen ziehen zünden nutzen melden merken ordnen'.split(' '));
 // ich, du, er, wir, ihr, sie: the table first, then the regular pattern (arbeiten → arbeitest, tanzen → tanzt, sammeln → sammle)
 function deConjugate(inf, noSep) {
   inf = String(inf || '').trim().toLowerCase();
   const m = !noSep && inf.match(DE_SEP);
-  if (m && !DE_IRREG_FORMS[inf] && !/^(antworten|beginnen|bekommen|besuchen|erklären|verstehen|vergessen|übersetzen|unterrichten|wiederholen)$/.test(inf)) {
+  if (m && !DE_IRREG_FORMS[inf] && (DE_IRREG_FORMS[inf.slice(m[1].length)] || DE_SEP_BASE.has(inf.slice(m[1].length)) || DE_VERB.some(v => !v.part && v.inf === inf.slice(m[1].length)))) {
     const pre = m[1], base = deConjugate(inf.slice(pre.length), true);
     return base.map(f => f + ' ' + pre);
   }
   if (DE_IRREG_FORMS[inf]) return DE_IRREG_FORMS[inf].split(' ');
   if (/[^e]n$/.test(inf) && /(el|er)n$/.test(inf)) { const st = inf.slice(0, -1); return [(/eln$/.test(inf) ? st.slice(0, -2) + 'le' : st + 'e').replace(/ele$/, 'le'), st + 'st', st + 't', inf, st + 't', inf]; }   // sammeln, wandern
   const st = inf.replace(/en$|n$/, '');
-  const e = /([dt]|[^aeioulrhn][mn])$/.test(st) ? 'e' : '';      // arbeiten → arbeitest, öffnen → öffnest
+  const e = /([dt]|[^aeiouäöülrhnm][mn]|ch[mn])$/.test(st) ? 'e' : '';      // arbeiten → arbeitest, öffnen → öffnest
   const s = /(s|ß|x|z|tz)$/.test(st) ? '' : 's';                  // tanzen → du tanzt
   return [st + 'e', st + e + s + 't', st + e + 't', inf, st + e + 't', inf];
 }
@@ -888,7 +908,7 @@ if (typeof bldApplyMine === 'function') { const prevApply = bldApplyMine; bldApp
 BLD_MINE.de = { name: 'German', forms: 'ich, du, er/sie/es, wir, ihr, sie (a verb that splits: rufe an, rufst an…)', nForms: 6, m: 'der (masculine)', f: 'die (feminine)', n: 'das (neuter)',
   conj: w => deConjugate(w), pl: w => dePl(deCap(w), deGenderGuess(w)), adj: w => deAdjForms(w),
   known: w => deKnown(w), gender: w => deGenderGuess(w), isVerb: w => /^[a-zäöüß]+(en|ern|eln)$/.test(w) || w === 'tun', refl: () => false,
-  parse: s => { const m = s.match(/^(der|die|das)\s+(\p{L}+)$/u); if (m) return { w: m[2], g: m[1] === 'der' ? 'm' : m[1] === 'die' ? 'f' : 'n', art: true };
-    const e = s.match(/^(ein|eine)\s+(\p{L}+)$/u); if (e) return { w: e[2], art: true, ...(e[1] === 'eine' ? { g: 'f' } : {}) };
+  parse: s => { const m = s.match(/^(der|die|das)\s+(\p{L}+)$/u); if (m) return { w: deCap(m[2]), g: m[1] === 'der' ? 'm' : m[1] === 'die' ? 'f' : 'n', art: true };
+    const e = s.match(/^(ein|eine)\s+(\p{L}+)$/u); if (e) return { w: deCap(e[2]), art: true, ...(e[1] === 'eine' ? { g: 'f' } : {}) };
     return /^\p{L}+$/u.test(s) ? { w: s } : null; },
   intro: 'words with <i>der/die/das</i> are nouns, and words like <i>“to …”</i> are verbs). Nouns get their capital letter in the game. Verb forms are filled in for you, including stem changes (du isst, er fährt) and verbs that split (anrufen → rufe an); check any that look wrong.' };
