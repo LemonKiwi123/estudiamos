@@ -864,6 +864,9 @@ function deConjugate(inf, noSep) {
     return base.map(f => f + ' ' + pre);
   }
   if (DE_IRREG_FORMS[inf]) return DE_IRREG_FORMS[inf].split(' ');
+  // gefallen, verlassen, besprechen: the same changes as fallen, lassen, sprechen
+  const ins = inf.match(/^(be|ge|er|ver|ent|zer|miss)(.{4,})$/);
+  if (ins && DE_IRREG_FORMS[ins[2]] && !/^(haben|sein|werden|wissen)$/.test(ins[2])) return DE_IRREG_FORMS[ins[2]].split(' ').map(f => ins[1] + f);
   if (/[^e]n$/.test(inf) && /(el|er)n$/.test(inf)) { const st = inf.slice(0, -1); return [(/eln$/.test(inf) ? st.slice(0, -2) + 'le' : st + 'e').replace(/ele$/, 'le'), st + 'st', st + 't', inf, st + 't', inf]; }   // sammeln, wandern
   const st = inf.replace(/en$|n$/, '');
   const e = /([dt]|[^aeiouäöülrhnm][mn]|ch[mn])$/.test(st) ? 'e' : '';      // arbeiten → arbeitest, öffnen → öffnest
