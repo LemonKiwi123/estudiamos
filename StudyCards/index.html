@@ -168,7 +168,7 @@ nav button[hidden]{display:none!important}
 .seg-bar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--surface2);width:100%}
 .seg-bar>div{height:100%;transition:width .3s}
 .seg-bar .g{background:var(--good)} .seg-bar .n{background:var(--hard)} .seg-bar .m{background:var(--accent)}
-:root{--qr-got:#2f6fe0;--qr-nq:#e0453a} .seg-bar.qr-seg .g{background:var(--qr-got)} .seg-bar.qr-seg .n{background:var(--qr-nq)} .qr-opts{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;max-width:520px}
+:root{--qr-got:#2f6fe0;--qr-nq:#f5c211;--qr-nq-text:#806000} :root[data-theme=dark]{--qr-nq-text:#ffd84d} .qr-nq-dot{color:var(--qr-nq)} .seg-bar.qr-seg .g{background:var(--qr-got)} .seg-bar.qr-seg .n{background:var(--qr-nq)} .qr-opts{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;max-width:520px}
 .seg-bar.tall{height:16px}
 .cl-head{display:flex;flex-direction:column;gap:12px}
 .cl-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px}
@@ -940,9 +940,9 @@ details.theme-colors>summary{cursor:pointer;list-style:revert}
 .run-word{font-size:24px}
 .options.run-opts{grid-template-columns:repeat(3,1fr);margin-top:10px;min-height:60px}
 @media (max-width:640px){ .options.run-opts{grid-template-columns:1fr} .runner-wrap{overflow:visible;border:0;box-shadow:none} .runner-wrap canvas{border-radius:14px;border:1px solid var(--border)} .run-over{position:static;background:none;backdrop-filter:none;margin-top:12px} .run-card{max-width:100%} }
-.qr-nq{color:var(--qr-nq);border-color:color-mix(in srgb,var(--qr-nq) 40%,var(--border))}
+.qr-nq{color:var(--qr-nq-text);border-color:color-mix(in srgb,var(--qr-nq) 70%,var(--border))}
 .qr-got{color:var(--qr-got);border-color:color-mix(in srgb,var(--qr-got) 40%,var(--border))}
-.pill.learn.qr-nq-pill{color:var(--qr-nq);background:color-mix(in srgb,var(--qr-nq) 14%,transparent);border-color:color-mix(in srgb,var(--qr-nq) 40%,transparent)}
+.pill.learn.qr-nq-pill{color:var(--qr-nq-text);background:color-mix(in srgb,var(--qr-nq) 18%,transparent);border-color:color-mix(in srgb,var(--qr-nq) 40%,transparent)}
 .deck-actions .btn{flex:1}
 
 .empty{text-align:center;padding:48px 20px;color:var(--muted)}

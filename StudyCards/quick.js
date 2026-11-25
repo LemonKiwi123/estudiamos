@@ -101,7 +101,7 @@ views.quickStart = () => {
       ${friendTip('rabbit', 'quick', null, { compact: true })}
       <div style="width:100%;max-width:460px">${qrBar(k)}
         <div class="row" style="justify-content:space-between;margin-top:8px;font-size:13px">
-          <span style="color:var(--qr-got)">● Got it ${k.got}</span><span style="color:var(--qr-nq)">● Not quite ${k.nq}</span><span class="muted">● Not studied ${k.ns}</span></div></div>
+          <span style="color:var(--qr-got)">● Got it ${k.got}</span><span style="color:var(--qr-nq-text)"><span class="qr-nq-dot">●</span> Not quite ${k.nq}</span><span class="muted">● Not studied ${k.ns}</span></div></div>
       ${qrOptsHtml(d)}
       <div class="row" style="justify-content:center">
         ${!k.total ? `<span class="muted">${sel ? 'All your selected cards are frozen, so there is nothing to review.' : qrUseFilter(d.id) ? 'No cards match your filters.' : 'This deck has no cards yet.'}</span>`
