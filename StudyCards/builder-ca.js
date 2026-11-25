@@ -4,7 +4,7 @@
    Catalan checks: el / l' / la / els / les and un / una / uns / unes agree with the noun (l' before a vowel or h, but
    "la" before an unstressed i or u: la idea); a + el = al, de + el = del (a + els = als, de + els = dels), but "a l'",
    "a la", "de la" stay apart; possessives always come with the article (el meu llibre, la meva mare); no before the verb,
-   and no … mai; most adjectives after the noun, a few (bo, gran, petit, nou, vell, jove) before or after it (bon before a
+   and no … mai (or mai no …); de before a vowel = d' (d'un, d'aquest); most adjectives after the noun, a few (bo, gran, petit, nou, vell, jove) before or after it (bon before a
    noun); ser for what something is like, estar for how someone feels (estic cansat), either for where (soc a casa);
    tenir gana / set / son (not estar); the subject can be left out (menjo = I eat); the past with anar + the infinitive
    (vaig menjar = I ate); reflexive verbs (em llevo, em vaig llevar); the verb agrees with the subject.
@@ -63,10 +63,10 @@ const CA_NOUN = [
   ['germà', 'germans', 'm', 'person', 'brother', 'brothers', 0, null, 1], ['germana', 'germanes', 'f', 'person', 'sister', 'sisters', 0, null, 1], ['professor', 'professors', 'm', 'person', 'teacher', 'teachers'],
   ['metge', 'metges', 'm', 'person', 'doctor', 'doctors'], ['nen', 'nens', 'm', 'person', 'child', 'children'], ['estudiant', 'estudiants', 'm', 'person', 'student', 'students'],
   ['gos', 'gossos', 'm', 'animal', 'dog', 'dogs'], ['gat', 'gats', 'm', 'animal', 'cat', 'cats'], ['ocell', 'ocells', 'm', 'animal', 'bird', 'birds'], ['cavall', 'cavalls', 'm', 'animal', 'horse', 'horses'],
-  ['pa', null, 'm', 'food', 'bread', null, 1], ['arròs', null, 'm', 'food', 'rice', null, 1], ['formatge', null, 'm', 'food', 'cheese', null, 1], ['pollastre', null, 'm', 'food', 'chicken', null, 1],
+  ['pa', null, 'm', 'food', 'bread', null, 2], ['arròs', null, 'm', 'food', 'rice', null, 1], ['formatge', null, 'm', 'food', 'cheese', null, 2], ['pollastre', null, 'm', 'food', 'chicken', null, 2],
   ['carn', null, 'f', 'food', 'meat', null, 1], ['sopa', null, 'f', 'food', 'soup', null, 2], ['gelat', null, 'm', 'food', 'ice cream', null, 2],
   ['poma', 'pomes', 'f', 'food', 'apple', 'apples'], ['pastís', 'pastissos', 'm', 'food', 'cake', 'cakes'], ['galeta', 'galetes', 'f', 'food', 'cookie', 'cookies'], ['taronja', 'taronges', 'f', 'food', 'orange', 'oranges'],
-  ['aigua', null, 'f', 'drink', 'water', null, 1], ['llet', null, 'f', 'drink', 'milk', null, 1], ['cafè', null, 'm', 'drink', 'coffee', null, 2], ['suc', null, 'm', 'drink', 'juice', null, 2], ['te', null, 'm', 'drink', 'tea', null, 2],
+  ['aigua', null, 'f', 'drink', 'water', null, 2], ['llet', null, 'f', 'drink', 'milk', null, 1], ['cafè', null, 'm', 'drink', 'coffee', null, 2], ['suc', null, 'm', 'drink', 'juice', null, 2], ['te', null, 'm', 'drink', 'tea', null, 2],
   ['llibre', 'llibres', 'm', 'read', 'book', 'books'], ['carta', 'cartes', 'f', 'read', 'letter', 'letters'], ['revista', 'revistes', 'f', 'read', 'magazine', 'magazines'], ['diari', 'diaris', 'm', 'read', 'newspaper', 'newspapers'],
   ['casa', 'cases', 'f', 'place', 'house', 'houses', 0, 'bare'], ['ciutat', 'ciutats', 'f', 'place', 'city', 'cities', 0, 'art'], ['escola', 'escoles', 'f', 'place', 'school', 'schools', 0, 'art'], ['parc', 'parcs', 'm', 'place', 'park', 'parks', 0, 'art'],
   ['platja', 'platges', 'f', 'place', 'beach', 'beaches', 0, 'art'], ['botiga', 'botigues', 'f', 'place', 'store', 'stores', 0, 'art'], ['restaurant', 'restaurants', 'm', 'place', 'restaurant', 'restaurants', 0, 'art'],
@@ -80,18 +80,18 @@ const CA_NOUN = [
   // how you feel: Catalan says "tinc gana" (I have hunger), with no article
   ['gana', null, 'f', 'feel', 'hungry'], ['set', null, 'f', 'feel', 'thirsty'], ['fred', null, 'm', 'feel', 'cold'], ['calor', null, 'f', 'feel', 'hot'], ['por', null, 'f', 'feel', 'scared'], ['son', null, 'f', 'feel', 'sleepy']];
 const CA_OPENABLE = ['porta', 'finestra', 'llibre', 'revista', 'botiga', 'oficina', 'restaurant', 'biblioteca', 'diari', 'carta', 'regal', 'motxilla'];
-//            m sing     f sing     m plural    f plural    English      describes   both = before or after the noun, post = after it   ser / estar: s = ser, e = estar, b = either
-const CA_ADJ = [['bo', 'bona', 'bons', 'bones', 'good', 'pafrl', 'both', 's'], ['dolent', 'dolenta', 'dolents', 'dolentes', 'bad', 'paf', 'post', 's'],
+//            m sing     f sing     m plural    f plural    English      describes   both = before or after the noun, post = after it   ser / estar: s = ser, e = estar, b = either, S / E = either works, but the game itself uses ser / estar
+const CA_ADJ = [['bo', 'bona', 'bons', 'bones', 'good', 'pafrl', 'both', 'S'], ['dolent', 'dolenta', 'dolents', 'dolentes', 'bad', 'paf', 'post', 'S'],
   ['gran', 'gran', 'grans', 'grans', 'big', 'patl', 'both', 's'], ['petit', 'petita', 'petits', 'petites', 'small', 'patl', 'both', 's'],
-  ['nou', 'nova', 'nous', 'noves', 'new', 'tlr', 'both', 's'], ['vell', 'vella', 'vells', 'velles', 'old', 'patlr', 'both', 's'],
-  ['bonic', 'bonica', 'bonics', 'boniques', 'pretty', 'patl', 'post', 's'], ['jove', 'jove', 'joves', 'joves', 'young', 'pa', 'both', 's'],
+  ['nou', 'nova', 'nous', 'noves', 'new', 'tlr', 'both', 'S'], ['vell', 'vella', 'vells', 'velles', 'old', 'patlr', 'both', 'S'],
+  ['bonic', 'bonica', 'bonics', 'boniques', 'pretty', 'patl', 'both', 'S'], ['jove', 'jove', 'joves', 'joves', 'young', 'pa', 'both', 's'],
   ['vermell', 'vermella', 'vermells', 'vermelles', 'red', 'tf', 'post', 's'], ['blau', 'blava', 'blaus', 'blaves', 'blue', 't', 'post', 's'], ['verd', 'verda', 'verds', 'verdes', 'green', 'tf', 'post', 's'],
   ['negre', 'negra', 'negres', 'negres', 'black', 'at', 'post', 's'], ['blanc', 'blanca', 'blancs', 'blanques', 'white', 'atf', 'post', 's'], ['groc', 'groga', 'grocs', 'grogues', 'yellow', 'tf', 'post', 's'],
-  ['car', 'cara', 'cars', 'cares', 'expensive', 'tflr', 'post', 's'], ['fàcil', 'fàcil', 'fàcils', 'fàcils', 'easy', 'r', 'post', 's'], ['difícil', 'difícil', 'difícils', 'difícils', 'hard', 'r', 'post', 's'],
+  ['car', 'cara', 'cars', 'cares', 'expensive', 'tflr', 'post', 'S'], ['fàcil', 'fàcil', 'fàcils', 'fàcils', 'easy', 'r', 'post', 's'], ['difícil', 'difícil', 'difícils', 'difícils', 'hard', 'r', 'post', 's'],
   ['ràpid', 'ràpida', 'ràpids', 'ràpides', 'fast', 'pat', 'post', 's'], ['simpàtic', 'simpàtica', 'simpàtics', 'simpàtiques', 'nice', 'p', 'post', 's'], ['intel·ligent', 'intel·ligent', 'intel·ligents', 'intel·ligents', 'smart', 'p', 'post', 's'],
-  ['feliç', 'feliç', 'feliços', 'feliços', 'happy', 'pa', 'post', 'b'], ['trist', 'trista', 'tristos', 'tristes', 'sad', 'pa', 'post', 'b'], ['deliciós', 'deliciosa', 'deliciosos', 'delicioses', 'delicious', 'f', 'post', 'b'],
+  ['feliç', 'feliç', 'feliços', 'felices', 'happy', 'pa', 'post', 'b'], ['trist', 'trista', 'tristos', 'tristes', 'sad', 'pa', 'post', 'b'], ['deliciós', 'deliciosa', 'deliciosos', 'delicioses', 'delicious', 'f', 'post', 'b'],
   ['fred', 'freda', 'freds', 'fredes', 'cold', 'fl', 'post', 'b'], ['calent', 'calenta', 'calents', 'calentes', 'hot', 'f', 'post', 'b'], ['net', 'neta', 'nets', 'netes', 'clean', 'tl', 'post', 'b'], ['brut', 'bruta', 'bruts', 'brutes', 'dirty', 'tl', 'post', 'b'],
-  ['cansat', 'cansada', 'cansats', 'cansades', 'tired', 'pa', 'post', 'e'], ['content', 'contenta', 'contents', 'contentes', 'glad', 'pa', 'post', 'b'], ['malalt', 'malalta', 'malalts', 'malaltes', 'sick', 'pa', 'post', 'e']];
+  ['cansat', 'cansada', 'cansats', 'cansades', 'tired', 'pa', 'post', 'e'], ['content', 'contenta', 'contents', 'contentes', 'glad', 'pa', 'post', 'E'], ['malalt', 'malalta', 'malalts', 'malaltes', 'sick', 'pa', 'post', 'E']];
 // before the noun, bo turns into bon (un bon amic); the others don't change
 const caAdjPre = (a, g, num) => a[0] === 'bo' && g === 'm' && num === 's' ? 'bon' : a[caIdx(g, num)];
 //            infinitive  jo, tu, ell/ella, nosaltres, vosaltres, ells/elles             kind     what it takes   needs one  English        he/she form    who   reflexive  past
@@ -138,7 +138,7 @@ const caInf = v => v[0].replace(/-se$|'s$/, '');   // llevar-se → llevar
 const CA_ADV = [['avui', 'today', 'edge', 'now'], ['demà', 'tomorrow', 'edge', 'now'], ['ara', 'now', 'edge', 'now'], ['ahir', 'yesterday', 'edge', 'past'], ['sempre', 'always', 'post'], ['sovint', 'often', 'post'],
   ['molt', 'a lot', 'post'], ['bé', 'well', 'post'], ['aquí', 'here', 'end']];
 // prepositions, and a / de joined with the article (al, als, del, dels): word, preposition, article, English
-const CA_PREP = [['a', 'a', null, 'to / at'], ['amb', 'amb', null, 'with'], ['de', 'de', null, 'of'], ['al', 'a', 'el', 'to the / at the'], ['als', 'a', 'els', 'to the / at the'], ['del', 'de', 'el', 'of the'], ['dels', 'de', 'els', 'of the']];
+const CA_PREP = [['a', 'a', null, 'to / at'], ['amb', 'amb', null, 'with'], ['de', 'de', null, 'of'], ["d'", 'de', null, 'of'], ['al', 'a', 'el', 'to the / at the'], ['als', 'a', 'els', 'to the / at the'], ['del', 'de', 'el', 'of the'], ['dels', 'de', 'els', 'of the']];
 const CA_CONJ = [['i', 'and'], ['però', 'but'], ['o', 'or']];
 const CA_KIND = { food: 'food', drink: 'drinks', read: 'things you read or write', thing: 'things', place: 'places', animal: 'animals', person: 'people', open: 'things you can open' };
 const CA_HOW_VERBS = /^(parlar|treballar|estudiar|jugar|córrer|caminar|dormir|menjar|beure|llegir|escriure)$/;   // verbs that go with bé / molt
@@ -148,7 +148,7 @@ const caChip = o => chip({ ...o, gloss: o.gloss || o.en });
 const caPron = p => caChip({ k: 'pron', w: p[0], f: p[1], per: CA_FORM[p[1]][0], num: CA_FORM[p[1]][1], g: p[2], en: p[3] });
 const caPronW = w => caPron(CA_PRON.find(p => p[0] === w));
 const caDetW = w => { const d = CA_DET.find(x => x[0] === w); return caChip({ k: 'det', w, fam: d[1], cls: d[2], en: d[3] }); };
-const caPossW = (row, w) => caChip({ k: 'det', w, fam: row[0], cls: 'poss', e: row, en: row[4] });
+const caPossW = (row, w) => caChip({ k: 'det', w, fam: row[0], cls: 'poss', e: row, en: row[4], gloss: row[0] === 'seu' ? 'his / her / their' : row[4] });
 const caNoun = (n, num) => caChip({ k: 'noun', w: num === 'p' ? n[1] : n[0], e: n, g: n[2], num, cat: n[3], mass: !!n[6], fam: !!n[8], en: num === 'p' ? n[5] : n[4] });
 const caAdj = (a, w) => caChip({ k: 'adj', w, e: a, en: a[4], pos: a[6] });
 const caVerb = (v, f) => caChip({ k: 'verb', w: v[1][f], e: v, f, type: v[2], en: v[5], gloss: 'to ' + v[5] });
@@ -166,8 +166,22 @@ const caPlaceText = (n, num = 's') => { const w = num === 'p' ? n.e[1] : n.e[0];
 // a verb chip that can be the past helper: vaig / vas / va / vam / vau / van (the same words as "I go"… for the first three and the last)
 const caIsAux = t => t && t.k === 'verb' && !t.inf && (t.aux || (t.e?.[0] === 'anar' && caPastF(t.w) >= 0));
 
+// vaig, vas, va, van on their own are "I go, you go…" (vam and vau only make the past)
+const caIsGo = t => CA_VERB.find(v => v[0] === 'anar')[1].includes(t.w);
+// "fred" can be the feeling (tinc fred) or the describing word (un cafè fred): one chip works as both
+function caFred(T) {
+  return T.map((t, i) => {
+    if (t.w !== 'fred') return t;
+    const v = T.slice(0, i).reverse().find(x => !['pas', 'adv', 'int'].includes(x.k)), feel = v?.k === 'verb' && v.e?.[0] === 'tenir';
+    if (feel && t.k === 'adj') return { ...caNoun(CA_NOUN.find(n => n[0] === 'fred'), 's'), id: t.id };
+    if (!feel && t.k === 'noun') return { ...caAdj(CA_ADJ.find(a => a[0] === 'fred'), 'fred'), id: t.id };
+    return t;
+  });
+}
+
 /* ---------------- Catalan checker ---------------- */
 function caCheck(T) {
+  T = caFred(T);
   let i = 0;
   const err = (msg, at = i) => ({ ok: false, msg, at: Math.max(0, Math.min(at, T.length - 1)), end: at >= T.length }), peek = (o = 0) => T[i + o], isErr = x => x && x.ok === false;
   if (!T.length) return err('Tap some words to build a sentence.');
@@ -244,7 +258,9 @@ function caCheck(T) {
       else {
         const d = peek();
         if (d?.k === 'det' && d.cls === 'art' && caContr('de', d.w)) return err(`Catalan joins “de” + “${d.w}” into “${caContr('de', d.w)}”: “${caContr('de', d.w)} ${peek(1)?.w || '…'}”.`, i - 1);
-        if (d?.k === 'det' && d.fam === 'un') return err(`Before “${d.w}”, “de” becomes “d'”: “d'${d.w} ${peek(1)?.w || '…'}”. Here, use “el” or “la” instead.`, i - 1);
+        const dv = d?.k === 'det' && ['un', 'aquest', 'aquell'].includes(d.fam);
+        if (dv && p.w === 'de') return err(`Before a vowel, “de” becomes “d'”: “d'${d.w} ${peek(1)?.w || '…'}”.`, i - 1);
+        if (d && p.w === "d'" && !dv) return err(`“d'” only goes before a vowel, like “d'un” or “d'aquest”. Use “de” here.`, i - 1);
         if (d?.k === 'noun') return err(`Put “el” or “la” after “de” here: “${caJoin(caPA('de', caDef(d.g, d.num, d.w)), d.w)}”.`, i - 1);
         const o = NP('of'); if (isErr(o)) return o; of = o;
       }
@@ -275,7 +291,6 @@ function caCheck(T) {
     if (!m0 || !['det', 'adj'].includes(m0.k)) return err(`“a” needs a place after it: “a casa”, “a l'escola”, “al parc”.`, i - 1);
     const np = NP('pp'); if (isErr(np)) return np;
     if (np.n.cat !== 'place') return err(`“a” + a place here: “a casa”, “a la platja”, “al parc”. “${np.n.w}” isn’t a place.`, i - 1);
-    if (np.n.e[7] === 'bare' && np.num === 's' && np.det?.fam === 'el' && !np.poss) return err('Catalan says “a casa” (home), without the article.', i - 1);
     return { ...np, at: true };
   }
   function clause() {
@@ -286,7 +301,7 @@ function caCheck(T) {
     else if (['det', 'noun', 'adj'].includes(peek()?.k) || isMolt(peek()) && peek(1)?.k === 'adj') { const s = NPs('subj'); if (isErr(s)) return s; C.subj = s.coord ? { np: s, f: 5, num: 'p', g: s.g } : { np: s, f: s.num === 'p' ? 5 : 2, num: s.num, g: s.g }; }
     // "sempre" / "sovint" can also go after the subject, before the verb: "jo sempre menjo pa"
     while (peek()?.k === 'adv' && ['sempre', 'sovint'].includes(peek().w)) C.lead.push(T[i++]);
-    if (peek()?.k === 'pas') return err(`“mai” goes after the verb, and “no” goes before it: “no menjo mai”.`);
+    if (peek()?.k === 'pas') { C.mai = T[i++]; if (!['neg', 'verb', 'refl'].includes(peek()?.k)) return err('“mai” goes right before the verb (“mai no menjo”) or after it (“no menjo mai”).', i - 1); }
     if (peek()?.k === 'neg') { C.neg = T[i++]; if (!['verb', 'refl'].includes(peek()?.k)) return err('“no” goes right before the verb: “no menjo”.', i - 1); }
     if (peek()?.k === 'refl') {
       const at = i; C.refl = T[i++];
@@ -309,6 +324,7 @@ function caCheck(T) {
       f = C.subj ? C.subj.f : pf;
       if (C.subj && pf !== f) return err(`“${v0.w}” doesn’t match the subject “${sText}”. Use “${CA_PAST[f]} ${inf.w}”.`, i - 2);
     } else if (v0.inf) return err(`“${v0.w}” is the “to …” form. Use “${v0.e[1][C.subj ? C.subj.f : 0]}” (now), or put “vaig”, “vas”, “va”… before it for the past: “${caJoin(C.refl ? C.refl.w.replace(/^m'$/, 'em').replace(/^t'$/, 'et').replace(/^s'$/, 'es') : '', 'vaig', v0.w)}”.`, i - 1);
+    else if (v0.aux && caIsGo(v0)) { v = { ...v0, aux: false, en: 'go' }; f = C.subj ? C.subj.f : v.f; }   // "van al mercat": the same word as "they go"
     else if (v0.aux && !(peek()?.k === 'verb' && peek().inf)) return err(`“${v0.w}” makes the past: put a verb in the “to …” form right after it, like “${v0.w} menjar”.`, i - 1);
     else f = C.subj ? C.subj.f : v.f;
     if (peek()?.k === 'verb' && !C.past) return err(peek().inf ? `For the past, put “vaig”, “vas”, “va”… right before “${peek().w}”.` : 'One verb per sentence part. Use “i” or “però” to add another.', i);
@@ -326,8 +342,8 @@ function caCheck(T) {
     }
     // no … mai: around the verb
     if (peek()?.k === 'pas') {
-      if (C.past) return err('Leave “mai” out here: with the past (vaig …), just say “no vaig …”.', i);
-      if (!C.neg) return err(`Catalan puts “no” before the verb too: “${caJoin('no', C.refl?.w, v.w)} mai”.`, i); C.mai = T[i++];
+      if (C.mai) return err('Use “mai” once: “no menjo mai” or “mai no menjo”.', i);
+      if (!C.neg) return err(`Catalan puts “no” before the verb too: “${caJoin('no', C.refl?.w, C.past?.w, v.w)} mai”.`, i); C.mai = T[i++];
     }
     while ((peek()?.k === 'adv' && peek().pos === 'post') || (isMolt(peek()) && peek(1)?.k !== 'adj')) { const a = T[i++]; C.tail.push(a.k === 'adv' ? a : { ...a, k: 'adv', pos: 'post', en: 'a lot' }); }
     const nx = peek(), sNum = C.subj ? C.subj.num : CA_FORM[f][1], sG = C.subj ? C.subj.g : 'x', vw = C.past ? caInf(v.e) : v.w;
@@ -406,7 +422,7 @@ function caEnglish(P) {
     const a = np.pre || np.post, adj = a ? (np.molt ? 'very ' : '') + a.e[4] + ' ' : '', noun = np.n.en, d = np.det;
     let art = '';
     if (np.poss) art = np.poss.en + ' ';
-    else if (d) art = d.fam === 'el' ? 'the ' : d.fam === 'un' ? (np.num === 'p' ? 'some ' : an(adj || noun) + ' ') : d.en + ' ';
+    else if (d) art = d.fam === 'el' ? 'the ' : d.fam === 'un' ? (np.num === 'p' ? 'some ' : np.n.e[0] === 'pa' ? 'a loaf of ' : an(adj || noun) + ' ') : d.en + ' ';
     const base = art + adj + noun;
     if (np.of) { const o = np.of; return ['person', 'animal'].includes(o.n.cat) && (!d || d.fam === 'el') && !np.poss ? `${npEn(o)}'s ${adj}${noun}` : `${base} of ${npEn(o)}`; }
     return base;
@@ -420,9 +436,9 @@ function caEnglish(P) {
     const v = C.verb, f = C.f, past = !!C.past;
     let subj = C.subj ? (C.subj.pron ? C.subj.pron.en : npEn(C.subj.np)) : ['I', 'you', 'he/she', 'we', 'you', 'they'][f];
     if (!C.subj && f === 2 && C.comp?.adj) { const a = C.comp.adj; if (a.w === a.e[1] && a.e[0] !== a.e[1]) subj = 'she'; else if (a.w === a.e[0] && a.e[0] !== a.e[1]) subj = 'he'; }
-    const third = f === 2 || (C.subj?.np && C.subj.num === 's'), never = !!C.mai, plural = !third && f !== 0 || f === 1;
+    const third = f === 2 || (C.subj?.np && C.subj.num === 's'), never = !!C.mai;
     // "always" and "often" go before the verb in English; "well" and "a lot" go at the end
-    const all = [...C.lead, ...C.tail], freq = all.filter(a => ['sempre', 'sovint'].includes(a.w)).map(a => a.en).join(' '), endAdv = C.tail.filter(a => a.pos === 'post' && !['sempre', 'sovint'].includes(a.w)).map(a => a.en);
+    const all = [...C.lead, ...C.tail], freq = all.filter(a => ['sempre', 'sovint'].includes(a.w)).map(a => a.en).join(' '), endAdv = C.tail.filter(a => a.pos === 'post' && !['sempre', 'sovint'].includes(a.w)).map(a => a.en).join(' ').replace('a lot well', 'very well').split(' ').filter(Boolean);
     let vp;
     if (v.type === 'ser' || v.type === 'estar' || C.comp?.feel) {
       const be = past ? (f === 0 || third ? 'was' : 'were') : f === 0 ? 'am' : third ? 'is' : 'are';
@@ -430,12 +446,11 @@ function caEnglish(P) {
       vp = `${be}${never ? ' never' : C.neg ? ' not' : ''}${freq ? ' ' + freq : ''} ${what}`;
     } else {
       const base = v.e[5], s3 = v.e[6], pastEn = v.e[9] || caPastEn(base);
-      if (past) vp = C.neg ? `did not${freq ? ' ' + freq : ''} ${base}` : `${freq ? freq + ' ' : ''}${pastEn}`;
+      if (past) vp = never ? `never ${pastEn}` : C.neg ? `did not${freq ? ' ' + freq : ''} ${base}` : `${freq ? freq + ' ' : ''}${pastEn}`;
       else vp = never ? `never ${third ? s3 : base}` : C.neg ? `${third ? 'does' : 'do'} not${freq ? ' ' + freq : ''} ${base}` : `${freq ? freq + ' ' : ''}${third ? s3 : base}`;
       if (C.comp?.np) vp += ' ' + npEn(C.comp.np);
       if (C.comp?.dest) vp += ' ' + placeEn(C.comp.dest, true);
     }
-    void plural;
     if (endAdv.length) vp += ' ' + endAdv.join(' ');
     for (const { p, np } of C.pps) vp += ' ' + (p.w === 'amb' ? 'with ' + npEn(np) : placeEn(np, false));
     const tail = [...C.lead.filter(a => !['sempre', 'sovint'].includes(a.w)).map(a => a.en), ...C.tail.filter(a => a.pos !== 'post').map(a => a.en)].join(' ');
@@ -462,7 +477,7 @@ function caGenerate(pref) {
   const RP = list => { const fav = list.filter(x => pref.has(x[0]) || (typeof x[1] === 'string' && pref.has(x[1]))); return fav.length && coin(0.6) ? R(fav) : R(list); };
   const nounOf = cats => RP(CA_NOUN.filter(n => n[3] !== 'feel' && (cats[0] === '*' || cats.includes(n[3]) || (cats[0] === 'open' && CA_OPENABLE.includes(n[0])))));
   const CAT = { person: 'p', animal: 'a', food: 'f', drink: 'f', thing: 't', place: 'l', read: 'r' };
-  const adjFor = (cat, be) => RP(CA_ADJ.filter(a => (!cat || a[5].includes(CAT[cat] || 'p')) && (!be || (a[7] || 'b') === 'b' || a[7] === be)));
+  const adjFor = (cat, be) => RP(CA_ADJ.filter(a => (!cat || a[5].includes(CAT[cat] || 'p')) && (!be || (a[7] || 'b') === 'b' || a[7].toLowerCase() === be)));
   const extra = [];
   const other = list => { const x = list.filter(Boolean); return x.length ? R(x) : null; };
   // a noun phrase with a determiner that fits (and a look-alike as a distractor). via = a / de to join with el / els (al, del)
@@ -476,7 +491,7 @@ function caGenerate(pref) {
     if (n[8] && num === 's' && coin(0.5)) fam = 'poss';
     if (opts.via && !['el', 'poss'].includes(fam)) fam = 'el';
     const a = opts.adj !== false && coin(0.35) ? adjFor(n[3]) : null, molt = a && coin(0.2);
-    const before = a && a[6] === 'both' && !molt && coin(0.5);
+    const before = a && a[6] === 'both' && a[0] !== 'jove' && !molt && coin(0.5);
     const nw = num === 'p' ? n[1] : n[0], aw = a ? (before ? caAdjPre(a, g, num) : a[caIdx(g, num)]) : null;
     const after = before ? aw : nw;
     const putArt = art => {
@@ -519,7 +534,7 @@ function caGenerate(pref) {
       if (coin(0.12)) { const n2 = nounOf(subjKinds); out.push(caConj('i')); np(n2, 's', out, { subj: true, adj: false }); f = 5; g = g === 'm' || n2[2] === 'm' ? 'm' : 'f'; }
     }
     const past = coin(0.28);
-    const neg = !past && !['ser', 'estar'].includes(kind) && coin(0.22) ? R(['no', 'no', 'mai']) : coin(0.12) ? 'no' : null;
+    const neg = !['ser', 'estar'].includes(kind) && coin(0.22) ? R(['no', 'no', 'mai']) : coin(0.12) ? 'no' : null;
     const vFirst = past ? CA_PAST[f] : verb[1][f], refl = verb[8] ? caReflFor(f, vFirst) : null;
     if (neg) out.push(caNo());
     if (refl) { out.push(caRefl(refl, f)); extra.push(caRefl(R(CA_REFL.filter(x => x !== refl)), f)); }
@@ -609,7 +624,7 @@ const CA_IRREG_FORMS = {
   plaure: 'plac plaus plau plaem plaeu plauen', jeure: 'jec jeus jeu jaiem jaieu jeuen', dur: 'duc duus duu duem dueu duen', coure: 'coc cous cou coem coeu couen',
   prendre: 'prenc prens pren prenem preneu prenen', aprendre: 'aprenc aprens aprèn aprenem apreneu aprenen', comprendre: 'comprenc comprens comprèn comprenem compreneu comprenen',
   entendre: 'entenc entens entén entenem enteneu entenen', vendre: 'venc vens ven venem veneu venen', encendre: 'encenc encens encén encenem enceneu encenen',
-  respondre: 'responc respons respon responem responeu responen', defendre: 'defenso defenses defensa defensem defenseu defensen', rebre: 'rebo reps rep rebem rebeu reben',
+  respondre: 'responc respons respon responem responeu responen', defendre: 'defenc defens defèn defenem defeneu defenen', vèncer: 'venço vences venç vencem venceu vencen', convèncer: 'convenço convences convenç convencem convenceu convencen', incloure: 'incloc inclous inclou incloem incloeu inclouen', concloure: 'concloc conclous conclou concloem concloeu conclouen', rebre: 'rebo reps rep rebem rebeu reben',
   conèixer: 'conec coneixes coneix coneixem coneixeu coneixen', reconèixer: 'reconec reconeixes reconeix reconeixem reconeixeu reconeixen', néixer: 'neixo neixes neix naixem naixeu neixen',
   créixer: 'creixo creixes creix creixem creixeu creixen', aparèixer: 'aparec apareixes apareix apareixem apareixeu apareixen', merèixer: 'mereixo mereixes mereix mereixem mereixeu mereixen',
   córrer: 'corro corres corre correm correu corren', valer: 'valc vals val valem valeu valen', soler: 'solc sols sol solem soleu solen', doler: 'dolc dols dol dolem doleu dolen',
@@ -630,8 +645,9 @@ const caCluster = st => /([bcdfgkptv][lr]|rr|ss)$/.test(st);   // obres, omples,
 function caConjugate(inf) {
   inf = caReflStrip(inf);
   if (CA_IRREG_FORMS[inf]) return CA_IRREG_FORMS[inf].split(' ');
-  for (const [base, forms] of Object.entries(CA_IRREG_FORMS)) if (inf.length > base.length + 1 && inf.endsWith(base) && /^(des|re|a|pre|sobre|con|ob|man|com|entre|per|dis|de)/.test(inf.slice(0, -base.length)) && !['ar', 'er'].includes(base)) {   // desfer, refer, prevenir…
-    const pre = inf.slice(0, -base.length); return forms.split(' ').map(f => pre + f);
+  for (const [base, forms] of Object.entries(CA_IRREG_FORMS)) if (inf.endsWith(base) && !/^(ser|estar|anar|haver|deure)$/.test(base) && /^(des|re|a|pre|sobre|con|com|entre|per|dis|contra|sor|inter|pro|so|sos|sub|en|trans|es|oc|in)$/.test(inf.slice(0, -base.length))) {   // desfer, refer, prevenir, sorprendre…
+    const pre = inf.slice(0, -base.length), acc = { fas: 'fàs', fa: 'fà', ve: 'vé', pren: 'prèn' };   // short forms get an accent: desfà, prevé, sorprèn
+    return forms.split(' ').map((f, k) => pre + (k < 3 && acc[f] || f));
   }
   if (/ar$/.test(inf)) { const st = inf.slice(0, -2), so = caSoft(st); return [st + 'o', so + 'es', st + 'a', so + 'em', so + 'eu', so + 'en']; }
   if (/ndre$/.test(inf)) { const st = inf.slice(0, -3); return [st + 'c', st + 's', st, st + 'em', st + 'eu', st + 'en']; }   // atendre → atenc, atens, aten
@@ -642,7 +658,8 @@ function caConjugate(inf) {
   if (/ir$/.test(inf)) {
     const st = inf.slice(0, -2);
     if (CA_PURE_IR.test(inf)) { const cl = caCluster(st); return [st + 'o', cl ? st + 'es' : st + 's', cl ? st + 'e' : st, st + 'im', st + 'iu', st + 'en']; }
-    return [st + 'eixo', st + 'eixes', st + 'eix', st + 'im', st + 'iu', st + 'eixen'];
+    const d = /[aeou]$/.test(st) && !/[gq]u$/.test(st) ? 'ï' : 'i';   // conduïm, agraïm
+    return [st + 'eixo', st + 'eixes', st + 'eix', st + d + 'm', st + d + 'u', st + 'eixen'];
   }
   return [inf, inf, inf, inf, inf, inf];
 }
@@ -655,26 +672,46 @@ function caPl(w) {
   if (/qua$/.test(w)) return w.slice(0, -3) + 'qües';
   if (/gua$/.test(w)) return w.slice(0, -3) + 'gües';                // llengua → llengües
   if (/a$/.test(w)) return w.slice(0, -1) + 'es';                    // casa → cases
-  if (/ió$/.test(w) || /[àíó]$/.test(w)) return w.replace(/[àíó]$/, c => ({ à: 'a', í: 'i', ó: 'o' })[c]) + 'ns';   // estació → estacions, germà → germans, camí → camins
+  if (/^(pa|vi|pi|fi|ple|bo|be)$/.test(w)) return w + 'ns';           // pa → pans, vi → vins
+  if (/^(sofà|mamà|papà|esquí|bisturí|rugbi)$/.test(w)) return w + 's';
+  if (/[àíó]$/.test(w)) { const st = w.slice(0, -1), v = { à: 'a', í: 'i', ó: 'o' }[w.slice(-1)]; return st + (v === 'i' && /[aeou]$/.test(st) ? 'ï' : v) + 'ns'; }   // estació → estacions, germà → germans, veí → veïns
   if (/[èéú]$/.test(w)) return w + 's';                              // cafè → cafès, menú → menús
-  if (/(ç)$/.test(w)) return w + 'os';                               // braç → braços
-  if (/(x|ix|tx|ig)$/.test(w) && !/ig$/.test(w)) return w + 'os';    // peix → peixos, despatx → despatxos
-  if (/[àèéíòóú]s$/.test(w)) return w.replace(/[àèéíòóú]s$/, m => ({ à: 'a', è: 'e', é: 'e', í: 'i', ò: 'o', ó: 'o', ú: 'u' })[m[0]] + 'ssos');   // pastís → pastissos, interès → interessos
-  if (/^[^aeiou]*[aeiou]s$/.test(w)) return w + 'sos';               // gos → gossos, nas → nassos
+  if (/[çx]$/.test(w)) return w + 'os';                              // braç → braços, peix → peixos
+  if (w === 'país') return 'països';
+  if (/^(permís|avís|paradís|compromís|anís)$/.test(w)) return w.slice(0, -2) + 'isos';
+  if (/^(interès|congrés|excés|procés|accés|progrés|exprés)$/.test(w)) return w.slice(0, -2) + 'essos';
+  if (/[èé]s$/.test(w)) return w.slice(0, -2) + 'esos';              // francès → francesos
+  if (/ós$/.test(w)) return w.slice(0, -2) + 'osos';
+  if (/ús$/.test(w)) return w.slice(0, -2) + 'usos';                 // autobús → autobusos
+  if (/[àíò]s$/.test(w)) return w.slice(0, -2) + { à: 'a', í: 'i', ò: 'o' }[w.slice(-2, -1)] + 'ssos';   // pastís → pastissos, arròs → arrossos
+  if (/^(mes|cas|gas|vas|pis|curs|vers|sens)$/.test(w)) return w + 'os';   // mes → mesos, curs → cursos, pis → pisos
+  if (/^[^aeiou]*[aeiou]s$/.test(w)) return w + 'sos';               // gos → gossos, pas → passos, nas → nassos
+  if (/s$/.test(w)) return w;                                        // llapis, temps, dilluns: no change
   return w + 's';                                                    // llibre → llibres, gat → gats
 }
-const caGenderGuess = w => /(a|ció|sió|tat|tud|ença|esa)$/.test(w) && !/^(dia|mapa|problema|programa|sistema|clima|tema|idioma|poema|planeta|pijama)$/.test(w) ? 'f' : 'm';
+const caGenderGuess = w => (/(a|ció|sió|çó|[iuelr]tat|tud)$/.test(w) || /^(amistat|voluntat|flor|por|calor|olor|suor|claror|mà|llet|sal|mel|nit|set|son|carn|font|part|gent|pell|sang|neu|clau|nau|creu|veu|llum|llei|fe|sort|ment|vall|raó|presó|tardor)$/.test(w))
+  && !/^(dia|mapa|problema|programa|sistema|clima|tema|idioma|poema|planeta|pijama|resultat|drama|esquema|poeta)$/.test(w) ? 'f' : 'm';
+const CA_ADJ_IRREG = { boig: 'boig boja bojos boges', roig: 'roig roja rojos roges', lleig: 'lleig lletja lletjos lletges', mig: 'mig mitja mitjos mitges', dolç: 'dolç dolça dolços dolces', gros: 'gros grossa grossos grosses',
+  antic: 'antic antiga antics antigues', cec: 'cec cega cecs cegues', feixuc: 'feixuc feixuga feixucs feixugues', tranquil: 'tranquil tranquil·la tranquils tranquil·les', mal: 'mal mala mals males', mut: 'mut muda muts mudes',
+  fosc: 'fosc fosca foscos fosques', fresc: 'fresc fresca frescos fresques', ple: 'ple plena plens plenes', greu: 'greu greu greus greus', breu: 'breu breu breus breus', lleu: 'lleu lleu lleus lleus' };
+const CA_ADJ_E = /^(negre|pobre|ample|còmode|incòmode|perfecte|imperfecte|correcte|incorrecte|directe|estricte|digne|culte|sinistre|exacte)$/;   // these change -e to -a: negra, còmoda
 function caAdjForms(w) {
-  if (/ós$/.test(w)) { const st = w.slice(0, -2); return [w, st + 'osa', st + 'osos', st + 'oses']; }         // deliciós
-  if (/ès$/.test(w)) { const st = w.slice(0, -2); return [w, st + 'esa', st + 'esos', st + 'eses']; }         // francès
-  if (/(ç|x)$/.test(w)) return [w, w, w + 'os', w + 'os'];                                                    // feliç, capaç
-  if (/(e|al|il|el|ble|ant|ent|ar)$/.test(w) && !/^(content|calent|dolent|lent|valent|negre|pobre|car|clar|rar)$/.test(w)) return [w, w, w + 's', w + 's'];   // jove, fàcil, intel·ligent
-  if (/e$/.test(w)) { const st = w.slice(0, -1); return [w, st + 'a', w + 's', st + 'es']; }                 // negre → negra
-  if (/u$/.test(w)) { const st = w.slice(0, -1); return [w, st + 'va', w + 's', st + 'ves']; }                // blau → blava, nou → nova
-  if (/c$/.test(w)) { const st = w.slice(0, -1); return [w, w + 'a', w + 's', st + 'ques']; }                 // simpàtic → simpàtica, simpàtiques
-  if (/at$/.test(w) && w.length > 5) { const st = w.slice(0, -2); return [w, st + 'ada', w + 's', st + 'ades']; }   // cansat → cansada
-  if (/it$/.test(w) && w.length > 5) { const st = w.slice(0, -2); return [w, st + 'ida', w + 's', st + 'ides']; }   // avorrit → avorrida
-  if (/ut$/.test(w) && w.length > 4) { const st = w.slice(0, -2); return [w, st + 'uda', w + 's', st + 'udes']; }   // conegut → coneguda
+  if (CA_ADJ_IRREG[w]) return CA_ADJ_IRREG[w].split(' ');
+  const st1 = w.slice(0, -1), st2 = w.slice(0, -2);
+  if (/ós$/.test(w)) return [w, st2 + 'osa', st2 + 'osos', st2 + 'oses'];                                     // deliciós
+  if (/[èé]s$/.test(w)) return [w, st2 + 'esa', st2 + 'esos', st2 + 'eses'];                                  // francès
+  if (/ç$/.test(w)) return [w, w, w + 'os', st1 + 'ces'];                                                     // feliç, capaç
+  if (/x$/.test(w)) return [w, w + 'a', w + 'os', w + 'es'];                                                  // baix, fluix
+  if (/[àèéíú]$/.test(w)) { const v = { à: 'a', è: 'e', é: 'e', í: 'i', ú: 'u' }[w.slice(-1)], s = st1 + (v === 'i' && /[aeou]$/.test(st1) ? 'ï' : v); return [w, s + 'na', s + 'ns', s + 'nes']; }   // humà → humana, comú → comuna
+  if (CA_ADJ_E.test(w)) return [w, st1 + 'a', w + 's', st1 + 'es'];                                           // negre → negra
+  if (/(e|al|il|el|ant|ent|ar|erior)$/.test(w) && !/^(content|calent|dolent|lent|valent|atent|car|clar|rar|avar)$/.test(w) || /^(millor|pitjor|major|menor)$/.test(w)) return [w, w, w + 's', w + 's'];   // jove, fàcil, intel·ligent, popular
+  if (/eu$/.test(w) && w !== 'jueu') return [w, st1 + 'a', w + 's', st1 + 'es'];                              // europeu → europea
+  if (/u$/.test(w)) return [w, st1 + 'va', w + 's', st1 + 'ves'];                                             // blau → blava, nou → nova
+  if (/g$/.test(w)) return [w, w + 'a', w + 's', w + 'ues'];                                                  // llarg → llarga, llargues
+  if (/c$/.test(w)) return [w, w + 'a', w + 's', st1 + 'ques'];                                               // simpàtic → simpàtica, simpàtiques
+  if (/at$/.test(w) && !/^(barat|sensat|insensat|immediat|beat|grat|ingrat)$/.test(w)) return [w, st1 + 'da', w + 's', st1 + 'des'];   // cansat → cansada
+  if (/it$/.test(w) && !/^(petit|infinit|erudit)$|[àèéíòóú].*it$/.test(w)) return [w, st1 + 'da', w + 's', st1 + 'des'];   // avorrit → avorrida
+  if (/ut$/.test(w) && !/^(brut|absolut|astut)$/.test(w)) return [w, st1 + 'da', w + 's', st1 + 'des'];       // conegut → coneguda
   if (/[aeiou]$/.test(w)) return [w, w, w + 's', w + 's'];
   return [w, w + 'a', w + 's', w + 'es'];                                                                     // petit → petita, verd → verda
 }
