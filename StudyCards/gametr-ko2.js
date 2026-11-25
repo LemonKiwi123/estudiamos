@@ -3,7 +3,6 @@
    A name goes into a line only when it is shown, so the book writes both forms, {p}은(는), and the code at the end picks
    the one that fits the name: 로완 박사는, 선생님은. Loaded after gametr-ko.js and builder-ko.js. */
 Object.assign(GT_BOOKS.ko.lines, {
-    "You found 🪙 {n}.": "찾은 돈: 🪙 {n}.",
     "{p} sends out {p}!": "{p0}은(는) {p1}을(를) 내보내요!",
     "You won! {p} gives you 🪙 {n}.": "이겼어요! {p}에게서 🪙 {n}을(를) 받았어요.",
     "You won!": "이겼어요!",
@@ -551,6 +550,7 @@ Object.assign(GT_BOOKS.ko.lines, {
     "🌐 Game language: Français": "🌐 게임 언어: Français",
     "🌐 Game language: Italiano": "🌐 게임 언어: Italiano",
     "🌐 Game language: 한국어": "🌐 게임 언어: 한국어",
+    "📜 Quest log": "📜 퀘스트 기록",
   });
 // does the name end in a consonant? Hangul and digits are exact; an English name (your hero's) goes by its last letter
 const gtKoCons = w => /[가-힣0-9]$/.test(w) ? koHas(w) : /(^|[^A-Za-z])[A-Za-z]$/.test(w) ? /[LMNR]$/i.test(w) : /(ng|[lmnbkp])$/i.test(w);
@@ -577,4 +577,10 @@ const gtKoParticles = s => String(s).replace(/([가-힣A-Za-z0-9]+)((?:<\/[a-z]+
     }
     for (const [k, v] of book.loose) book.loose.set(k, '{p99}' + String(v).replace(/^[^\p{L}{<“"(\d]+/u, ''));
     return book;
+  }; }
+// Korean lines break at the spaces, not in the middle of a word
+{ const prevBox = gtBox;
+  gtBox = function (el, lang, names) {
+    if (el && lang === 'ko') { el.style.wordBreak = 'keep-all'; el.style.overflowWrap = 'anywhere'; } else if (el?.style.wordBreak === 'keep-all') el.style.wordBreak = el.style.overflowWrap = '';
+    return prevBox(el, lang, names);
   }; }

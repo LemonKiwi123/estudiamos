@@ -500,7 +500,7 @@ function koApplyMine() {
 }
 if (typeof bldApplyMine === 'function') { const prevKoApply = bldApplyMine; bldApplyMine = function () { prevKoApply(); koApplyMine(); }; }
 BLD_MINE.ko = { name: 'Korean', forms: 'polite form, negative (먹어요, 안 먹어요)', nForms: 2, noGender: true, conj: w => { const p = koPolite(w); return p ? [p, koNeg(w, p)] : []; }, pl: w => w,
-  adj: w => [koAttr(w), koPolite(w) || w], known: w => koKnown(w), gender: () => 'm', isVerb: w => /[가-힣]다$/.test(w), refl: () => false,
+  adj: w => [koAttr(w), koPolite(w) || w], known: w => koKnown(w), gender: () => 'm', isVerb: w => /[가-힣]다$/.test(w) && !/니다$/.test(w), refl: () => false,
   // 개 (dog), 먹다: the word as the card writes it, without notes in brackets
   parse: s => { const w = String(s || '').replace(/[（(][^）)]*[）)]/g, '').replace(/\s+/g, ' ').trim(); return /^[가-힣]+$/.test(w) ? { w } : null; },
   intro: 'words ending in -다 are verbs or describing words). The polite form (-아요 / -어요) and the negative are filled in for you, including 하다 verbs; check any that look wrong.' };
@@ -520,7 +520,7 @@ if (typeof bldCandidates === 'function') {
       if (!w || seen.has(w) || L.known(w)) continue;
       seen.add(w);
       const lab = BLD_FROM_LABEL[bldLabelOf(c, sides[0], d)] || '', isVerb = L.isVerb(w);
-      let k = lab && (lab === 'noun' || isVerb) ? lab : isVerb ? (toVerb ? 'verb' : 'adj') : 'noun';
+      let k = lab && (lab === 'noun' || isVerb) ? lab : isVerb ? (toVerb ? 'verb' : 'adj') : /(요|니다)$/.test(w) || w === '네' ? '' : 'noun';   // greetings (감사합니다, 아니요) aren't words for the game
       out.push({ w, en, k, g: 'm', verbOK: isVerb, fromLabel: !!lab && k === lab, lang: 'ko', read: null });
     }
     return out;

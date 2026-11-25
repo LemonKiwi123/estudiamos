@@ -967,6 +967,7 @@ GT_BOOKS.ko = {
     "The rest of your team got {n} XP each.": "나머지 팀도 각각 경험치 {n}을(를) 얻었어요.",
     "The wild {p} fainted!": "야생 {p}이(가) 쓰러졌어요!",
     "{p} fainted!": "{p}이(가) 쓰러졌어요!",
+    "You found 🪙 {n}.": "찾은 돈: 🪙 {n}.",
   },
 };
 GT_BOOKS.ko.suffix = [[' · Tavern', ' · 술집'], [' · Church', ' · 교회'], [' · Jail', ' · 감옥'], [' · 1F', ' · 1층'], [' · 2F', ' · 2층'], [' · Bank', ' · 은행'],

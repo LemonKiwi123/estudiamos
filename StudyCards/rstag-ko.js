@@ -807,9 +807,8 @@ if (typeof rsWikiLookup === 'function') {
   const prevWiki = rsWikiLookup;
   rsWikiLookup = async function (word, lang) {
     if (lang !== 'ko') return prevWiki(word, lang);
-    const sp = rsKoSplit(word), v = await prevWiki(word, lang);
-    if (v || !sp || sp[0].length < 2) return v;
-    const r = await prevWiki(sp[0], lang); if (!r) return v;
-    return [r[0] === 'noun' || r[0] === 'pron' ? r[0] : null, r[1] ? r[1] + (sp[2] ? ' + ' + sp[2] : '') : ''];
+    const sp = rsKoSplit(word), r = sp && sp[0].length >= 2 ? await prevWiki(sp[0], lang) : null;   // the bare word first: one lookup is usually enough
+    if (r && (r[0] === 'noun' || r[0] === 'pron')) return [r[0], r[1] ? r[1] + (sp[2] ? ' + ' + sp[2] : '') : ''];
+    return prevWiki(word, lang);
   };
 }

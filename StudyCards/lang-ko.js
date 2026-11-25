@@ -33,6 +33,7 @@ if (typeof NG_LANGS !== 'undefined') {
   const KO_JAMO_NAME = new Map(NG_ABC.ko.split(/ (?=\S:)/).map(p => [p.split(':')[0], p.split(':')[1].split(' · ')[0]]));
   const KO_FINAL_SPLIT = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ' };
   const koLetters = w => [...String(w)].flatMap(ch => { const x = koSplit(ch); if (!x) return /\s/.test(ch) ? [] : [ch]; const t = KO_T[x.T].trim(); return [KO_L[x.L], KO_V[x.V], ...(t ? [...(KO_FINAL_SPLIT[t] || t)] : [])]; });
+  const SAME_SOUND = ['ㅐㅔ', 'ㅒㅖ', 'ㅙㅚㅞ'];   // these sound the same today, so “Hear a letter” never offers two of them together
   const isKo = () => /^ko/.test(ng?.lang || '');
   const prevQ = ngQuestion;
   ngQuestion = function () {
@@ -40,6 +41,11 @@ if (typeof NG_LANGS !== 'undefined') {
     if (!isKo() || !ng.q) return;
     const q = ng.q;
     if (ng.mode === 'abcHear' || ng.mode === 'abcName') q.say = KO_JAMO_NAME.get(q.letter) || q.say;   // the voice says 기역, not a lone ㄱ
+    if (ng.mode === 'abcHear') {
+      const same = l => SAME_SOUND.find(g => g.includes(l)) || l, left = shuffle(ngAbc(ng.lang).map(x => x[0])), used = new Set([same(q.answer)]), opts = [q.answer];
+      for (const l of left) if (opts.length < 4 && !used.has(same(l))) { used.add(same(l)); opts.push(l); }
+      q.opts = shuffle(opts);
+    }
     if (ng.mode === 'abcSpell') { q.spell = koLetters(q.answer); q.say = q.spell.map(l => KO_JAMO_NAME.get(l) || l).join(', '); }
   };
   // the cheat sheet's letter boxes speak the letter itself: say its name instead
