@@ -764,4 +764,4 @@ GT_BOOKS.ja = {
 };
 GT_BOOKS.ja.suffix = [[" · Tavern","・酒場"],[" · Church","・教会"]];
 Object.assign(GT_BOOKS.ja.names, {"Quillhaven":"クイルヘイブン","Castle Quillhaven":"クイルヘイブン城","Lumen Palace":"ルーメン宮殿","Aldermere":"オルダミア","Seravel":"セラベル","Rimeholt":"ライムホルト","Stormwatch":"ストームウォッチ","Hollowmere":"ホロウミア","Thornvale":"ソーンベイル","Bogsend":"ボグズエンド","Redrock":"レッドロック","Brinehold":"ブラインホルド","Frostport":"フロストポート","Palmcove":"パームコーブ","Tidewater":"タイドウォーター","Frostmark Tundra":"フロストマーク凍原","Thundercrag Highlands":"サンダークラッグ高地","Inkblight Wastes":"インクブライト荒野","Verdant Wilds":"ヴァーダント原野","Mirefen Marsh":"マイアフェン湿地","Sunscorch Canyon":"サンスコーチ峡谷","Castle Unwritten":"書かれざる城"});
-GT_BOOKS.ja.frag = [[/(d+) gold/g, "$1ゴールド"], [/(d+) coins/g, "$1コイン"], [/(d+) MP/g, "MP $1"], [/(d+) HP/g, "HP $1"], [/Next:/g, "次："]];
+GT_BOOKS.ja.frag = [[/(\d+) gold\b/g, "$1ゴールド"], [/(\d+) coins\b/g, "$1コイン"], [/(\d+) MP\b/g, "MP $1"], [/(\d+) HP\b/g, "HP $1"], [/\bNext:/g, "次："]];

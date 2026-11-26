@@ -1496,4 +1496,4 @@ GT_BOOKS.gl = {
 };
 GT_BOOKS.gl.suffix = [[' · Tavern', ' · Taberna'], [' · Church', ' · Igrexa'], [' · Jail', ' · Cárcere'], [' · 1F', ' · P1'], [' · 2F', ' · P2'], [' · Bank', ' · Banco'],
   [' · Inn', ' · Pousada'], [' · Item shop', ' · Tenda'], [' · Smithy', ' · Ferraría'], [' · Old Well', ' · Pozo Vello']];
-GT_BOOKS.gl.frag = [[/(d+) gold/g, '$1 de ouro'], [/(d+) coins/g, '$1 moedas'], [/Lv ?(d+)/g, 'Nv $1'], [/(d+) MP/g, '$1 PM'], [/(d+) HP/g, '$1 PV'], [/Next:/g, 'Seguinte:']];
+GT_BOOKS.gl.frag = [[/(\d+) gold\b/g, '$1 de ouro'], [/(\d+) coins\b/g, '$1 moedas'], [/\bLv ?(\d+)/g, 'Nv $1'], [/(\d+) MP\b/g, '$1 PM'], [/(\d+) HP\b/g, '$1 PV'], [/\bNext:/g, 'Seguinte:']];
