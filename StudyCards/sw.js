@@ -12,7 +12,7 @@ const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-256.png', 'icon
   'builder-ca.js', 'rsdict-ca.js', 'rstag-ca.js', 'gametr-ca.js', 'catalan.js', 'data/real-ca.json',
   'builder-ko.js', 'gametr-ko.js', 'gametr-ko2.js', 'rstag-ko.js', 'lang-ko.js', 'data/real-ko.json',
   'zh-pinyin.js', 'builder-zh.js', 'rsdict-zh.js', 'rstag-zh.js', 'gametr-zh.js', 'gametr-zh2.js', 'chinese.js', 'data/real-zh.json',
-  'builder-nl.js', 'gametr-nl.js', 'gametr-nl2.js', 'dutch.js'];
+  'builder-nl.js', 'gametr-nl.js', 'gametr-nl2.js', 'rstag-nl.js', 'dutch.js'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, { cache: 'reload' })).catch(() => {})))).then(() => self.skipWaiting()));
 });
