@@ -82,7 +82,7 @@ RS_GLOSS_COMMON.id = 'ini:this|itu:that / the|yang:who / which / that|adalah:is 
     if (lang !== 'id' || RS_GLOSS.id) return prevMap(lang);
     const m = prevMap('id'), put = (w, g) => { if (w && g && !m.has(String(w).toLowerCase())) m.set(String(w).toLowerCase(), String(g)); };
     if (typeof ID_NOUN !== 'undefined') {
-      ID_NOUN.forEach(n => put(n[0], n[2]));
+      ID_NOUN.forEach(n => { put(n[0], n[2]); if (n[3]) put(n[0] + '-' + n[0], n[3]); });   // anak-anak = children
       ID_ADJ.forEach(a => put(a[0], a[1]));
       ID_VERB.forEach(v => { put(v[0], 'to ' + v[4][0]); if (v[1]) put(v[1], v[4][0]); if (v[2] === 'tr') put(idPassW(v), 'is ' + v[4][4]); });
       ID_MOD.forEach(x => put(x[0], x[2])); ID_PRON.forEach(p => put(p[0], p[3])); ID_ADV.forEach(a => put(a[0], a[1].replace(/\s*\(.*\)/, '')));
