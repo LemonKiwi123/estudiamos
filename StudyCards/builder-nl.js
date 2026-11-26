@@ -49,6 +49,8 @@ const NL_NOUN = [
   NN('kopje', 'kopjes', 'het', 'thing', 'cup', 'cups'),
   // with hebben and no article: ik heb honger (I'm hungry), ik heb geen tijd (I don't have time)
   NN('honger', null, 'de', 'feel', 'hungry', null, { mass: 1 }), NN('dorst', null, 'de', 'feel', 'thirsty', null, { mass: 1 }), NN('tijd', null, 'de', 'feel', 'time', null, { mass: 1, have: 1 })];
+// things you can close too (dichtdoen): not a gift, a letter or a newspaper
+const NL_CLOSABLE = ['deur', 'raam', 'boek', 'tas', 'bioscoop', 'kantoor', 'café', 'restaurant', 'supermarkt', 'museum', 'bibliotheek'];
 const NL_OPENABLE = ['deur', 'raam', 'boek', 'brief', 'tas', 'krant', 'tijdschrift', 'cadeau', 'bioscoop', 'kantoor', 'café', 'restaurant', 'supermarkt', 'museum', 'bibliotheek'];
 //            describes: p people, a animals, f food and drinks, t things, l places, r things you read. attr = the form with -e (null: only after zijn)
 const NA = (pred, attr, en, d) => ({ pred, attr, en, d });
@@ -78,7 +80,7 @@ const NL_VERB = [
   NV('ontmoeten', 'ontmoet ontmoet ontmoet ontmoeten ontmoeten ontmoeten', 'tr', ['person'], 1, 'meet', 'meets', 'p'), NV('dragen', 'draag draagt draagt dragen dragen dragen', 'tr', ['thing'], 1, 'carry', 'carries', 'p'),
   NV('opbellen', 'bel belt belt bellen bellen bellen', 'tr', ['person'], 1, 'call', 'calls', 'p', { part: 'op' }),
   NV('uitnodigen', 'nodig nodigt nodigt nodigen nodigen nodigen', 'tr', ['person'], 1, 'invite', 'invites', 'p', { part: 'uit' }),
-  NV('opendoen', 'doe doet doet doen doen doen', 'tr', ['open'], 1, 'open', 'opens', 'p', { part: 'open' }), NV('dichtdoen', 'doe doet doet doen doen doen', 'tr', ['open'], 1, 'close', 'closes', 'p', { part: 'dicht' }),
+  NV('opendoen', 'doe doet doet doen doen doen', 'tr', ['open'], 1, 'open', 'opens', 'p', { part: 'open' }), NV('dichtdoen', 'doe doet doet doen doen doen', 'tr', ['close'], 1, 'close', 'closes', 'p', { part: 'dicht' }),
   NV('opruimen', 'ruim ruimt ruimt ruimen ruimen ruimen', 'tr', ['thing', 'place'], 0, 'tidy up', 'tidies up', 'p', { part: 'op' }),
   NV('spelen', 'speel speelt speelt spelen spelen spelen', 'in', null, 0, 'play', 'plays', 'a'), NV('werken', 'werk werkt werkt werken werken werken', 'in', null, 0, 'work', 'works', 'p'),
   NV('leren', 'leer leert leert leren leren leren', 'in', null, 0, 'study', 'studies', 'p'), NV('wonen', 'woon woont woont wonen wonen wonen', 'in', null, 0, 'live', 'lives', 'a', { loc: 1 }),
@@ -107,7 +109,7 @@ const NL_ADV = [['vandaag', 'today', 'time'], ['morgen', 'tomorrow', 'time'], ['
   ['graag', 'like to', 'graag'], ['goed', 'well', 'how'], ['veel', 'a lot', 'how'], ['hier', 'here', 'place'], ['thuis', 'at home', 'place']];
 const NL_PREP = [['in', 'in'], ['op', 'on / at'], ['naar', 'to'], ['met', 'with'], ['voor', 'for'], ['zonder', 'without'], ['bij', 'at / near'], ['van', 'of / from']];
 const NL_CONJ = [['en', 'and'], ['maar', 'but'], ['of', 'or'], ['want', 'because'], ['omdat', 'because', 1], ['dat', 'that', 1]];
-const NL_KIND = { food: 'food', drink: 'drinks', read: 'things you read or write', thing: 'things', place: 'places', animal: 'animals', person: 'people', open: 'things you can open' };
+const NL_KIND = { food: 'food', drink: 'drinks', read: 'things you read or write', thing: 'things', place: 'places', animal: 'animals', person: 'people', open: 'things you can open', close: 'things you can close' };
 const NL_PARTS = ['op', 'mee', 'af', 'uit', 'open', 'dicht'];
 const NL_HOW_VERBS = /^(spelen|werken|leren|slapen|zwemmen|zingen|dansen|praten|koken|eten|lezen|schrijven|lopen|fietsen)$/;   // verbs that go with goed / veel
 
@@ -360,7 +362,7 @@ function nlCheckOnce(T0, asGiven) {
     const en = G.en;
     if (['tr', 'hebben'].includes(G.t)) {
       if (objs.length > 1) { const two = objs[1]; return err(objs[0].k === 'np' && two.k === 'np' ? `Only one object here: what you ${en}. To say whose, use “van”: “${npText(objs[0])} van ${npText(two)}”.` : 'Only one object here.', two.start); }
-      if (!objs.length && G.need) return err(`“${G.inf}” needs ${'what you ' + en} after it: “${inf ? `${V.w} … ${{ person: 'mijn vriend', open: 'de deur' }[G.objs?.[0]] || 'een appel'} ${inf.t.w}` : `${V.w} ${{ food: 'een appel', drink: 'water', read: 'een boek', thing: 'een bal', person: 'mijn vriend', open: 'de deur', '*': 'een hond' }[G.objs?.[0]] || 'een hond'}`}”.`, last ? last.end : C.vEnd);
+      if (!objs.length && G.need) return err(`“${G.inf}” needs ${'what you ' + en} after it: “${inf ? `${V.w} … ${{ person: 'mijn vriend', open: 'de deur', close: 'de deur' }[G.objs?.[0]] || 'een appel'} ${inf.t.w}` : `${V.w} ${{ food: 'een appel', drink: 'water', read: 'een boek', thing: 'een bal', person: 'mijn vriend', open: 'de deur', close: 'de deur', '*': 'een hond' }[G.objs?.[0]] || 'een hond'}`}”.`, last ? last.end : C.vEnd);
       for (const o of objs) {
         if (o.k === 'pron') {
           if (!nlPronReads(o.t.w).some(r => r.c === 'obj')) { const r = nlPronReads(o.t.w)[0]; return err(`After the verb, “${o.t.w}” becomes “${r ? r.r[1] : 'mij'}”: “${V.w} ${r ? r.r[1] : 'mij'}”.`, o.start); }
@@ -372,7 +374,7 @@ function nlCheckOnce(T0, asGiven) {
           const cat = p.n.e.cat;
           if (cat === 'feel' && G.t !== 'hebben') return err(`“${p.n.e.w}” goes with hebben: “ik heb ${p.n.e.w}”.`, p.start);
           if (cat === 'feel' && p.det && p.fam !== 'geen') return err(`No article here: “${V.w} ${p.n.e.w}”, or with not: “${V.w} geen ${p.n.e.w}”.`, p.start);
-          if (cat !== 'feel' && (G.objs[0] === 'open' ? !NL_OPENABLE.includes(p.n.e.w) : !G.objs.includes('*') && !G.objs.includes(cat))) return err(`That doesn’t make sense: you can’t ${en} ${nlEnA(p)}. “${G.inf}” goes with ${G.objs.map(c => NL_KIND[c]).join(', ')}.`, p.start);
+          if (cat !== 'feel' && (G.objs[0] === 'open' || G.objs[0] === 'close' ? !(G.objs[0] === 'open' ? NL_OPENABLE : NL_CLOSABLE).includes(p.n.e.w) : !G.objs.includes('*') && !G.objs.includes(cat))) return err(`That doesn’t make sense: you can’t ${en} ${nlEnA(p)}. “${G.inf}” goes with ${G.objs.map(c => NL_KIND[c]).join(', ')}.`, p.start);
         }
       }
     } else if (objs.length) {
@@ -633,7 +635,7 @@ function nlText(words) {
 function nlGenerate(pref) {
   const R = a => a[Math.floor(Math.random() * a.length)], coin = p => Math.random() < p;
   const RP = (list, key) => { const fav = list.filter(x => pref.has(String(key(x)).toLowerCase())); return fav.length && coin(0.6) ? R(fav) : R(list); };
-  const nounOf = cats => RP(NL_NOUN.filter(n => n.cat !== 'feel' && (cats[0] === '*' || cats.includes(n.cat) || (cats[0] === 'open' && NL_OPENABLE.includes(n.w)))), n => n.w);
+  const nounOf = cats => RP(NL_NOUN.filter(n => n.cat !== 'feel' && (cats[0] === '*' || cats.includes(n.cat) || (cats[0] === 'open' && NL_OPENABLE.includes(n.w)) || (cats[0] === 'close' && NL_CLOSABLE.includes(n.w)))), n => n.w);
   const CAT = { person: 'p', animal: 'a', food: 'f', drink: 'd', thing: 't', place: 'l', read: 'r' };
   const adjFor = cat => RP(NL_ADJ.filter(a => a.d.includes(CAT[cat] || 'p')), a => a.pred);
   const extra = [];
