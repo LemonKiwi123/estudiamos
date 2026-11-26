@@ -560,7 +560,7 @@ const noKnown = (L, w) => L.N.slice(0, L.BASE.n).some(n => [n.w, n.def, n.pl, n.
 function noApplyMine(L, code) {
   L.N.length = L.BASE.n; L.A.length = L.BASE.a; L.V.length = L.BASE.v;
   for (const m of S.bldWords || []) {
-    if (!m || m.lang !== code || !m.w || !m.en || noKnown(L, m.w)) continue;
+    if (!m || (m.lang !== code && !(code === 'nb' && m.lang === 'no')) || !m.w || !m.en || noKnown(L, m.w)) continue;
     if (m.k === 'noun') {
       // the dialog's choices are m / f / n; for Swedish and Danish, f is the "ett" (neuter) choice
       const g = L.G.length === 3 ? (['m', 'f', 'n'].includes(m.g) ? m.g : 'm') : m.g === 'f' || m.g === 'n' ? 'n' : 'c';

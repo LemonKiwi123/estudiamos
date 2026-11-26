@@ -60,6 +60,7 @@ function rsNoTag(w, i, low, lang) {
   for (let i = 0; i < words.length; i++) {
     if (lang === 'da' && /^I$/.test(words[i].replace(/[.,!?;:]/g, '')) && (i > 0 || RS_CLOSED.da.verb.has(low[1] || '') || out[1] === 'verb') && !/^(går|morgen|dag|aften|nat|år)$/.test(low[i + 1] || '')) out[i] = 'pron';   // Danish "I" = you (all of you)
     if (RS_CLOSED[lang].clArt.has(low[i]) && out[i + 1] === 'verb' && out[i] === 'det') out[i] = 'pron';
+    if (low[i] === 'i' && /^(går|igår|dag|morgon|morgen|kveld|kväll|aften|natt|nat|fjor|år)$/.test(low[i + 1] || '')) { out[i] = 'adv'; out[i + 1] = 'adv'; }   // i går, i morgon, i dag: one adverb
   }
   return out;
 }; }

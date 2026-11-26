@@ -676,7 +676,51 @@ gjør|verb|do(es)
 noe|pron|something
 noen|pron|someone / some
 aldri|adv|never`;
-RS_DICT_SRC.da = `tom|noun|Tom
+RS_DICT_SRC.da = `igen|adv|again
+ud|adv|out
+op|adv|up
+ned|adv|down
+ind|adv|in
+hvor|adv|where / how
+hvis|conj|if
+mens|conj|while
+efter|prep|after
+uden|prep|without
+over|prep|over / above
+under|prep|under
+mod|prep|toward / against
+stadig|adv|still
+allerede|adv|already
+lige|adv|just / equal
+måske|adv|maybe
+snart|adv|soon
+endnu|adv|yet / still
+sammen|adv|together
+tit|adv|often
+gerne|adv|gladly
+lidt|adv|a little
+mere|adv|more
+virkelig|adv|really
+blev|verb|became / was
+været|verb|been
+tog|verb|took
+gav|verb|gave
+vidste|verb|knew
+troede|verb|thought
+burde|verb|should
+denne|det|this
+dette|det|this
+disse|det|these
+ingen|det|no / no one
+hver|det|every
+nogle|det|some
+begge|det|both
+anden|det|other
+andet|det|other
+andre|det|other(s)
+selv|pron|self / even
+hinanden|pron|each other
+tom|noun|Tom
 mary|noun|Mary
 sami|noun|Sami
 ziri|noun|Ziri
