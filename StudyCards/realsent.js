@@ -9,13 +9,14 @@
    Sentences that use your deck's words come up more often. */
 const RS_LANGS = { es: 'Spanish', fr: 'French', ja: 'Japanese' };
 const RS_DATA = {};   // lang -> { items, lower: Set of words seen in lowercase }
+const rsLow = (w, lang) => lang === 'tr' ? String(w).replace(/I/g, 'ı').replace(/İ/g, 'i').toLowerCase() : String(w).toLowerCase();   // Turkish: I → ı, İ → i
 const RS_NOSPACE = new Set(['ja']), RS_SPLIT = {}, RS_POS_BY = {};   // languages written without spaces (other files add theirs), how to split them into words, and their word types
 let rs = null;
 async function rsLoad(lang) {
   if (RS_DATA[lang]) return RS_DATA[lang];
   const r = await fetch(`data/real-${lang}.json`); if (!r.ok) throw new Error('missing');
   const j = await r.json(), lower = new Set();
-  for (const it of j.items) rsTokens(it[1], lang).slice(1).forEach(w => { if (w === w.toLowerCase()) lower.add(w); });
+  for (const it of j.items) rsTokens(it[1], lang).slice(1).forEach(w => { if (w === rsLow(w, lang)) lower.add(w); });
   return (RS_DATA[lang] = { items: j.items, credit: j.credit, lower });
 }
 /* the words of a sentence, without the opening ¿¡ and the closing . ? ! (those are shown for you) */
@@ -25,7 +26,7 @@ function rsTokens(text, lang) {
 }
 const rsEnd = (text, lang) => RS_NOSPACE.has(lang) ? (/[。！？]$/.exec(text)?.[0] || '。') : (/[.!?…]+$/.exec(String(text).trim())?.[0] || '.');
 const rsPlain = (text, lang) => RS_NOSPACE.has(lang) ? String(text).replace(/\|/g, '') : String(text).trim();
-const rsKey = (w, lang) => (RS_NOSPACE.has(lang) ? w : w.toLowerCase()).replace(/[^\p{L}\p{N}'’-]/gu, '');
+const rsKey = (w, lang) => (RS_NOSPACE.has(lang) ? w : rsLow(w, lang)).replace(/[^\p{L}\p{N}'’-]/gu, '');
 /* your deck's cards that have an example sentence in this language (and its English) */
 /* Japanese has no spaces: split a sentence into words using the words of the Japanese sentence set (longest match first) */
 let RS_JA_VOCAB = null;
@@ -141,7 +142,7 @@ function rsRound() {
   while (focus && ++tries < 80 && !types.some(t => focus.includes(t)));
   rs.seen.add(s.id);
   // don't give away the first word with its capital letter (but keep names like Tom or María)
-  const shown = words.map((w, i) => i === 0 && rs.lang !== 'ja' && D.lower.has(w.toLowerCase()) ? w.toLowerCase() : w);
+  const shown = words.map((w, i) => i === 0 && rs.lang !== 'ja' && D.lower.has(rsLow(w, rs.lang)) ? rsLow(w, rs.lang) : w);
   const chips = shown.map((w, i) => ({ id: i, w, type: types[i] || null, gloss: typeof rsGloss === 'function' ? rsGloss(words[i], rs.lang) : '', used: false }));
   const frame = focus && types.some(t => focus.includes(t)) ? chips.map(c => ({ blank: focus.includes(c.type) })) : null;
   if (frame) chips.push(...rsDecoys(chips.filter((c, i) => frame[i].blank), words));   // 🎯 a few wrong words of the same kind

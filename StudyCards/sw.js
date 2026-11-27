@@ -14,7 +14,8 @@ const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon-256.png', 'icon
   'zh-pinyin.js', 'builder-zh.js', 'rsdict-zh.js', 'rstag-zh.js', 'gametr-zh.js', 'gametr-zh2.js', 'chinese.js', 'data/real-zh.json',
   'builder-nl.js', 'gametr-nl.js', 'gametr-nl2.js', 'rsdict-nl.js', 'rstag-nl.js', 'dutch.js', 'data/real-nl.json',
   'builder-nordic.js', 'builder-sv.js', 'builder-nb.js', 'builder-da.js', 'gametr-sv.js', 'gametr-nb.js', 'gametr-da.js', 'rsdict-nordic.js', 'rstag-nordic.js', 'lang-nordic.js', 'data/real-sv.json', 'data/real-nb.json', 'data/real-da.json',
-  'builder-id.js', 'rsdict-id.js', 'rstag-id.js', 'gametr-id.js', 'gametr-id2.js', 'indonesian.js', 'data/real-id.json'];
+  'builder-id.js', 'rsdict-id.js', 'rstag-id.js', 'gametr-id.js', 'gametr-id2.js', 'indonesian.js', 'data/real-id.json',
+  'builder-tr.js', 'rsdict-tr.js', 'rstag-tr.js', 'gametr-tr.js', 'gametr-tr2.js', 'turkish.js', 'data/real-tr.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(FILES.map(f => c.add(new Request(f, { cache: 'reload' })).catch(() => {})))).then(() => self.skipWaiting()));
 });
