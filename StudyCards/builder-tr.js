@@ -22,7 +22,7 @@ const trUp = s => String(s || '').replace(/i/g, 'İ').replace(/ı/g, 'I').toUppe
 const trCap = s => s ? trUp(s[0]) + s.slice(1) : s;
 let TR_FLIP = false;   // only for making a wrong-harmony distractor
 const trLastV = w => { for (let i = w.length - 1; i >= 0; i--) if (TR_V.includes(w[i])) return w[i]; return 'e'; };
-const trA = w => { const back = 'aıou'.includes(trLastV(w)); return back !== TR_FLIP ? 'a' : 'e'; };
+const trHarmA = w => { const back = 'aıou'.includes(trLastV(w)); return back !== TR_FLIP ? 'a' : 'e'; };
 const trI = w => { const v = trLastV(w), r = { a: 'ı', ı: 'ı', o: 'u', u: 'u', e: 'i', i: 'i', ö: 'ü', ü: 'ü' }[v]; return TR_FLIP ? { ı: 'i', i: 'ı', u: 'ü', ü: 'u' }[r] : r; };
 const trEndV = w => TR_V.includes(String(w).slice(-1));
 const trSyl = w => [...String(w)].filter(c => TR_V.includes(c)).length;
@@ -32,7 +32,7 @@ const TR_PERS = ['1s', '2s', '3s', '1p', '2p', '3p'];
 // the “I am / you are…” ending on a noun or describing word: öğretmenim, yorgunsun, hastayız
 function trCopEnd(w, per, soft) {
   const I = trI(w), y = trEndV(w) ? 'y' : '', b = soft && !y ? trSoft(w) : w;
-  return { '1s': b + y + I + 'm', '2s': w + 's' + I + 'n', '3s': w, '1p': b + y + I + 'z', '2p': w + 's' + I + 'n' + I + 'z', '3p': w + 'l' + trA(w) + 'r' }[per];
+  return { '1s': b + y + I + 'm', '2s': w + 's' + I + 'n', '3s': w, '1p': b + y + I + 'z', '2p': w + 's' + I + 'n' + I + 'z', '3p': w + 'l' + trHarmA(w) + 'r' }[per];
 }
 /* a noun with its endings: plural, owner (-im, -in, -i, -imiz, -iniz) and case.
    o: { pl, poss: '1s'…'2p', cs: 'nom' | 'acc' | 'dat' | 'loc' | 'abl' | 'gen', nosoft } */
@@ -41,14 +41,14 @@ function trNF(n, o = {}) {
   let w = n[0], bare = true, buf = false;
   const endV = () => trEndV(w) && !(bare && yb);
   const glue = suf => { w = (bare && soft ? trSoft(w) : bare && yb ? w + 'y' : w) + suf; bare = false; };
-  if (o.pl) { w += 'l' + trA(w) + 'r'; bare = false; }
+  if (o.pl) { w += 'l' + trHarmA(w) + 'r'; bare = false; }
   if (o.poss) {
     const P = o.poss, I = trI(w);
     if (endV()) w += { '1s': 'm', '2s': 'n', '3s': 's' + I, '1p': 'm' + I + 'z', '2p': 'n' + I + 'z' }[P];
     else glue(I + { '1s': 'm', '2s': 'n', '3s': '', '1p': 'm' + I + 'z', '2p': 'n' + I + 'z' }[P]);
     bare = false; buf = P === '3s';
   }
-  const A = trA(w), I = trI(w);
+  const A = trHarmA(w), I = trI(w);
   switch (o.cs) {
     case 'acc': if (buf) w += 'n' + I; else if (endV()) w += 'y' + I; else glue(I); break;
     case 'dat': if (buf) w += 'n' + A; else if (endV()) w += 'y' + A; else glue(A); break;
@@ -139,15 +139,15 @@ function trProg(v, neg, per) {
 function trAor(v, neg, per) {
   const st = trStem(v);
   if (neg) {
-    const A = trA(st);
+    const A = trHarmA(st);
     if (per === '1s') return st + 'm' + A + 'm';
     if (per === '1p') return st + 'm' + A + 'y' + (A === 'a' ? 'ı' : 'i') + 'z';
     const b = st + 'm' + A + 'z';
-    return b + { '2s': 's' + trI(b) + 'n', '3s': '', '2p': 's' + trI(b) + 'n' + trI(b) + 'z', '3p': 'l' + trA(b) + 'r' }[per];
+    return b + { '2s': 's' + trI(b) + 'n', '3s': '', '2p': 's' + trI(b) + 'n' + trI(b) + 'z', '3p': 'l' + trHarmA(b) + 'r' }[per];
   }
-  const b = trEndV(st) ? st + 'r' : trSoftV(v) + (v.ir || trSyl(st) > 1 ? trI(st) : trA(st)) + 'r';
+  const b = trEndV(st) ? st + 'r' : trSoftV(v) + (v.ir || trSyl(st) > 1 ? trI(st) : trHarmA(st)) + 'r';
   const I = trI(b);
-  return b + { '1s': I + 'm', '2s': 's' + I + 'n', '3s': '', '1p': I + 'z', '2p': 's' + I + 'n' + I + 'z', '3p': 'l' + trA(b) + 'r' }[per];
+  return b + { '1s': I + 'm', '2s': 's' + I + 'n', '3s': '', '1p': I + 'z', '2p': 's' + I + 'n' + I + 'z', '3p': 'l' + trHarmA(b) + 'r' }[per];
 }
 const trVerbW = (v, tense, neg, per) => tense === 'ao' ? trAor(v, neg, per) : trProg(v, neg, per);
 // mı / mi / mu / mü after a word, with the person: musun, miyim
@@ -713,9 +713,9 @@ function trApplyMine() {
 const bldIngEn = w => { const [h, ...r] = w.split(' '); const g = /ie$/.test(h) ? h.slice(0, -2) + 'ying' : /[^aeiou]e$/.test(h) && h !== 'be' ? h.slice(0, -1) + 'ing' : /^[^aeiou]*[aeiou][bdgmnpt]$/.test(h) ? h + h.slice(-1) + 'ing' : h + 'ing'; return [g, ...r].join(' '); };
 if (typeof bldApplyMine === 'function') { const prevTrApply = bldApplyMine; bldApplyMine = function () { prevTrApply(); trApplyMine(); }; }
 BLD_MINE.tr = { name: 'Turkish', forms: '-iyor form, simple present (geliyor, gelir)', nForms: 2, noGender: true,
-  conj: w => { if (!/m[ae]k$/.test(w)) return []; const v = { w }; return [trProg(v, false, '3s'), trAor(v, false, '3s')]; }, pl: w => w + 'l' + trA(w) + 'r',
+  conj: w => { if (!/m[ae]k$/.test(w)) return []; const v = { w }; return [trProg(v, false, '3s'), trAor(v, false, '3s')]; }, pl: w => w + 'l' + trHarmA(w) + 'r',
   adj: w => [w], known: w => trKnown(trLow(w)), gender: () => 'm', isVerb: w => /m[ae]k$/.test(trLow(w)), refl: () => false, minLen: 2,
-  guess: (w, en) => /^(hello|hi|thanks?|thank you|bye|goodbye|good|sorry|excuse|please|welcome|you.?re|yes|no|not|how|what|who|where|why|when|which|and|but|or|of|in|on|at)( |$)/i.test(en) ? '' : 'noun',
+  guess: (w, en) => /^(hello|hi|thanks?|thank you|bye|goodbye|good|sorry|excuse|please|welcome|you.?re|yes|no|not|how|what|who|where|why|when|which|and|but|or|of|in|on|at|today|tomorrow|yesterday|now|always|never|here|there)( |$)/i.test(en) ? '' : 'noun',
   parse: s => { const w = trLow(String(s || '').replace(/[（(][^）)]*[）)]/g, '')).replace(/\s+/g, ' ').trim(); return /^[a-zçğıöşüâîû]+$/.test(w) ? { w } : null; },
   intro: 'words ending in -mek / -mak are verbs). The -iyor form and the simple present are filled in for you: check the simple present (gelir, okur, yazar), since a few short verbs take -ir instead of -er.' };
 // Turkish has its own I/ı and İ/i: the deck's words are lower-cased the Turkish way
