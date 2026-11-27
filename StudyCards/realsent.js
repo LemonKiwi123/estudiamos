@@ -265,11 +265,11 @@ views.realsent = () => {
   const tags = S.settings.bldTags !== false, meanings = S.settings.bldMeanings !== false;
   const label = c => tags && c.type ? `<span class="t">${esc(rsTagName(c.type, c.w))}</span>` : '';
   const title = c => c.type && typeof BLD_TYPES !== 'undefined' && BLD_TYPES[c.type] ? ` title="${esc(rsTagName(c.type, c.w))}: ${esc(BLD_TYPES[c.type][1] || '')}"` : '';
-  const chip = (c, where, i) => `<button type="button" class="bld-chip${c.type ? ' t-' + c.type : ''}${where === 'line' && i === rs.bad ? ' bad' : ''}${where === 'tray' && [].concat(rs.hint).includes(c.id) ? ' hint' : ''}" data-act="${where === 'line' ? 'rsRemove' : 'rsPick'}" data-id="${c.id}" ${rs.done ? 'disabled' : ''} lang="${rs.lang}"${title(c)}>${label(c)}<span class="w">${esc(c.w)}</span>${meanings && where === 'tray' && c.gloss ? `<span class="g">${esc(c.gloss)}</span>` : ''}</button>`;
+  const chip = (c, where, i) => `<button type="button" class="bld-chip${c.type ? ' t-' + c.type : ''}${where === 'line' && i === rs.bad ? ' bad' : ''}${where === 'tray' && [].concat(rs.hint).includes(c.id) ? ' hint' : ''}" data-act="${where === 'line' ? (rs.done ? 'rsHear' : 'rsRemove') : 'rsPick'}" data-id="${c.id}" ${rs.done && where !== 'line' ? 'disabled' : ''} lang="${rs.lang}"${title(c)}>${label(c)}<span class="w">${esc(c.w)}</span>${meanings && where === 'tray' && c.gloss ? `<span class="g">${esc(c.gloss)}</span>` : ''}</button>`;
   const types = [...new Set(rs.chips.map(c => c.type).filter(Boolean))];
   const built = rsBuilt(), s = rs.s, ja = rs.lang === 'ja';
   const lineHtml = rs.frame
-    ? rs.frame.map((f, i) => !f.blank ? `<span class="bld-chip locked${rsChip(i).type ? ' t-' + rsChip(i).type : ''}"${title(rsChip(i))}>${label(rsChip(i))}<span class="w">${esc(rsChip(i).w)}</span></span>`
+    ? rs.frame.map((f, i) => !f.blank ? `<button type="button" class="bld-chip locked${rsChip(i).type ? ' t-' + rsChip(i).type : ''}" data-act="rsHear" data-i="${i}" lang="${rs.lang}"${title(rsChip(i))}>${label(rsChip(i))}<span class="w">${esc(rsChip(i).w)}</span></button>`
       : rs.fill[i] != null ? chip(rsChip(rs.fill[i]), 'line', i)
       : `<button type="button" class="bld-chip bld-slot${rsChip(i).type ? ' t-' + rsChip(i).type : ''}${rs.gap === i ? ' hint' : ''}${i === rs.bad ? ' bad' : ''}" data-act="rsSlot" data-i="${i}" ${rs.done ? 'disabled' : ''}>${esc(rsTagName(rsChip(i).type, rsChip(i).w))}</button>`).join('')
     : built.length ? built.map((c, i) => (rs.gap === i ? '<span class="bld-gap" aria-label="empty spot"></span>' : '') + chip(c, 'line', i)).join('') : '';
@@ -321,7 +321,8 @@ Object.assign(actions, {
     if (rs.gap != null && rs.gap <= rs.line.length) rs.line.splice(rs.gap, 0, c.id); else rs.line.push(c.id);
     rsSayWord(c); rsAfterPlace(); },
   rsSlot: el => { if (rs.done) return; rs.gap = +el.dataset.i; rs.msg = '✏️ Now tap the word that goes in that blank.'; render(); },
-  rsRemove: el => { if (rs.done) return; const id = +el.dataset.id, c = rs.chips[id]; if (c) c.used = false;
+  rsHear: el => rsSayWord(el.dataset.i != null ? rsChip(+el.dataset.i) : rs.chips[+el.dataset.id]),   // 🔊 tap a word in the sentence to hear it
+  rsRemove: el => { if (rs.done) return; const id = +el.dataset.id, c = rs.chips[id]; if (c) c.used = false; rsSayWord(c);
     if (rs.frame) { const at = rs.fill.indexOf(id); if (at >= 0) rs.fill[at] = null; rs.gap = at; rs.msg = null; rs.bad = -1; return render(); }
     const at = rs.line.indexOf(id); rs.line = rs.line.filter(x => x !== id); rs.gap = at < rs.line.length ? at : null; rs.msg = null; rs.bad = -1; render(); },
   rsUndo: () => {

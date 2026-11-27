@@ -1047,13 +1047,15 @@ function bldShowEnd() {
   line.classList.remove('tight', 'wrap'); line.style.removeProperty('--bf');
   if (!matchMedia('(max-width:640px)').matches) return;
   const fits = () => line.scrollWidth <= line.clientWidth + 1;
-  for (const px of [15, 14, 13, 12, 11, 10]) {
+  for (const px of [15, 14, 13, 12]) {   // never smaller than 12px: easier to wrap than to squint
     line.style.setProperty('--bf', px + 'px'); line.classList.toggle('tight', px <= 12);
     if (fits()) return;
   }
   // still too long: use a second line rather than scrolling, at a size that's comfortable to read
   line.style.setProperty('--bf', '13px'); line.classList.add('tight', 'wrap');
 }
+// turning the phone or resizing the window: fit the sentence again
+addEventListener('resize', () => { if (view.name === 'builder' || view.name === 'realsent') bldShowEnd(); });
 
 /* When the Sentence Builder opens, labeled words from the deck are added by themselves, verbs with their real forms
    (ES_IRREG_FORMS). Verbs ending in -se, and weather verbs, are left out: the game can't check "me / te / se" yet. */
