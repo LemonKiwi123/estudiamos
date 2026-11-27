@@ -169,7 +169,321 @@ RS_DICT_SRC.ru = `том|noun|Tom
 если|conj|if
 чтобы|conj|so that / to
 ни|part|not even / neither
-мог|verb|could`;
+мог|verb|could
+происходит|verb|is happening
+прийти|verb|to come
+разве|part|really? / surely
+именно|adv|exactly
+жаль|adv|a pity / sorry
+никому|pron|to nobody
+нужны|adj|needed
+точно|adv|exactly / for sure
+говори|verb|speak / say
+дай|verb|give
+уйти|verb|to leave
+достаточно|adv|enough
+важно|adv|important
+пойду|verb|I will go
+скажу|verb|I will say
+помню|verb|I remember
+равно|adv|equally (всё равно = anyway)
+ребёнок|noun|child
+ребенок|noun|child
+никого|pron|nobody
+холодно|adv|cold
+пешком|adv|on foot
+заняты|adj|busy
+смогу|verb|I will be able to
+по-английски|adv|in English
+готов|adj|ready
+собираюсь|verb|I'm going to
+долго|adv|for a long time
+сделаю|verb|I will do
+такого|det|such
+снег|noun|snow
+столько|adv|so much / so many
+бывает|verb|happens
+сложно|adv|difficult
+шёл|verb|was going
+шел|verb|was going
+деле|noun|(на самом деле = actually)
+прав|adj|right
+сделает|verb|will do
+легко|adv|easy / easily
+видели|verb|saw
+единственный|adj|only (the one)
+боюсь|verb|I'm afraid
+пытался|verb|tried
+умеет|verb|can (knows how)
+всю|det|all / whole
+кроме|prep|except
+язык|noun|language / tongue
+нечего|pron|nothing (to)
+болен|adj|ill
+заплатил|verb|paid
+хуже|adv|worse
+счастлив|adj|happy
+далеко|adv|far
+удалось|verb|managed to
+хватает|verb|is enough
+помогу|verb|I will help
+придёт|verb|will come
+придет|verb|will come
+понял|verb|understood
+такие|det|such
+оставил|verb|left
+довольно|adv|quite / enough
+пора|adv|it's time
+принёс|verb|brought
+принес|verb|brought
+весело|adv|fun / cheerfully
+помнишь|verb|you remember
+вернусь|verb|I will come back
+гораздо|adv|much (more)
+ел|verb|ate
+понятия|noun|idea (no idea)
+чувствую|verb|I feel
+хотелось|verb|wanted (felt like)
+приду|verb|I will come
+ушёл|verb|left
+ушел|verb|left
+рассказал|verb|told
+знали|verb|knew
+старше|adj|older
+тем|pron|that (with) / the more
+прямо|adv|straight / right
+лишь|adv|only
+году|noun|year
+вовремя|adv|on time
+поможет|verb|will help
+приехал|verb|arrived
+ответил|verb|answered
+пойдём|verb|let's go
+пойдем|verb|let's go
+хватит|verb|enough!
+иди|verb|go
+телевизор|noun|television
+жарко|adv|hot
+готовы|adj|ready
+странно|adv|strange
+насколько|adv|how (much)
+похож|adj|looks like
+правильно|adv|right / correctly
+дайте|verb|give
+скажите|verb|tell / say
+расскажи|verb|tell
+неправильно|adv|wrong
+спасти|verb|to save
+сделай|verb|do / make
+лучший|adj|best
+согласен|adj|agree(d)
+пор|noun|(до сих пор = still)
+имею|verb|I have
+удивлён|adj|surprised
+удивлен|adj|surprised
+станет|verb|will become
+страшно|adv|scary
+сделано|verb|done
+сможешь|verb|you will be able to
+рады|adj|glad
+идея|noun|idea
+рядом|adv|nearby
+вещи|noun|things
+устал|verb|got tired
+сделали|verb|did
+сын|noun|son
+место|noun|place / seat
+пришлось|verb|had to
+кое|pron|(кое-что = something)
+оба|det|both
+последний|adj|last
+женщина|noun|woman
+поесть|verb|to eat
+быстрее|adv|faster
+мужчина|noun|man
+звонил|verb|called
+адрес|noun|address
+понравилось|verb|liked (it pleased)
+пытаюсь|verb|I'm trying
+позвоню|verb|I will call
+принадлежит|verb|belongs
+вероятно|adv|probably
+верю|verb|I believe
+пойдёт|verb|will go
+пойдет|verb|will go
+еды|noun|food
+дело|noun|matter / business
+любил|verb|loved
+никуда|adv|nowhere
+смотрел|verb|watched
+значит|verb|means / so
+следовало|verb|should have
+прочёл|verb|read
+прочел|verb|read
+имеет|verb|has
+опасно|adv|dangerous
+правы|adj|right
+беспокоит|verb|worries
+необходимо|adv|necessary
+обещаю|verb|I promise
+увидимся|verb|see you
+языков|noun|languages
+счастливым|adj|happy
+единственная|adj|only (the one)
+повезло|verb|was lucky
+самому|pron|oneself / myself
+будешь|verb|you will (be)
+откуда|adv|where from
+ответить|verb|to answer
+своей|det|one's own
+спросить|verb|to ask
+всем|pron|to everyone
+вернётся|verb|will come back
+вернется|verb|will come back
+помощи|noun|help
+придётся|verb|will have to
+придется|verb|will have to
+наверное|adv|probably
+будут|verb|will (be)
+написал|verb|wrote
+решение|noun|decision
+потерял|verb|lost
+собой|pron|oneself (with)
+несколько|det|a few / several
+который|det|which / who
+доверять|verb|to trust
+после|prep|after
+понедельник|noun|Monday
+мать|noun|mother
+этой|det|this
+хотела|verb|wanted
+порядке|noun|order (в порядке = fine)
+починить|verb|to fix
+поздно|adv|late
+узнал|verb|found out
+одна|det|one / alone
+случится|verb|will happen
+понадобится|verb|will be needed
+теннис|noun|tennis
+поверить|verb|to believe
+рассказать|verb|to tell
+проблему|noun|problem
+решить|verb|to solve / to decide
+знала|verb|knew
+самом|pron|(на самом деле = actually)
+решил|verb|decided
+рождения|noun|birth (день рождения = birthday)
+хочется|verb|feels like / wants
+спал|verb|slept
+кино|noun|cinema / films
+вопросы|noun|questions
+извиниться|verb|to apologize
+этих|det|these
+футбол|noun|football
+перестал|verb|stopped
+кем|pron|who (with) / as whom
+мало|adv|little / few
+какая|det|what / which
+нравятся|verb|likes (are pleasing)
+жизни|noun|life
+минут|noun|minutes
+тогда|adv|then
+хотели|verb|wanted
+понравится|verb|will like
+опоздал|verb|was late
+объяснить|verb|to explain
+пошли|verb|went / let's go
+муж|noun|husband
+час|noun|hour
+безопасности|noun|safety
+разговаривать|verb|to talk
+встретиться|verb|to meet
+свои|det|one's own
+одолжить|verb|to lend / to borrow
+прошлом|adj|last (past)
+бейсбол|noun|baseball
+списке|noun|list
+перед|prep|in front of / before
+начал|verb|started
+родители|noun|parents
+давно|adv|long ago / for a long time
+ответ|noun|answer
+часов|noun|hours / o'clock
+дня|noun|day
+съел|verb|ate
+тридцать|det|thirty
+ходить|verb|to walk / to go
+ждал|verb|waited
+очки|noun|glasses
+меньше|adv|less
+шанс|noun|chance
+ужин|noun|dinner
+говорили|verb|talked / said
+автобусе|noun|bus
+пальто|noun|coat
+смерти|noun|death
+научиться|verb|to learn
+дней|noun|days
+фотографии|noun|photos / photo
+изменить|verb|to change
+говорила|verb|said / talked
+оставить|verb|to leave
+приходить|verb|to come
+сих|det|(до сих пор = still)
+своё|det|one's own
+свое|det|one's own
+собираешься|verb|are you going to
+новость|noun|news
+находится|verb|is (located)
+зонт|noun|umbrella
+русский|adj|Russian
+услышать|verb|to hear
+сходить|verb|to go (and come back)
+из-за|prep|because of
+сделала|verb|did
+какие|det|what / which
+часы|noun|watch / clock
+ночью|adv|at night
+отца|noun|father
+которые|det|which / who
+над|prep|above / over
+проблемы|noun|problems
+открыл|verb|opened
+голос|noun|voice
+пришла|verb|came
+пришли|verb|came
+уходить|verb|to leave
+две|det|two
+платье|noun|dress
+компьютер|noun|computer
+любимый|adj|favourite
+сидел|verb|sat
+пианино|noun|piano
+подумал|verb|thought
+встретил|verb|met
+уехал|verb|left
+верить|verb|to believe
+погода|noun|weather
+просил|verb|asked
+воскресенье|noun|Sunday
+днём|adv|in the afternoon
+днем|adv|in the afternoon
+одно|det|one
+право|noun|right
+забыла|verb|forgot
+ждали|verb|waited
+забыть|verb|to forget
+защитить|verb|to protect
+отвечать|verb|to answer
+думала|verb|thought
+гольф|noun|golf
+задать|verb|to ask (a question)
+пляж|noun|beach
+предупредить|verb|to warn
+поговорил|verb|talked
+скучать|verb|to miss / to be bored
+смогли|verb|managed to
+делала|verb|did / was doing`;
 RS_DICT_SRC.uk = `том|noun|Tom
 томе|noun|Tom (calling him)
 тома|noun|Tom's / Tom
@@ -534,7 +848,109 @@ RS_DICT_SRC.uk = `том|noun|Tom
 бо|conj|because
 щоб|conj|so that / to
 якщо|conj|if
-потрібно|adv|need / must`;
+потрібно|adv|need / must
+о|prep|about / at
+нарешті|adv|finally
+життя|noun|life
+зроби|verb|do / make
+плануєш|verb|you plan
+очі|noun|eyes
+одного|det|one
+повернуся|verb|I will come back
+робитимеш|verb|you will do
+відмовився|verb|refused
+знайшли|verb|found
+дивився|verb|watched
+готова|adj|ready
+означає|verb|means
+мова|noun|language
+винен|adj|guilty / owes
+розмовляю|verb|I speak
+ніч|noun|night
+жарт|noun|joke
+відповісти|verb|to answer
+кажучи|verb|saying
+повернешся|verb|you will come back
+зустріч|noun|meeting
+номер|noun|number
+окуляри|noun|glasses
+їжу|noun|food
+жодного|det|not a single
+одну|det|one
+кажи|verb|say
+підемо|verb|we will go
+роби|verb|do
+душ|noun|shower
+спекотно|adv|hot
+візьми|verb|take
+ймовірно|adv|probably
+японською|adv|in Japanese
+сердитий|adj|angry
+чашку|noun|cup
+сісти|verb|to sit down
+чогось|pron|something
+заради|prep|for the sake of
+допоможи|verb|help
+сильно|adv|strongly / a lot
+два|det|two
+кілька|det|a few / several
+свою|det|one's own
+поїхав|verb|went / left
+свого|det|one's own
+десять|det|ten
+цієї|det|this
+зупинити|verb|to stop
+пояснити|verb|to explain
+повернутися|verb|to come back
+дядько|noun|uncle
+яке|det|what / which
+улюблений|adj|favourite
+парасольку|noun|umbrella
+п'ять|det|five
+доларів|noun|dollars
+подивитися|verb|to look / to watch
+трапиться|verb|will happen
+зателефонувати|verb|to phone
+через|prep|through / because of / in
+з'їв|verb|ate
+хвилин|noun|minutes
+цих|det|these
+віку|noun|age
+почути|verb|to hear
+брехати|verb|to lie
+ранку|noun|morning
+автобусі|noun|bus
+розбив|verb|broke
+зустрів|verb|met
+втратив|verb|lost
+мало|adv|little / few
+купила|verb|bought
+своїх|det|one's own
+години|noun|hours / o'clock
+давно|adv|long ago / for a long time
+які|det|what / which
+проблему|noun|problem
+собою|pron|oneself (with)
+правило|noun|rule
+заплатити|verb|to pay
+чотири|det|four
+плани|noun|plans
+випив|verb|drank
+ходив|verb|went / walked
+запросив|verb|invited
+воно|pron|it
+донька|noun|daughter
+знаходиться|verb|is (located)
+англійська|adj|English
+голос|noun|voice
+забула|verb|forgot
+брехав|verb|lied
+спав|verb|slept
+прийняти|verb|to accept / to take
+днів|noun|days
+класі|noun|class
+після|prep|after
+марнувати|verb|to waste`;
 for (const l of ['ru', 'uk']) {
   const m = new Map();
   for (const line of RS_DICT_SRC[l].split('\n')) { const [w, t, g] = line.split('|'); if (w && t && !m.has(w.trim().toLowerCase())) m.set(w.trim().toLowerCase(), [t.trim(), (g || '').trim()]); }
