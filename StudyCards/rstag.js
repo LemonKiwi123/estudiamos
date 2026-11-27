@@ -191,6 +191,7 @@ document.addEventListener('change', e => {
   if (view.name !== 'realsent' || !rs) return;
   if (e.target.id === 'rsTags') { S.settings.bldTags = e.target.checked; save(); render(); }
   if (e.target.id === 'rsMeter') { S.settings.bldMeter = e.target.checked; save(); render(); }
+  if (e.target.id === 'rsSayWords') { S.settings.rsSayWords = e.target.checked; save(); if (!e.target.checked) speechSynthesis?.cancel?.(); toast(e.target.checked ? '🔊 Words are said out loud as you place them' : '🔇 Words are placed quietly'); }
 });
 
 /* ---------- Meanings under the words (like Build your own): the builder's dictionaries, your own cards, common little words ---------- */
@@ -294,6 +295,7 @@ function rsGloss(word, lang) {
     noClick = true; setTimeout(() => { noClick = false; }, 400);
     const { id, from, at } = d; d.ghost.style.visibility = 'hidden'; const under = document.elementFromPoint(e.clientX, e.clientY); end();
     const c = rs?.chips?.[id]; if (!c || rs.done) return;
+    const wasUsed = c.used, said = () => { if (c.used && !wasUsed && typeof rsSayWord === 'function') rsSayWord(c); };   // 🔊 a word dragged in from the list is said out loud
     if (rs.frame) {
       const was = rs.fill.indexOf(id);
       if (at == null) { if (was >= 0) { rs.fill[was] = null; c.used = false; } }   // dragged out: back to the word list
@@ -305,13 +307,13 @@ function rsGloss(word, lang) {
         if (was >= 0) rs.fill[was] = other ?? null; else if (other != null) rs.chips[other].used = false;   // swap, or send the old word back
         rs.fill[to] = id; c.used = true;
       }
-      Object.assign(rs, { gap: null, msg: null, bad: -1, hint: -1 });
+      Object.assign(rs, { gap: null, msg: null, bad: -1, hint: -1 }); said();
       return rsComplete() ? rsCheck() : render();
     }
     rs.line = rs.line.filter(x => x !== id);
     if (at != null) { c.used = true; rs.line.splice(Math.min(at, rs.line.length), 0, id); }
     else c.used = false;   // dragged out of the sentence: back to the word list
-    Object.assign(rs, { gap: null, msg: null, bad: -1, hint: -1 });
+    Object.assign(rs, { gap: null, msg: null, bad: -1, hint: -1 }); said();
     rsComplete() ? rsCheck() : render();
   });
   document.addEventListener('pointercancel', end);

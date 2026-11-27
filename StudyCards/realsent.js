@@ -187,8 +187,18 @@ function rsDecoys(blanks, words) {
 }
 /* 🎺 the fanfare lives in fanfare.js (shared with other games); then the sentence is read out and "Next sentence" waits for it */
 const rsFanfare = () => playFanfare();
+function rsVoice() {
+  const d = deckById(rs.deckId);
+  return langBase(d?.frontLang || '') === rs.lang ? d.frontLang : ({ es: 'es-ES', fr: 'fr-FR', ja: 'ja-JP' })[rs.lang] || BLD_LANGS[rs.lang]?.voice;
+}
+/* 🔊 each word is said out loud as it goes into your sentence (🔇 "Say words" turns it off) */
+function rsSayWord(c) {
+  if (S.settings.rsSayWords === false || !c || typeof speak !== 'function') return;
+  const w = String(c.w || '').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  if (w) speak(w, rsVoice());
+}
 function rsReadOut(delay = 0) {
-  const d = deckById(rs.deckId), voice = langBase(d?.frontLang || '') === rs.lang ? d.frontLang : ({ es: 'es-ES', fr: 'fr-FR', ja: 'ja-JP' })[rs.lang] || BLD_LANGS[rs.lang]?.voice;
+  const voice = rsVoice();
   const text = rsPlain(rs.s.text, rs.lang), round = rs.s;
   rs.reading = true; clearInterval(rs.readT);
   const done = () => { clearInterval(rs.readT); if (rs?.s !== round || !rs.reading) return; rs.reading = false; if (view.name === 'realsent') render(); };
@@ -286,6 +296,7 @@ views.realsent = () => {
     <div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="rsTags" ${tags ? 'checked' : ''}> Word types</label>
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="rsMeanings" ${meanings ? 'checked' : ''}> Meanings</label>
+      <label class="row muted small" style="gap:6px;font-weight:400" title="Say each word out loud when you put it in your sentence"><input type="checkbox" id="rsSayWords" ${S.settings.rsSayWords !== false ? 'checked' : ''}> 🔊 Say words</label>
       <label class="row muted small" style="gap:6px;font-weight:400"><input type="checkbox" id="rsMeter" ${S.settings.bldMeter !== false ? 'checked' : ''}> Hot/cold meter</label>
       <label class="row muted small" style="gap:6px;font-weight:400" title="Words the Sentence Builder doesn’t know get their meaning and word type from Wiktionary (only the word is sent)"><input type="checkbox" id="rsLookup" ${S.settings.rsLookup !== false ? 'checked' : ''}> 🌐 Look up missing words</label>
       ${fanfarePicker()}
@@ -305,9 +316,9 @@ views.realsent = () => {
 const rsAfterPlace = () => { rs.gap = null; rs.msg = null; rs.bad = -1; rs.hint = -1; if (rsComplete()) return rsCheck(); render(); };
 Object.assign(actions, {
   rsPick: el => { const c = rs.tray.find(t => t.id === +el.dataset.id); if (!c || c.used || rs.done) return; c.used = true;
-    if (rs.frame) { const at = rs.gap != null && rs.fill[rs.gap] == null ? rs.gap : rs.frame.findIndex((f, i) => f.blank && rs.fill[i] == null); if (at < 0) { c.used = false; return; } rs.fill[at] = c.id; return rsAfterPlace(); }
+    if (rs.frame) { const at = rs.gap != null && rs.fill[rs.gap] == null ? rs.gap : rs.frame.findIndex((f, i) => f.blank && rs.fill[i] == null); if (at < 0) { c.used = false; return; } rs.fill[at] = c.id; rsSayWord(c); return rsAfterPlace(); }
     if (rs.gap != null && rs.gap <= rs.line.length) rs.line.splice(rs.gap, 0, c.id); else rs.line.push(c.id);
-    rsAfterPlace(); },
+    rsSayWord(c); rsAfterPlace(); },
   rsSlot: el => { if (rs.done) return; rs.gap = +el.dataset.i; rs.msg = '✏️ Now tap the word that goes in that blank.'; render(); },
   rsRemove: el => { if (rs.done) return; const id = +el.dataset.id, c = rs.chips[id]; if (c) c.used = false;
     if (rs.frame) { const at = rs.fill.indexOf(id); if (at >= 0) rs.fill[at] = null; rs.gap = at; rs.msg = null; rs.bad = -1; return render(); }
