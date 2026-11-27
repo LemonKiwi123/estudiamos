@@ -132,9 +132,7 @@ if (typeof views !== 'undefined' && views.realsent) {
   views.realsent = () => {
     const h = rsView();
     if (rs?.lang !== 'zh' || rs.loading || rs.err) return h;
-    return h + `<div class="gt-report"><button type="button" class="btn sm" data-act="zhBuildOwn">🧩 Build your own Chinese sentences</button>
-      <span class="muted small">Put the words together yourself: measure words, 了 / 过, 很, questions with 吗…</span></div>
-      <p class="muted small" style="text-align:center">Pinyin, word breaks and word meanings come from <a href="https://cc-cedict.org" target="_blank" rel="noopener">CC-CEDICT</a> (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>).</p>`;
+    return h + `<p class="muted small" style="text-align:center">Pinyin, word breaks and word meanings come from <a href="https://cc-cedict.org" target="_blank" rel="noopener">CC-CEDICT</a> (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>).</p>`;
   };
   Object.assign(actions, { zhBuildOwn: () => { if (typeof startBuilder !== 'function') return; const id = rs?.deckId; startBuilder(id); if (bld) { bld.lang = 'zh'; bldRound(); render(); } } });
 }

@@ -131,6 +131,20 @@ function rsEsVerbLike(w, raw, nextTag, nextRaw) {
   }
   return false;
 }
+/* words the sentence set writes in lowercase somewhere: those aren't names, even when one starts a sentence */
+const RS_SEEN_LOWER = {};
+function rsSeenLower(lang) {
+  const D = typeof RS_DATA !== 'undefined' && RS_DATA[lang]; if (!D?.items) return null;
+  if (!RS_SEEN_LOWER[lang]) { const s = new Set(); for (const it of D.items) for (const t of String(it[1]).match(/[\p{L}']+/gu) || []) if (t === t.toLowerCase()) s.add(t); RS_SEEN_LOWER[lang] = s; }
+  return RS_SEEN_LOWER[lang];
+}
+/* Spanish: a sentence can't start with a bare noun followed by "un/una/el/la…" ("Falta una página", "Queda el pan"):
+   a word ending like a verb is the verb there, even if the dictionary lists the noun first */
+function rsEsFirstVerb(words, out, low) {
+  if (out[0] !== 'noun' || !/^[A-ZÁÉÍÓÚÑ]/.test(words[0]) || out[1] !== 'det' || !RS_CLOSED.es.art.has(low[1])) return;
+  if (!/(a|e|an|en|o|as|es)$/.test(low[0]) || !/^\p{L}+$/u.test(words[0])) return;   // a verb ending, and no comma after it ("Mamá, la…")
+  out[0] = 'verb';
+}
 function rsTagSentence(words, lang) {
   const C = RS_CLOSED[lang]; if (!C) return words.map(() => null);
   const low = words.map(w => w.toLowerCase().replace(/[.,!?¿¡;:«»"“”()]/g, ''));
@@ -141,10 +155,11 @@ function rsTagSentence(words, lang) {
     if (out[i] == null && C.clArt?.has(w)) out[i] = lang === 'es' && C.prep.has(low[i - 1] || '') ? 'det' : next === 'verb' ? 'pron' : 'det';   // Spanish: after a preposition it's always the article (French "pour la voir" is a pronoun)
     if (lang === 'es' && out[i] === 'det' && RS_ES_NUM.has(w) && C.art.has(low[i - 1] || '') && out[i + 1] !== 'noun' && out[i + 1] !== 'adj') out[i] = 'noun';   // "a las ocho": the number stands alone
     if (out[i] == null && C.flex?.has(w)) out[i] = next === 'noun' || next === 'adj' || next === 'det' ? 'det' : next === 'pron' ? 'pron' : 'adv';
-    if (out[i] == null && lang !== 'ja' && i === 0 && /^[A-ZÁÉÍÓÚÑÀÂÇÈÊËÎÏÔÛÙÜ]/.test(words[0]) && RS_DATA[lang]?.lower && !RS_DATA[lang].lower.has(w)) out[i] = 'noun';   // a name starting the sentence
+    if (out[i] == null && lang !== 'ja' && i === 0 && /^[A-ZÁÉÍÓÚÑÀÂÇÈÊËÎÏÔÛÙÜ]/.test(words[0]) && RS_DATA[lang]?.lower && !RS_DATA[lang].lower.has(w) && !rsSeenLower(lang)?.has(w)) out[i] = 'noun';   // a name starting the sentence (names are never written in lowercase; "Falta…" is)
     if (out[i] == null && lang !== 'ja' && i > 0 && /^[A-ZÁÉÍÓÚÑÀÂÇÈÊËÎÏÔÛÙÜ]/.test(words[i])) out[i] = 'noun';   // a name in the middle of the sentence
     if (out[i] == null && lang !== 'ja' && (prev === 'det' || prev === 'prep') && /^\p{L}+$/u.test(w) && w.length > 2) out[i] = 'noun';
   }
+  if (lang === 'es') rsEsFirstVerb(words, out, low);
   return out;
 }
 const rsTagName = (t, w) => t === 'det' && RS_CLOSED[rs?.lang]?.art?.has(String(w).toLowerCase()) ? 'article' : t === 'part' ? 'particle' : (typeof BLD_TYPES !== 'undefined' && BLD_TYPES[t]?.[0]) || t;

@@ -201,8 +201,7 @@ if (typeof views !== 'undefined' && views.realsent) {
   views.realsent = () => {
     const h = rsView();
     if (rs?.lang !== 'la') return h;
-    return h + `<div class="gt-report"><button type="button" class="btn sm" data-act="laBuildOwn">🏛️ Build your own Latin sentences</button>
-      <span class="muted small">Any word order the endings allow is right there. Sentences are read aloud with an Italian voice.</span></div>`;
+    return h + `<p class="muted small" style="text-align:center">Any word order the endings allow is right. Sentences are read aloud with an Italian voice.</p>`;
   };
   Object.assign(actions, { laBuildOwn: () => { if (typeof startBuilder !== 'function') return; const id = rs?.deckId; startBuilder(id); if (bld) { bld.lang = 'la'; bldRound(); render(); } } });
 }

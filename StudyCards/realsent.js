@@ -45,14 +45,45 @@ function rsSplitJa(text) {
   }
   return out.filter(w => !/^[、，\s]+$/.test(w));
 }
+/* Is this sentence in English rather than the language being built? Some cards have their example sentence and its
+   translation swapped ("There is a page missing." / "Falta una página."); the builder would then ask you to build
+   the English with the other language's word labels. Count common English words, and for languages written in
+   their own letters, check that the sentence actually uses them. */
+const RS_EN_COMMON = new Set(("the a an is are was were am be been being i you he she it we they me him her us them my your his its our their this that these those " +
+  "there here what who where when why how do does did don't doesn't didn't not to of in on at for with from and or but if so can can't will won't would should could " +
+  "have has had i'm it's that's there's isn't aren't wasn't let's very some any all just one").split(' '));
+const rsEnScore = s => { const w = String(s).toLowerCase().match(/[a-z']+/g) || []; return w.length ? w.filter(x => RS_EN_COMMON.has(x)).length / w.length : 0; };
+const RS_OWN_SCRIPT = { ja: /[ぁ-ヿ一-鿿]/, zh: /[一-鿿]/, ko: /[가-힯]/, ru: /[а-яё]/i, uk: /[а-яіїєґ]/i, el: /[α-ω]/i };
+const RS_VOCAB = {};   // per language: words seen in its sentences, and words seen in their English translations
+function rsVocab(lang) {
+  const D = RS_DATA?.[lang]; if (!D?.items) return null;
+  if (!RS_VOCAB[lang]) { const t = new Set(), e = new Set(), tok = s => String(s).toLowerCase().match(/[\p{L}']+/gu) || [];
+    for (const it of D.items) { tok(it[1]).forEach(x => t.add(x)); tok(it[2]).forEach(x => e.add(x)); }
+    RS_VOCAB[lang] = { t, e }; }
+  return RS_VOCAB[lang];
+}
+function rsInLang(s, lang) {
+  if (RS_OWN_SCRIPT[lang]) return RS_OWN_SCRIPT[lang].test(s);
+  if (/[ñáéíóúüçàèìòùâêîôûëïÿœăîșțşţŝĉĝĥĵŭåæøäößãõ¿¡]/i.test(s)) return true;   // letters English doesn't use
+  const w = String(s).toLowerCase().match(/[\p{L}']+/gu) || []; if (!w.length) return false;
+  const V = rsVocab(lang);
+  if (V) {   // words that belong to only one side decide; names like Tom and shared words like "a" don't count
+    const t = w.filter(x => V.t.has(x) && !V.e.has(x)).length, e = w.filter(x => V.e.has(x) && !V.t.has(x)).length;
+    return t === e ? rsEnScore(s) < 0.3 : t > e;
+  }
+  const C = RS_CLOSED?.[lang], known = C ? w.filter(x => Object.values(C).some(set => set instanceof Set && set.has(x))).length / w.length : 0;
+  return !(rsEnScore(s) >= 0.3 && rsEnScore(s) > known);
+}
 /* example sentences from your cards in this language (every deck that is in it) */
 function rsFromCards(deckId, lang) {
   const out = [];
+  out.swapped = [];   // cards whose example sentence and translation are the wrong way round (the view offers a fix)
   for (const d of S.decks) {
     if (langBase(d.frontLang || '') !== lang) continue;
     for (const c of cardsOf(d.id)) {
-      const ex = typeof plainSent === 'function' ? plainSent(c.example || '').trim() : String(c.example || '').trim(), tr = typeof plainSent === 'function' ? plainSent(c.exampleTr || '').trim() : String(c.exampleTr || '').trim();
+      let ex = typeof plainSent === 'function' ? plainSent(c.example || '').trim() : String(c.example || '').trim(), tr = typeof plainSent === 'function' ? plainSent(c.exampleTr || '').trim() : String(c.exampleTr || '').trim();
       if (!ex || !tr) continue;
+      if (!rsInLang(ex, lang)) { if (rsInLang(tr, lang) && rsEnScore(ex) > rsEnScore(tr)) { [ex, tr] = [tr, ex]; out.swapped.push(c); } else continue; }   // swapped on the card: use it the right way round; otherwise skip it
       const text = RS_NOSPACE.has(lang) ? (RS_SPLIT[lang] || rsSplitJa)(ex).join('|') + (/[。！？]$/.test(ex) ? ex.slice(-1) : '。') : ex;
       const n = rsTokens(text, lang).length;
       if (n >= 2 && n <= 14) out.push({ id: 'card:' + c.id, text, en: tr, src: c.exampleSrc ? `${c.exampleSrc} (tatoeba.org, CC BY 2.0 FR)` : `From your card in “${d.name}”`, mine: true });
@@ -60,12 +91,12 @@ function rsFromCards(deckId, lang) {
   }
   return out;
 }
-/* the Sentence Builder: real sentences in the language you're learning (English decks keep the older word-tray builder) */
+/* the Sentence Builder: only real sentences, written by people (Tatoeba and the like, or your own cards' example sentences),
+   in the language you're learning, whichever side of the deck it is on. Nothing is made up. */
 function startSentenceBuilder(deckId) {
   const d = deckById(deckId), f = langBase(d?.frontLang || ''), k = langBase(d?.backLang || '');
   if (RS_LANGS[f]) return startRealSentences(deckId, f);
-  if (f !== 'en' && RS_LANGS[k]) return startRealSentences(deckId, k);
-  if (f === 'en' || k === 'en') return startBuilder(deckId);
+  if (RS_LANGS[k]) return startRealSentences(deckId, k);
   return startRealSentences(deckId, 'es');
 }
 async function startRealSentences(deckId, lang) {
@@ -265,6 +296,8 @@ views.realsent = () => {
       <button type="button" class="btn sm ${rsMineOnly() ? 'primary' : ''}" data-act="rsMine" aria-pressed="${rsMineOnly()}" title="Use only the example sentences from your own decks">📚 ${rsMineOnly() ? 'Using only my decks’ sentences' : 'Use only my decks’ sentences'} (${rs.mine.length})</button>
       ${rsMineOnly() && !rs.mine.length ? `<span class="muted small">None of your ${esc(RS_LANGS[rs.lang])} cards have an example sentence with a translation yet, so these are built-in sentences. Add some with ✨ Add example sentences on your deck’s games page.</span>` : ''}
     </div>
+    ${rs.mine.swapped?.length ? `<div class="gt-report"><button type="button" class="btn sm" data-act="rsFixSwap">🔁 Fix ${rs.mine.swapped.length === 1 ? 'that card' : `those ${rs.mine.swapped.length} cards`}</button>
+      <span class="muted small">${rs.mine.swapped.length === 1 ? 'One of your cards has' : `${rs.mine.swapped.length} of your cards have`} the example sentence and its translation the wrong way round (the English is in the example). They’re used the right way round here; this swaps them back on the card${rs.mine.swapped.length === 1 ? '' : 's'}.</span></div>` : ''}
     ${rsPosPicker()}
     ${bldReportBtn(rs.lang)}
     <p class="muted small" style="text-align:center;margin-top:14px">Real sentences from <a href="https://tatoeba.org" target="_blank" rel="noopener">Tatoeba</a> (CC BY 2.0 FR)${rs.lang === 'es' ? ' and the <a href="https://zenodo.org/records/13936988" target="_blank" rel="noopener">Spanish Short Sentences</a> set (CC BY 4.0)' : ''}, plus your own cards’ example sentences.${S.settings.rsLookup !== false ? ' Meanings of words we didn’t know come from <a href="https://en.wiktionary.org" target="_blank" rel="noopener">Wiktionary</a> (CC BY-SA 4.0).' : ''}${ja ? ' Japanese word breaks come from Tatoeba’s word index.' : ''}</p>`;
@@ -323,6 +356,13 @@ Object.assign(actions, {
     }
     render(); },
   rsOrder: () => rsOrderDialog(),
+  rsFixSwap: () => {
+    const cards = rs.mine.swapped || []; if (!cards.length) return;
+    const flip = () => { for (const c of cards) [c.example, c.exampleTr] = [c.exampleTr, c.example]; save(); rs.mine = rsFromCards(rs.deckId, rs.lang); render(); };
+    flip();
+    const msg = `🔁 Swapped the example sentence and translation on ${cards.length === 1 ? '1 card' : cards.length + ' cards'}`;
+    if (typeof undoToast === 'function') undoToast(msg, () => { flip(); toast('Change undone'); }); else toast(msg);
+  },
   rsMine: () => { S.settings.rsMineOnly = !rsMineOnly(); save(); rs.seen.clear(); rsRound(); render(); toast(rsMineOnly() ? (rs.mine.length ? `📚 Only your decks’ ${rs.mine.length} example sentences from now on` : 'Your decks have no example sentences in this language yet') : '📖 Back to all the real sentences (yours come first)'); },
   rsPos: el => { const k = el.dataset.k, all = RS_POS(rs.lang);
     let sel = rsPosSel() || [];

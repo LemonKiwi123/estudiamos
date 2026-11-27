@@ -344,40 +344,72 @@ function esEnglish(P) {
 }
 
 /* ---------------- making a tray ---------------- */
+/* What makes sense together, so the made-up sentences mean something (the checker still accepts any grammatical sentence):
+   which places go with which verbs, what animals can do, which objects don't take "my/your/his", and who can have "with" or "for". */
+const ES_PLACES_FOR = { trabajar: ['oficina', 'tienda', 'restaurante', 'mercado', 'escuela', 'biblioteca', 'casa', 'cocina', 'ciudad'], estudiar: ['escuela', 'biblioteca', 'casa'],
+  jugar: ['parque', 'playa', 'casa', 'escuela'], correr: ['parque', 'playa'], caminar: ['parque', 'playa', 'ciudad', 'mercado'], dormir: ['casa'], vivir: ['ciudad', 'casa'],
+  hablar: ['casa', 'escuela', 'oficina', 'restaurante', 'parque', 'tienda'], cocinar: ['cocina', 'casa', 'restaurante'], comprar: ['tienda', 'mercado'], vender: ['tienda', 'mercado'],
+  leer: ['biblioteca', 'casa', 'escuela', 'oficina', 'parque'], escribir: ['casa', 'oficina', 'escuela', 'biblioteca'], comer: ['restaurante', 'casa', 'cocina', 'parque'], beber: ['restaurante', 'casa', 'cocina'] };
+const ES_ANIMAL_CAN = new Set(['comer', 'beber', 'jugar', 'correr', 'caminar', 'dormir', 'vivir', 'ser', 'estar', 'ver', 'buscar', 'querer']);   // a dog can eat or play, not buy or read
+const ES_ANIMAL_OBJ = ['food', 'drink', 'animal', 'person'];                  // what an animal can want, see or look for (plus its ball)
+const ES_NO_PLACE_OBJ = new Set(['tener', 'necesitar', 'querer']);           // "I need the park" doesn't work in a drill
+const ES_NO_POSS_OBJ = new Set(['comprar', 'vender', 'necesitar', 'querer', 'cocinar', 'comer', 'beber', 'escribir']);   // you buy "a" cake, not "my" cake
+const ES_NO_WITH = new Set(['tener', 'necesitar', 'querer', 'ver']);         // no "I have coffee with a brother"
+const ES_WITH_ANIMAL = new Set(['jugar', 'caminar', 'correr', 'dormir']);    // you play with a dog, you don't work with one
+const ES_OWNABLE = new Set(['thing', 'read', 'animal']);                     // "the book of my sister", not "the milk of a doctor"
+const ES_NO_POSS_NOUN = new Set(['hombre', 'mujer']);                       // "nuestra mujer" sounds wrong in a drill
+const ES_NOT_FOR_SALE = new Set(['dinero']);                                 // you don't buy money
+/* Deck words added by themselves from word labels: the game knows their kind of word but not what they mean,
+   so they get careful sentences until you check them in 📚 Add my deck's words. A word you haven't checked
+   never meets another one ("Yo nunca prefiero sus usos"): an unchecked verb takes a familiar thing ("prefiero el café"),
+   and an unchecked noun only follows have / need / want / look for / see, with the / a / this / that. */
+const ES_GENERAL_VERBS = new Set(['tener', 'necesitar', 'querer', 'buscar', 'ver']);
+const esUnsure = () => new Set((typeof S !== 'undefined' && S?.bldWords || []).filter(m => m && m.auto && (m.lang || 'es') === 'es').map(m => m.w));
 function esGenerate(pref) {
-  const R = a => a[Math.floor(Math.random() * a.length)], coin = p => Math.random() < p;
+  const R = a => a[Math.floor(Math.random() * a.length)], coin = p => Math.random() < p, UNSURE = esUnsure();
   const RP = list => { const fav = list.filter(x => pref.has(x[0]) || (x[1] && typeof x[1] === 'string' && pref.has(x[1]))); return fav.length && coin(0.6) ? R(fav) : R(list); };
   const nounOf = cats => RP(ES_NOUN.filter(n => cats[0] === '*' || cats.includes(n[3]) || (cats[0] === 'open' && ES_OPENABLE.includes(n[0]))));
   const CAT = { person: 'p', animal: 'a', food: 'f', drink: 'f', thing: 't', place: 'l', read: 'r' };
   const adjFor = (cop, cat) => RP(ES_ADJ.filter(a => (cop === 'estar' ? a[5] !== 'ser' : a[5] !== 'estar') && (!cat || a[6].includes(CAT[cat] || 'p'))));
   const extra = [];
   // a noun phrase with a determiner that fits (and a look-alike determiner as a distractor)
+  const POSS = new Set(['mi', 'tu', 'su', 'nuestro']);
+  const placeIn = names => RP(ES_NOUN.filter(x => names.includes(x[0])));
   const np = (n, num, role, out, opts = {}) => {
     const g = n[2], elA = n[7] && num === 's', mass = n[6];
+    // "of someone" only for things people own, and then without "my/your/his" too ("tu tienda del niño" says it twice)
+    const withOf = opts.of && (ES_OWNABLE.has(n[3]) || n[0] === 'casa') && coin(0.25);
+    const noPoss = withOf || opts.noPoss || (n[3] === 'place' && n[0] !== 'casa') || ES_NO_POSS_NOUN.has(n[0]);
     let fam;
-    if (num === 'p') fam = R(['el', 'el', 'un', 'mi', 'su', 'nuestro', 'este', 'ese', 'mucho', 'dos', 'tres']);
-    else if (mass) fam = R(['el', 'el', 'mucho', 'poco', 'mi', 'este', null]);
-    else fam = R(['el', 'el', 'un', 'un', 'mi', 'tu', 'su', 'nuestro', 'este', 'ese']);
+    for (let t = 0; t < 12; t++) {
+      if (num === 'p') fam = R(['el', 'el', 'un', 'mi', 'su', 'nuestro', 'este', 'ese', 'mucho', 'dos', 'tres']);
+      else if (mass) fam = R(['el', 'el', 'mucho', 'poco', 'mi', 'este', null]);
+      else fam = R(['el', 'el', 'un', 'un', 'mi', 'tu', 'su', 'nuestro', 'este', 'ese']);
+      if (!(noPoss && POSS.has(fam))) break;
+    }
+    if (noPoss && POSS.has(fam)) fam = 'el';
     if (fam === null && role === 'subj') fam = 'el';
     if (fam) { const dg = elA && (fam === 'el' || fam === 'un') ? 'm' : g; const d = esDetFind(fam, dg, num); out.push(esDetE(d)); const wrong = ES_DET.find(x => x[2] === fam && x !== d && (x[3] !== dg || x[4] !== num)); if (wrong) extra.push(esDetE(wrong)); }
     out.push(esNoun(n, num));
     if (opts.adj !== false && coin(0.35)) { if (coin(0.2)) out.push(esMuy()); const a = adjFor('any', n[3]); out.push(esAdj(a, g, num)); extra.push(esAdj(a, g === 'm' ? 'f' : 'm', num === 's' ? 'p' : 's')); }
-    if (opts.of && coin(0.25)) { const o = nounOf(['person']); if (o[2] === 'm' && coin(0.5)) { out.push(esPrep('del'), esNoun(o, 's')); extra.push(esPrep('de'), esDet('el', 'm', 's')); } else { out.push(esPrep('de')); np(o, 's', 'of', out, { adj: false }); } }
+    if (withOf) { const o = nounOf(['person']); if (o[2] === 'm' && coin(0.5)) { out.push(esPrep('del'), esNoun(o, 's')); extra.push(esPrep('de'), esDet('el', 'm', 's')); } else { out.push(esPrep('de')); np(o, 's', 'of', out, { adj: false }); } }
   };
   const clause = (first) => {
     const out = [], kind = R(['tr', 'tr', 'tr', 'in', 'ser', 'estar', 'ir']);
     const verb = kind === 'ser' || kind === 'estar' || kind === 'ir' ? ES_VERB.find(v => v[0] === kind) : RP(ES_VERB.filter(v => v[2] === kind));
-    const subjKinds = verb[7] === 'p' ? ['person'] : ['person', 'animal'];
+    const subjKinds = verb[7] === 'a' && ES_ANIMAL_CAN.has(verb[0]) ? ['person', 'animal'] : ['person'];
     let per, num, g = 'x', subjCat = 'person';
     const sr = Math.random();
     if (sr < 0.4) { const p = R(ES_PRON); per = p[1]; num = p[2]; g = p[3]; out.push(esPron(p)); }
     else if (sr < 0.85) {
       const n = nounOf(subjKinds); per = 3; g = n[2]; num = n[1] && coin(0.3) ? 'p' : 's'; subjCat = n[3];
       np(n, num, 'subj', out, { of: true });
-      if (coin(0.15)) { const n2 = nounOf(subjKinds); out.push(esConj('y')); np(n2, 's', 'subj', out, { adj: false }); num = 'p'; g = g === 'm' || n2[2] === 'm' ? 'm' : 'f'; }
-    } else [per, num] = ES_FORM[Math.floor(Math.random() * 5)];
+      // a second subject of the same kind: "a girl and the boy", never "a girl and her girl" or "the mother and the bird"
+      if (coin(0.15)) { const n2 = RP(ES_NOUN.filter(x => x[3] === n[3] && x[0] !== n[0])); out.push(esConj('y')); np(n2, 's', 'subj', out, { adj: false }); num = 'p'; g = g === 'm' || n2[2] === 'm' ? 'm' : 'f'; }
+    } else [per, num] = ES_FORM[R([0, 1, 3])];   // no subject word: only yo, tú or nosotros, so "…pero son malas" can't point at nobody
     const f = esFormIdx(per, num), gg = g === 'x' ? R(['m', 'f']) : g;
-    if (coin(0.12)) out.push(esAdv(R(['siempre', 'nunca'])));
+    let often = false;
+    if (coin(0.12)) { out.push(esAdv(R(['siempre', 'nunca']))); often = true; }
     else if (coin(0.18)) out.push(esNeg());
     if (verb[8]) { out.push(esRefl(f)); const wrong = [0, 1, 2, 3].filter(x => ES_REFL[x][0] !== ES_REFL[f][0]); extra.push(esRefl(R(wrong))); }
     out.push(esVerb(verb, f)); extra.push(esVerb(verb, (f + 1 + Math.floor(Math.random() * 4)) % 5));
@@ -388,23 +420,45 @@ function esGenerate(pref) {
       if (coin(0.5)) { const a = adjFor('estar', subjCat); out.push(esAdj(a, gg, num)); extra.push(esVerb(ES_VERB.find(v => v[0] === 'ser'), f)); }
       else { const n = nounOf(['place']); out.push(esPrep('en')); np(n, 's', 'pp', out, { adj: false }); extra.push(esVerb(ES_VERB.find(v => v[0] === 'ser'), f)); }
     } else if (kind === 'ir') {
+      if (subjCat === 'animal') return null;   // a horse doesn't go to the restaurant
       const n = nounOf(['place']);
       if (n[2] === 'm' && coin(0.6)) { out.push(esPrep('al'), esNoun(n, 's')); extra.push(esPrep('a'), esDet('el', 'm', 's')); }
       else { out.push(esPrep('a'), esDet('el', n[2], 's'), esNoun(n, 's')); extra.push(esPrep('en')); }
       if (coin(0.3)) { out.push(esPrep('con')); np(nounOf(['person']), 's', 'pp', out, { adj: false }); }
     } else if (kind === 'tr') {
-      const n = nounOf(verb[3]), on = n[1] && coin(0.35) ? 'p' : 's', animate = ['person', 'animal'].includes(n[3]);
-      if (animate && verb[0] !== 'tener') { if (n[2] === 'm' && on === 's' && coin(0.5)) { out.push(esPrep('al'), esNoun(n, 's')); extra.push(esDet('el', 'm', 's')); } else { out.push(esPrep('a')); np(n, on, 'obj', out); } }
-      else np(n, on, 'obj', out, { of: true });
-      if (coin(0.25)) { out.push(esPrep(R(['con', 'para']))); np(nounOf(['person']), 's', 'pp', out, { adj: false }); }
-      else if (coin(0.2)) { out.push(esPrep('en')); np(nounOf(['place']), 's', 'pp', out, { adj: false }); }
+      let cats = verb[3];
+      if (cats[0] === '*') cats = ['food', 'drink', 'read', 'thing', 'animal', 'person', ...(ES_NO_PLACE_OBJ.has(verb[0]) ? [] : ['place'])];
+      if (subjCat === 'animal') cats = cats.filter(c => ES_ANIMAL_OBJ.includes(c) || c === 'thing');
+      const verbUnsure = UNSURE.has(verb[0]);
+      if (verbUnsure) cats = cats.filter(c => ['food', 'drink', 'thing', 'read'].includes(c));
+      if (!cats.length) return null;
+      // unchecked deck nouns only after the general verbs, and never with an unchecked verb
+      const objOk = x => (!UNSURE.has(x[0]) || (!verbUnsure && ES_GENERAL_VERBS.has(verb[0])))
+        && !(verb[0] === 'tener' && ['hombre', 'mujer', 'niño', 'niña'].includes(x[0]));   // "tengo un amigo", not "tienen un hombre"
+      const objOf = () => RP(ES_NOUN.filter(x => (cats.includes(x[3]) || (cats[0] === 'open' && ES_OPENABLE.includes(x[0]))) && objOk(x)));
+      let n = objOf(); if (!n) return null;
+      for (let t = 0; t < 8 && ['comprar', 'vender'].includes(verb[0]) && ES_NOT_FOR_SALE.has(n[0]); t++) n = objOf();
+      if (['comprar', 'vender'].includes(verb[0]) && ES_NOT_FOR_SALE.has(n[0])) return null;
+      if (subjCat === 'animal' && n[3] === 'thing') n = ES_NOUN.find(x => x[0] === 'pelota');   // a dog wants its ball, not a phone
+      // one place at a time: "they open the library", not "two libraries"
+      const nounUnsure = UNSURE.has(n[0]);
+      const on = n[1] && n[3] !== 'place' && !nounUnsure && coin(0.35) ? 'p' : 's', animate = ['person', 'animal'].includes(n[3]), noPoss = ES_NO_POSS_OBJ.has(verb[0]) || nounUnsure;
+      if (animate && verb[0] !== 'tener') { if (n[2] === 'm' && on === 's' && coin(0.5)) { out.push(esPrep('al'), esNoun(n, 's')); extra.push(esDet('el', 'm', 's')); } else { out.push(esPrep('a')); np(n, on, 'obj', out, { noPoss }); } }
+      else np(n, on, 'obj', out, { of: !noPoss && verb[0] !== 'escribir', noPoss, ...(nounUnsure ? { adj: false } : {}) });
+      if (!ES_NO_WITH.has(verb[0]) && !verbUnsure && !nounUnsure && subjCat !== 'animal' && coin(0.25)) { out.push(esPrep(R(['con', 'para']))); np(nounOf(['person']), 's', 'pp', out, { adj: false }); }
+      else if (ES_PLACES_FOR[verb[0]] && !nounUnsure && coin(0.2)) { out.push(esPrep('en')); np(placeIn(ES_PLACES_FOR[verb[0]]), 's', 'pp', out, { adj: false }); }
       extra.push(esNoun(nounOf(['*']), 's'));
     } else {
-      const r = Math.random();
-      if (r < 0.45) { out.push(esPrep('en')); np(nounOf(['place']), 's', 'pp', out, { adj: false }); }
-      else if (r < 0.75) { out.push(esPrep('con')); np(nounOf(['person', 'animal']), 's', 'pp', out, { adj: false }); }
+      const r = Math.random(), places = ES_PLACES_FOR[verb[0]];
+      if (verb[8]) { /* "me levanto", "se viste": daily routines stand alone, no "with a cat" or "at the market" */ }
+      else if (r < 0.45 && places) { out.push(esPrep('en')); np(placeIn(places), 's', 'pp', out, { adj: false }); }
+      else if (r < 0.75 && subjCat === 'person') { out.push(esPrep('con')); np(nounOf(ES_WITH_ANIMAL.has(verb[0]) ? ['person', 'animal'] : ['person']), 's', 'pp', out, { adj: false }); }
     }
-    if (coin(0.25)) { const a = R(ES_ADV.filter(x => x[2] === 'edge' || x[2] === 'end')); out.push(esAdv(a[0])); }
+    // time words: not with "ser" ("we are nice today"), and "mañana" only with things you'll do, not with how you are
+    // (and not "never … today" or "always … now": a sentence with siempre/nunca gets no time word)
+    // "también" (too) doesn't follow "no" or "nunca": that would need "tampoco"
+    const negative = out.some(w => w.k === 'neg' || w.w === 'nunca');
+    if (coin(0.25)) { const a = R(ES_ADV.filter(x => (x[2] === 'edge' || x[2] === 'end') && !((kind === 'ser' || often) && x[2] === 'edge') && !(x[0] === 'mañana' && (kind === 'estar' || verb[8])) && !(x[0] === 'también' && negative))); out.push(esAdv(a[0])); }
     return out;
   };
   for (let tries = 0; tries < 80; tries++) {

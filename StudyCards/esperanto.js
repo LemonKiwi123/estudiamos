@@ -216,8 +216,7 @@ if (typeof views !== 'undefined' && views.realsent) {
   views.realsent = () => {
     const h = rsView();
     if (rs?.lang !== 'eo') return h;
-    return h + `<div class="gt-report"><button type="button" class="btn sm" data-act="eoBuildOwn">💚 Build your own Esperanto sentences</button>
-      <span class="muted small">Any word order the endings allow is right there. Sentences are read aloud with a Polish voice.</span></div>`;
+    return h + `<p class="muted small" style="text-align:center">Any word order the endings allow is right. Sentences are read aloud with a Polish voice.</p>`;
   };
   Object.assign(actions, { eoBuildOwn: () => { if (typeof startBuilder !== 'function') return; const id = rs?.deckId; startBuilder(id); if (bld) { bld.lang = 'eo'; bldRound(); render(); } } });
 }
